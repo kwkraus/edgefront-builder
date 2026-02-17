@@ -1,0 +1,19 @@
+# build output
+bin/
+obj/
+
+# user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS / VS Code
+.vs/
+.vscode/
+
+# logs
+*.log
+
+# local env
+appsettings.*.json
