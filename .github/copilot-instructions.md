@@ -11,6 +11,7 @@
   - `src/backend/` for API/service code
 - Treat frontend and backend as separate components; avoid coupling unless a task explicitly introduces shared contracts.
 - Put project documentation and decisions in `docs/`.
+- Save architecture docs, FAQs, and session research/outcome writeups only in `docs/` using clear kebab-case names (for example: `docs/system-architecture.md`, `docs/faq.md`, `docs/session-2026-02-17-observability-outcomes.md`).
 
 ## Build and Test
 - No canonical build/test/lint/format commands are currently defined in `readme.md` or tool manifests.
