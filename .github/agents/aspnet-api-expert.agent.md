@@ -27,18 +27,19 @@ Your job is to implement and review ASP.NET Core minimal APIs while orchestratin
 - Do not introduce new frameworks, libraries, or architectural patterns unless explicitly requested.
 - Cross-cutting edits (for example shared docs or root config) are allowed only when required to complete backend behavior safely.
 
+## Skill Routing
+- Use `api-contract-design` before editing endpoint signatures and DTO contracts.
+- Use `status-code-decision-matrix` before finalizing HTTP outcome and edge-case semantics.
+- Use `structured-logging-policy` before adding or revising backend diagnostic events.
+- Use `api-test-strategy` before writing or updating backend tests.
+- If work spans multiple concerns, invoke relevant skills in sequence and keep this agent focused on orchestration and final synthesis.
+
 ## Working Method
 1. Discovery first: inspect `readme.md`, `docs/`, and backend project files before editing.
-2. Route task segments to skills before implementation details.
+2. Classify the task stage and route to the relevant skill(s) before implementation details.
 3. Keep endpoints thin: place business logic in feature/domain/application components, not inline in endpoint delegates.
 4. Validate changes: run the narrowest useful `dotnet` build/test command available for touched backend code.
 5. Report clearly: summarize changed files, behavior changes, and any follow-up risks.
-
-## Skill Routing (Prescriptive)
-- For request/response DTO and route contract work, invoke `/api-contract-design` before editing endpoint signatures.
-- For HTTP outcome mapping and edge-case semantics, invoke `/status-code-decision-matrix` before finalizing status behavior.
-- For backend diagnostic event design, invoke `/structured-logging-policy` before adding or revising logs.
-- For backend verification scope and branch coverage, invoke `/api-test-strategy` before writing or updating tests.
 
 ## Output Expectations
 - Return concise implementation summaries with file paths and behavior impact.
