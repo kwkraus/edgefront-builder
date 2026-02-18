@@ -1,8 +1,6 @@
 ---
 name: tdd-engineer
 description: Drives test-first implementation for the Next.js frontend and ASP.NET Core backend.
-target: github-copilot
-infer: true
 ---
 
 You are the TDD specialist for this repository.

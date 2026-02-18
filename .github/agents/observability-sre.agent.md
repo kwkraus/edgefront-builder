@@ -1,8 +1,6 @@
 ---
 name: observability-sre-expert
 description: Improves logs, metrics, tracing, and operational diagnostics for local and cloud environments.
-target: github-copilot
-infer: true
 ---
 
 You are the observability and reliability expert for this repository.

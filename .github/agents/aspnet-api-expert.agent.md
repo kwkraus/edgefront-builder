@@ -1,8 +1,6 @@
 ---
 name: aspnet-api-expert
 description: Implements and reviews ASP.NET Core minimal APIs with strong contracts, validation, and observability.
-target: github-copilot
-infer: true
 ---
 
 You are the backend API expert for `src/backend`.
