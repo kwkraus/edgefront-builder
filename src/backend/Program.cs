@@ -7,6 +7,7 @@ using EdgeFront.Builder.Features.Webhook;
 using EdgeFront.Builder.Infrastructure.Background;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
@@ -27,6 +28,25 @@ builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration)
     .EnableTokenAcquisitionToCallDownstreamApi()
     .AddInMemoryTokenCaches();
 builder.Services.AddAuthorization();
+
+// Explicitly set valid audiences to handle both v1.0 (api://ClientId) and v2.0 (ClientId) token formats.
+// Microsoft.IdentityModel 8.x changed audience validation; RegisterValidAudience may not
+// reliably inject audiences at runtime. This ensures they are always present.
+var apiClientId = builder.Configuration["AzureAd:ClientId"]!;
+builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.TokenValidationParameters.ValidAudiences = new[]
+    {
+        apiClientId,
+        $"api://{apiClientId}"
+    };
+});
+
+if (builder.Environment.IsDevelopment())
+{
+    // Show actual audience values in token validation errors instead of scrubbed "[PII hidden]"
+    AppContext.SetSwitch("Switch.Microsoft.IdentityModel.DoNotScrubExceptions", true);
+}
 
 // Domain services
 builder.Services.AddSingleton(sp =>
@@ -59,6 +79,27 @@ builder.Services.AddScoped<MetricsRecomputeService>();
 builder.Services.AddScoped<WebhookIngestionService>();
 builder.Services.AddHostedService<SubscriptionRenewalService>();
 
+// CORS: allow configured frontend origins (falls back to localhost:3000 in development)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+if ((allowedOrigins == null || allowedOrigins.Length == 0) && builder.Environment.IsDevelopment())
+{
+    allowedOrigins = new[] { "http://localhost:3000" };
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (allowedOrigins != null && allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -77,6 +118,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
