@@ -15,7 +15,7 @@ Defines deterministic recompute logic for SessionMetrics and SeriesMetrics.
 - totalAttendees
 - uniqueRegistrantAccountDomains
 - uniqueAccountsInfluenced (attendance-only)
-- warmAccounts (W2 > W1 precedence)
+- warmAccounts (one entry per domain, W2 > W1 precedence)
 
 ## Triggers
 - Registration webhook
@@ -32,4 +32,3 @@ Normalized upserts + metrics recompute must be atomic.
 ## Definition of Done
 - No metric inflation under duplicate webhook delivery
 - Metrics endpoints read persisted aggregates only
-

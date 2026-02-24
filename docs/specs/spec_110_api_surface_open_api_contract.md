@@ -1,7 +1,8 @@
 # SPEC-110 — API Surface & OpenAPI Contract (Build Ready)
 
 ## Principles
-- All endpoints authenticated
+- All user/business endpoints authenticated
+- Webhook endpoint is machine-authenticated via Graph notification validation controls
 - Contract-first (OpenAPI source of truth)
 - Metrics read-only
 
@@ -37,4 +38,3 @@ Webhook:
 ## Definition of Done
 - OpenAPI YAML present
 - CI validation enabled
-

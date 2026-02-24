@@ -19,8 +19,8 @@ Defines V1 architecture baseline, stack, environments, CI/CD, and operational gu
 - Metrics persisted (no compute-on-read)
 
 ## Repo Structure
-/apps/web
-/apps/api
+/src/frontend
+/src/backend
 /libs/contracts
 /tests
 /infra
@@ -38,7 +38,7 @@ Local, Dev, Prod
 
 ## Security
 - JWT validation
-- Webhook validation
+- Webhook validation (machine endpoint; Graph notification validation, not user JWT)
 - Least-privilege Graph permissions
 
 ## Definition of Done
@@ -46,4 +46,3 @@ Local, Dev, Prod
 - CI pipeline functional
 - Dev deploy validated
 - OpenAPI published
-

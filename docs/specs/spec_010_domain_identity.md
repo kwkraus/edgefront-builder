@@ -5,9 +5,9 @@ Defines identity model, normalization rules, influence logic, warm rules.
 
 ## Identity
 - Person = normalized email
-- Account = normalized domain
-- Subdomains ignored
-- Internal domains excluded
+- Account = normalized registrable domain (public-suffix-aware eTLD+1 parsing)
+- Subdomains ignored after registrable-domain normalization
+- Internal domains excluded using validated environment/config list
 
 ## Influence
 - Attendance-only
@@ -17,9 +17,11 @@ Defines identity model, normalization rules, influence logic, warm rules.
 - W1: ≥2 distinct emails from same domain in one session
 - W2: Same email attends ≥2 sessions in same series
 - Precedence: W2 > W1
+- Store one warm entry per domain (do not store both W1 and W2 for same domain)
 
 ## Session Lifecycle
-Draft → Published → Reconciled
+`status`: Draft → Published
+`reconcileStatus` tracks reconciliation state separately
 
 ## Reconciliation
 Attendance report triggers authoritative re-fetch and recompute.
@@ -32,4 +34,3 @@ Attendance report triggers authoritative re-fetch and recompute.
 
 ## Definition of Done
 - Comprehensive unit + integration tests
-

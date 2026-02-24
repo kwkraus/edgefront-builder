@@ -4,6 +4,7 @@
 
 This document is the authoritative index of all specifications.
 Each spec exists as an independent canvas document.
+Non-authoritative planning/playbook docs may guide execution process, but they cannot override SPEC behavior.
 
 ---
 
@@ -15,7 +16,7 @@ Each spec exists as an independent canvas document.
 | SPEC-010 | Domain & Identity | BUILD READY ✅ | SPEC-000 |
 | SPEC-100 | Frontend Shell & UX Contract | BUILD READY ✅ | SPEC-000, SPEC-010 |
 | SPEC-110 | API Surface & OpenAPI Contract | BUILD READY ✅ | SPEC-000, SPEC-010, SPEC-100 |
-| SPEC-120 | Data Schema & Migrations | BUILD READY ✅ | SPEC-000, SPEC-010, SPEC-300 |
+| SPEC-120 | Data Schema & Migrations | BUILD READY ✅ | SPEC-000, SPEC-010 |
 | SPEC-200 | Teams Integration & Ingestion | BUILD READY ✅ | SPEC-000, SPEC-010 |
 | SPEC-210 | Webhook Security & Validation | BUILD READY ✅ | SPEC-000, SPEC-110, SPEC-200 |
 | SPEC-300 | Metrics Engine & Aggregation | BUILD READY ✅ | SPEC-010, SPEC-200 |
@@ -52,4 +53,3 @@ Each spec exists as an independent canvas document.
 ---
 
 **Note:** This index contains no behavioral logic. All authority lives in the individual spec documents.
-
