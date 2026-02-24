@@ -84,6 +84,9 @@ public static class SeriesEndpoints
             if (userId is null)
                 return Results.Unauthorized();
 
+            // Per SPEC-200: extract the raw Bearer token from the incoming request so it can be
+            // exchanged for a Graph OBO token via ITokenAcquisition in SeriesService.
+            // The token has already been validated by the ASP.NET Core authentication middleware.
             var authHeader = ctx.Request.Headers.Authorization.ToString();
             var oboToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
                 ? authHeader["Bearer ".Length..]

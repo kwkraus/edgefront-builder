@@ -16,6 +16,9 @@ public class SubscriptionRenewalService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SubscriptionRenewalService> _logger;
 
+    private const int RenewalLookAheadHours = 24;
+    private const int RenewalExtensionDays = 2;
+
     public SubscriptionRenewalService(
         IServiceScopeFactory scopeFactory,
         ILogger<SubscriptionRenewalService> logger)
@@ -55,7 +58,7 @@ public class SubscriptionRenewalService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var graphClient = scope.ServiceProvider.GetRequiredService<ITeamsGraphClient>();
 
-        var window = DateTime.UtcNow.AddHours(24);
+        var window = DateTime.UtcNow.AddHours(RenewalLookAheadHours);
         var expiring = await db.GraphSubscriptions
             .Where(s => s.ExpirationDateTime <= window)
             .ToListAsync(ct);
@@ -71,7 +74,7 @@ public class SubscriptionRenewalService : BackgroundService
 
         foreach (var sub in expiring)
         {
-            var newExpiration = DateTimeOffset.UtcNow.AddDays(2);
+            var newExpiration = DateTimeOffset.UtcNow.AddDays(RenewalExtensionDays);
 
             try
             {

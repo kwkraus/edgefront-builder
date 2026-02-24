@@ -4,16 +4,19 @@ using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EdgeFront.Builder.Features.Sessions;
 
 public class SessionService
 {
     private readonly AppDbContext _db;
+    private readonly ILogger _logger;
 
-    public SessionService(AppDbContext db)
+    public SessionService(AppDbContext db, ILogger<SessionService>? logger = null)
     {
         _db = db;
+        _logger = logger is not null ? logger : NullLogger.Instance;
     }
 
     public async Task<IEnumerable<SessionListItemDto>> GetBySeriesAsync(Guid seriesId, string ownerUserId)
@@ -144,11 +147,21 @@ public class SessionService
             foreach (var sub in subscriptions)
             {
                 try { await graphClient.DeleteSubscriptionAsync(sub.SubscriptionId); }
-                catch { /* best-effort */ }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Best-effort subscription delete failed for subscription {SubscriptionId}. SessionId={SessionId}",
+                        sub.SubscriptionId, sessionId);
+                }
             }
 
             try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken!); }
-            catch { /* best-effort */ }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Best-effort webinar delete failed for TeamsWebinarId={TeamsWebinarId}. SessionId={SessionId}",
+                    session.TeamsWebinarId, sessionId);
+            }
         }
 
         _db.Sessions.Remove(session);

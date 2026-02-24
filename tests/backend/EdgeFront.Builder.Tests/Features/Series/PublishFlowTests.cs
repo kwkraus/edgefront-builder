@@ -89,7 +89,7 @@ public class PublishFlowTests : IDisposable
         // Arrange
         var capturedClientStates = new List<string>();
 
-        var (series, session1, _) = await SeedSeriesWithOneSessionAsync();
+        var (series, session1) = await SeedSeriesWithOneSessionAsync();
 
         var graphMock = new Mock<ITeamsGraphClient>();
         graphMock.Setup(g => g.CreateWebinarAsync(
@@ -220,7 +220,7 @@ public class PublishFlowTests : IDisposable
     public async Task PublishAsync_CreatesRegistrationAndAttendanceSubscriptions_PerSession()
     {
         // Arrange
-        var (series, _, _) = await SeedSeriesWithOneSessionAsync();
+        var (series, _) = await SeedSeriesWithOneSessionAsync();
 
         var graphMock = new Mock<ITeamsGraphClient>();
         graphMock.Setup(g => g.CreateWebinarAsync(
@@ -263,7 +263,7 @@ public class PublishFlowTests : IDisposable
         return (series, s1, s2);
     }
 
-    private async Task<(EdgeFront.Builder.Domain.Entities.Series, Session, Session)> SeedSeriesWithOneSessionAsync()
+    private async Task<(EdgeFront.Builder.Domain.Entities.Series, Session)> SeedSeriesWithOneSessionAsync()
     {
         var series = new EdgeFront.Builder.Domain.Entities.Series
         {
@@ -277,10 +277,9 @@ public class PublishFlowTests : IDisposable
         _db.Series.Add(series);
 
         var s1 = BuildSession(series.SeriesId, "Solo Session");
-        var s2 = BuildSession(series.SeriesId, "Placeholder Session"); // needed to satisfy tuple return
-        _db.Sessions.AddRange(s1);
+        _db.Sessions.Add(s1);
         await _db.SaveChangesAsync();
-        return (series, s1, s2);
+        return (series, s1);
     }
 
     private static Session BuildSession(Guid seriesId, string title) => new()

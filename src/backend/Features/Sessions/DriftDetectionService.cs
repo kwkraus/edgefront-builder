@@ -19,6 +19,8 @@ public class DriftDetectionService
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    // Tolerance for floating-point datetime comparison in seconds
+    private const double DateMatchToleranceSeconds = 1.0;
 
     public DriftDetectionService(
         AppDbContext db,
@@ -76,10 +78,10 @@ public class DriftDetectionService
                 info.Title, session.Title, StringComparison.Ordinal);
 
             var startsAtMatches = Math.Abs(
-                (info.StartsAt.UtcDateTime - session.StartsAt).TotalSeconds) < 1;
+                (info.StartsAt.UtcDateTime - session.StartsAt).TotalSeconds) < DateMatchToleranceSeconds;
 
             var endsAtMatches = Math.Abs(
-                (info.EndsAt.UtcDateTime - session.EndsAt).TotalSeconds) < 1;
+                (info.EndsAt.UtcDateTime - session.EndsAt).TotalSeconds) < DateMatchToleranceSeconds;
 
             result = (titleMatches && startsAtMatches && endsAtMatches)
                 ? DriftStatus.None
