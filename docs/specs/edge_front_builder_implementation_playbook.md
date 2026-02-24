@@ -1,5 +1,7 @@
 # EdgeFront Builder — Implementation Playbook
 
+> **Note:** This playbook is non-authoritative process guidance. If any behavioral detail here conflicts with the Master Spec Index or individual SPEC-xxx files, the SPEC files take precedence.
+
 This document defines how AI agents are used to implement the system safely, deterministically, and in parallel.
 
 It is separate from the Master Spec.

@@ -23,6 +23,10 @@ Defines identity model, normalization rules, influence logic, warm rules.
 `status`: Draft → Published
 `reconcileStatus` tracks reconciliation state separately
 
+## Delete Behavior
+- Deleting a Session (Published): deletes mapped Teams webinar + subscriptions (with user confirmation)
+- Deleting a Series: cascade-deletes all Sessions and best-effort deletes their Teams webinars + subscriptions (with user confirmation)
+
 ## Reconciliation
 Attendance report triggers authoritative re-fetch and recompute.
 

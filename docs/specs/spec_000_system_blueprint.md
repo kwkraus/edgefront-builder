@@ -37,9 +37,12 @@ Local, Dev, Prod
 - Manual approval → Prod
 
 ## Security
-- JWT validation
+- JWT validation for all user/business endpoints
 - Webhook validation (machine endpoint; Graph notification validation, not user JWT)
-- Least-privilege Graph permissions
+- Hybrid Graph permission model:
+  - Delegated (OBO flow): webinar create/update/delete — requires user's Teams webinar-capable license
+  - Application (client credentials): subscriptions, registration/attendance reads, background renewal
+- Least-privilege Graph permissions: `VirtualEvent.ReadWrite` (delegated), `VirtualEvent.Read.All` + `VirtualEvent.Read.Chat` (application)
 
 ## Definition of Done
 - Scaffolding complete
