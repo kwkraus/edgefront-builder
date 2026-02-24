@@ -50,13 +50,22 @@ public static class SessionEndpoints
         // Sessions direct access
         var sessionGroup = app.MapGroup("/api/v1/sessions").RequireAuthorization();
 
-        sessionGroup.MapGet("/{id:guid}", async (Guid id, SessionService service, HttpContext ctx) =>
+        sessionGroup.MapGet("/{id:guid}", async (Guid id, SessionService service, DriftDetectionService driftService, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
                 return Results.Unauthorized();
 
             var result = await service.GetByIdAsync(id, userId);
+            if (result is null)
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+
+            // SPEC-200: check for drift before returning
+            await driftService.CheckDriftAsync(id, userId);
+
+            // Re-fetch to pick up any drift status update
+            result = await service.GetByIdAsync(id, userId);
             return result is null
                 ? Results.NotFound(new ErrorEnvelope(
                     "session_not_found", "Session not found.", ctx.TraceIdentifier))

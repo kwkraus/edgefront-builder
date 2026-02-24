@@ -1,10 +1,14 @@
+using Azure.Identity;
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Features.Metrics;
 using EdgeFront.Builder.Features.Series;
 using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Features.Webhook;
+using EdgeFront.Builder.Infrastructure.Background;
 using EdgeFront.Builder.Infrastructure.Data;
+using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Graph;
 using Microsoft.Identity.Web;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +37,25 @@ builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<MetricsService>();
 builder.Services.AddScoped<WebhookService>();
+
+// Graph services
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var tenantId = config["AzureAd:TenantId"]!;
+    var clientId = config["AzureAd:ClientId"]!;
+    var clientSecret = config["AzureAd:ClientSecret"] ?? string.Empty;
+    var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+    return new GraphServiceClient(credential, new[] { "https://graph.microsoft.com/.default" });
+});
+builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
+builder.Services.AddScoped<IOboTokenService, OboTokenService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<DriftDetectionService>();
+builder.Services.AddScoped<WarmRuleEvaluator>();
+builder.Services.AddScoped<MetricsRecomputeService>();
+builder.Services.AddScoped<WebhookIngestionService>();
+builder.Services.AddHostedService<SubscriptionRenewalService>();
 
 var app = builder.Build();
 

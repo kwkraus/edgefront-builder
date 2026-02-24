@@ -2,6 +2,7 @@ using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
+using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
 
 namespace EdgeFront.Builder.Features.Sessions;
@@ -81,7 +82,8 @@ public class SessionService
     }
 
     public async Task<(SessionResponseDto? session, string? errorCode)> UpdateAsync(
-        Guid sessionId, UpdateSessionRequest req, string ownerUserId)
+        Guid sessionId, UpdateSessionRequest req, string ownerUserId,
+        string? oboToken = null, ITeamsGraphClient? graphClient = null)
     {
         if (req.EndsAt <= req.StartsAt)
             return (null, "invalid_time_range");
@@ -95,16 +97,59 @@ public class SessionService
         session.StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime();
         session.EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime();
 
-        // TODO-SPEC-200: implement in Phase 3 — trigger Teams webinar update if Published
+        // SPEC-200: if Published and graph client provided, sync the Teams webinar
+        if (session.Status == SessionStatus.Published
+            && session.TeamsWebinarId is not null
+            && graphClient is not null
+            && !string.IsNullOrEmpty(oboToken))
+        {
+            try
+            {
+                await graphClient.UpdateWebinarAsync(
+                    session.TeamsWebinarId,
+                    session.Title,
+                    new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
+                    new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                    oboToken);
+            }
+            catch (Exception)
+            {
+                return (null, "TEAMS_UPDATE_FAILED");
+            }
+        }
+
         await _db.SaveChangesAsync();
         return (ToResponseDto(session), null);
     }
 
-    public async Task<bool> DeleteAsync(Guid sessionId, string ownerUserId)
+    public async Task<bool> DeleteAsync(
+        Guid sessionId, string ownerUserId,
+        ITeamsGraphClient? graphClient = null, string? oboToken = null)
     {
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
         if (session is null) return false;
+
+        // SPEC-200: best-effort delete Teams webinar + subscriptions if Published
+        if (session.Status == SessionStatus.Published
+            && session.TeamsWebinarId is not null
+            && graphClient is not null
+            && !string.IsNullOrEmpty(oboToken))
+        {
+            // Best-effort: delete subscriptions first, then webinar; swallow errors
+            var subscriptions = await _db.GraphSubscriptions
+                .Where(s => s.SessionId == sessionId)
+                .ToListAsync();
+
+            foreach (var sub in subscriptions)
+            {
+                try { await graphClient.DeleteSubscriptionAsync(sub.SubscriptionId); }
+                catch { /* best-effort */ }
+            }
+
+            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken!); }
+            catch { /* best-effort */ }
+        }
 
         _db.Sessions.Remove(session);
         await _db.SaveChangesAsync();

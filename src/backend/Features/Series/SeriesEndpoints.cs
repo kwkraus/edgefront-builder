@@ -1,6 +1,7 @@
 using EdgeFront.Builder.Common;
 using EdgeFront.Builder.Common.Extensions;
 using EdgeFront.Builder.Features.Series.Dtos;
+using EdgeFront.Builder.Infrastructure.Graph;
 
 namespace EdgeFront.Builder.Features.Series;
 
@@ -77,16 +78,27 @@ public static class SeriesEndpoints
                     "series_not_found", "Series not found.", ctx.TraceIdentifier));
         });
 
-        group.MapPost("/{id:guid}/publish", async (Guid id, SeriesService service, HttpContext ctx) =>
+        group.MapPost("/{id:guid}/publish", async (Guid id, SeriesService service, ITeamsGraphClient graphClient, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
                 return Results.Unauthorized();
 
-            var (series, errorCode) = await service.PublishAsync(id, userId);
+            var authHeader = ctx.Request.Headers.Authorization.ToString();
+            var oboToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? authHeader["Bearer ".Length..]
+                : string.Empty;
+
+            var (series, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient);
             if (series is null)
-                return Results.NotFound(new ErrorEnvelope(
-                    errorCode ?? "series_not_found", "Series not found.", ctx.TraceIdentifier));
+            {
+                if (errorCode == "series_not_found")
+                    return Results.NotFound(new ErrorEnvelope(
+                        errorCode, "Series not found.", ctx.TraceIdentifier));
+
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    errorCode ?? "PUBLISH_FAILED", "Publish failed.", ctx.TraceIdentifier));
+            }
 
             return Results.Ok(series);
         });
