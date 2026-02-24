@@ -48,8 +48,8 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.SessionId);
             e.Property(x => x.SessionId).ValueGeneratedNever();
             e.Property(x => x.Status).HasConversion<string>();
-            e.Property(x => x.DriftStatus).HasConversion<string>().HasDefaultValue("None");
-            e.Property(x => x.ReconcileStatus).HasConversion<string>().HasDefaultValue("Synced");
+            e.Property(x => x.DriftStatus).HasConversion<string>().HasDefaultValue(DriftStatus.None);
+            e.Property(x => x.ReconcileStatus).HasConversion<string>().HasDefaultValue(ReconcileStatus.Synced);
             e.Property(x => x.StartsAt).HasColumnType("datetime2").HasConversion(utcConverter);
             e.Property(x => x.EndsAt).HasColumnType("datetime2").HasConversion(utcConverter);
             e.Property(x => x.LastSyncAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
