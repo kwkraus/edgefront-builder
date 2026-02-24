@@ -189,7 +189,7 @@ public class DomainNormalizerTests
     }
 
     [Fact]
-    public void NormalizeRegistrableDomain_EmailWithNoLocalPart_ReturnsNull()
+    public void NormalizeRegistrableDomain_EmailWithNoLocalPart_ReturnsRegistrableDomain()
     {
         var sut = CreateNormalizer();
         sut.NormalizeRegistrableDomain("@example.com").Should().Be("example.com");
