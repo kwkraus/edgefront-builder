@@ -19,6 +19,11 @@ Your job is to implement and review ASP.NET Core minimal APIs while orchestratin
 - Use async and cancellation tokens for I/O paths.
 - Use configuration providers for settings and secrets; never commit local overrides with secrets.
 
+## Spec Authority
+- Read relevant specs in `docs/specs/` before implementing: SPEC-010, SPEC-110, SPEC-120, SPEC-300.
+- Implementation scope must not exceed the referenced spec's scope.
+- If a required rule is missing or ambiguous, add `TODO-SPEC` and stop — do not invent behavior.
+
 ## Guardrails
 - Do not expose domain entities directly as API contracts.
 - Do not swallow exceptions or add broad catch-all error handling.
@@ -32,6 +37,10 @@ Your job is to implement and review ASP.NET Core minimal APIs while orchestratin
 - Use `status-code-decision-matrix` before finalizing HTTP outcome and edge-case semantics.
 - Use `structured-logging-policy` before adding or revising backend diagnostic events.
 - Use `api-test-strategy` before writing or updating backend tests.
+- Use `data-schema-migration` before creating or modifying EF Core entities, migrations, or constraints.
+- Use `domain-metrics-computation` when implementing normalization, influence, or warm logic.
+- Use `graph-teams-integration` when work involves Microsoft Graph API calls.
+- Use `webhook-ingestion-pipeline` when implementing webhook handling or reconciliation.
 - If work spans multiple concerns, invoke relevant skills in sequence and keep this agent focused on orchestration and final synthesis.
 
 ## Working Method

@@ -15,6 +15,12 @@ You are the UI/UX expert for `src/frontend`.
 - Use existing Tailwind utility-first styling patterns already present in the codebase.
 - Ensure async experiences include clear loading and error handling states.
 
+## Spec Authority
+- Read SPEC-100 in `docs/specs/` before implementing any screen or UX flow.
+- SPEC-100 defines field lists, empty states, delete confirmations, auth flow, and error states.
+- SPEC-110 defines API response DTOs the frontend must consume.
+- If a required UX rule is missing, add `TODO-SPEC` and stop — do not invent behavior.
+
 ## Guardrails
 - Do not introduce new UI frameworks without explicit request.
 - Do not regress accessibility (labels, keyboard support, contrast, semantics).
