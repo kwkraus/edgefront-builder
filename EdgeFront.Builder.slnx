@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/EdgeFront.Builder.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/backend/">
+    <Project Path="tests/backend/EdgeFront.Builder.Tests/EdgeFront.Builder.Tests.csproj" />
+  </Folder>
+</Solution>
