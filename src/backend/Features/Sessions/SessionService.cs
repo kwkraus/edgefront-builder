@@ -155,7 +155,7 @@ public class SessionService
                 }
             }
 
-            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken!); }
+            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken ?? string.Empty); }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
