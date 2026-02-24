@@ -1,3 +1,7 @@
+using EdgeFront.Builder.Api.Domain;
+using Nager.PublicSuffix;
+using Nager.PublicSuffix.RuleProviders;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,6 +10,22 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddApplicationInsightsTelemetry();
+
+// Domain identity services per SPEC-010
+builder.Services.AddSingleton<IDomainParser>(sp =>
+{
+    var pslPath = Path.Combine(AppContext.BaseDirectory, "Resources", "public_suffix_list.dat");
+    var ruleProvider = new LocalFileRuleProvider(pslPath);
+    ruleProvider.BuildAsync().GetAwaiter().GetResult();
+    return new DomainParser(ruleProvider);
+});
+
+var internalDomains = builder.Configuration
+    .GetSection("InternalDomains")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+builder.Services.AddSingleton(sp =>
+    new DomainNormalizer(sp.GetRequiredService<IDomainParser>(), internalDomains));
 
 var app = builder.Build();
 
