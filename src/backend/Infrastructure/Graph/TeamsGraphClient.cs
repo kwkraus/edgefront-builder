@@ -80,6 +80,21 @@ public class TeamsGraphClient : ITeamsGraphClient
         }
     }
 
+    public async Task PublishWebinarAsync(
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
+    {
+        // The publish endpoint is not yet available in the Microsoft.Graph v5 SDK,
+        // so we issue a raw POST per the v1.0 REST API:
+        // POST /solutions/virtualEvents/webinars/{id}/publish → 204 No Content
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", oboToken);
+        var response = await httpClient.PostAsync(
+            $"https://graph.microsoft.com/v1.0/solutions/virtualEvents/webinars/{teamsWebinarId}/publish",
+            null, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task UpdateWebinarAsync(
         string teamsWebinarId, string title,
         DateTimeOffset startsAt, DateTimeOffset endsAt,

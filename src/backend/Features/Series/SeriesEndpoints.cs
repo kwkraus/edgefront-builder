@@ -78,21 +78,38 @@ public static class SeriesEndpoints
                     "series_not_found", "Series not found.", ctx.TraceIdentifier));
         });
 
-        group.MapPost("/{id:guid}/publish", async (Guid id, SeriesService service, ITeamsGraphClient graphClient, HttpContext ctx) =>
+        group.MapPost("/{id:guid}/publish", async (Guid id, SeriesService service, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("SeriesEndpoints");
             var userId = ctx.GetUserOid();
             if (userId is null)
                 return Results.Unauthorized();
 
-            // Per SPEC-200: extract the raw Bearer token from the incoming request so it can be
-            // exchanged for a Graph OBO token via ITokenAcquisition in SeriesService.
-            // The token has already been validated by the ASP.NET Core authentication middleware.
+            // Per SPEC-200: exchange the incoming Bearer token for a Graph-scoped OBO
+            // token so delegated Graph calls (webinar create/subscribe) succeed.
             var authHeader = ctx.Request.Headers.Authorization.ToString();
-            var oboToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            var rawToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
                 ? authHeader["Bearer ".Length..]
                 : string.Empty;
 
-            var (series, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient);
+            string? oboToken = null;
+            if (!string.IsNullOrEmpty(rawToken))
+            {
+                try
+                {
+                    oboToken = await oboService.GetOboTokenAsync(rawToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "OBO token exchange failed for Graph API. SeriesId={SeriesId}", id);
+                    return Results.UnprocessableEntity(new ErrorEnvelope(
+                        "OBO_EXCHANGE_FAILED",
+                        "Could not acquire a Graph API token. Verify the Entra ID app registration has the VirtualEvent.ReadWrite delegated permission with admin consent.",
+                        ctx.TraceIdentifier));
+                }
+            }
+
+            var (series, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger);
             if (series is null)
             {
                 if (errorCode == "series_not_found")

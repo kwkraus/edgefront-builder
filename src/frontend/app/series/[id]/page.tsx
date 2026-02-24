@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth'
 import { getSeriesById } from '@/lib/api/series'
 import { getSessionsBySeries } from '@/lib/api/sessions'
 import { getSeriesMetrics } from '@/lib/api/metrics'
+import { ApiError } from '@/lib/api/client'
 import SeriesDetailView from '@/components/series-detail-view'
 
 interface Props {
@@ -32,7 +33,10 @@ export default async function SeriesDetailPage({ params }: Props) {
   const [series, sessions, metrics] = await Promise.all([
     getSeriesById(id, session.accessToken),
     getSessionsBySeries(id, session.accessToken),
-    getSeriesMetrics(id, session.accessToken),
+    getSeriesMetrics(id, session.accessToken).catch((err) => {
+      if (err instanceof ApiError && err.status === 404) return null
+      throw err
+    }),
   ])
 
   return (

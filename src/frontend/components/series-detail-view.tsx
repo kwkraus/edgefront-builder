@@ -25,7 +25,7 @@ function formatDateTime(iso: string) {
 interface Props {
   series: SeriesResponse
   sessions: SessionListItem[]
-  metrics: SeriesMetricsResponse
+  metrics: SeriesMetricsResponse | null
 }
 
 export default function SeriesDetailView({ series, sessions, metrics }: Props) {
@@ -203,13 +203,13 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         </h2>
         <MetricsPanel
           metrics={[
-            { label: 'Registrations', value: metrics.totalRegistrations },
-            { label: 'Attendees', value: metrics.totalAttendees },
-            { label: 'Accts Influenced', value: metrics.uniqueAccountsInfluenced },
-            { label: 'Warm Accounts', value: metrics.warmAccounts.length },
+            { label: 'Registrations', value: metrics?.totalRegistrations ?? 0 },
+            { label: 'Attendees', value: metrics?.totalAttendees ?? 0 },
+            { label: 'Accts Influenced', value: metrics?.uniqueAccountsInfluenced ?? 0 },
+            { label: 'Warm Accounts', value: metrics?.warmAccounts.length ?? 0 },
           ]}
         />
-        {metrics.warmAccounts.length > 0 && (
+        {metrics && metrics.warmAccounts.length > 0 && (
           <div className="mt-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Warm accounts:</p>
             <div className="flex flex-wrap gap-2">

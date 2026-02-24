@@ -172,6 +172,9 @@ public class SeriesService
                     new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
                     oboToken);
 
+                // Publish the webinar in Teams so it becomes visible on the organizer's calendar
+                await graphClient.PublishWebinarAsync(webinarId, oboToken);
+
                 createdWebinarIds.Add((session, webinarId));
                 session.TeamsWebinarId = webinarId;
             }

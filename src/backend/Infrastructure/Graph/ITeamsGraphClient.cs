@@ -4,6 +4,7 @@ public interface ITeamsGraphClient
 {
     // OBO (delegated) — user must be present
     Task<string> CreateWebinarAsync(string title, DateTimeOffset startsAt, DateTimeOffset endsAt, string oboToken, CancellationToken ct = default);
+    Task PublishWebinarAsync(string teamsWebinarId, string oboToken, CancellationToken ct = default);
     Task UpdateWebinarAsync(string teamsWebinarId, string title, DateTimeOffset startsAt, DateTimeOffset endsAt, string oboToken, CancellationToken ct = default);
     Task DeleteWebinarAsync(string teamsWebinarId, string oboToken, CancellationToken ct = default);
 
