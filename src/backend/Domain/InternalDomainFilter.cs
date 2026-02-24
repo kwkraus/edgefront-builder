@@ -12,5 +12,5 @@ public class InternalDomainFilter
     }
 
     public bool IsInternal(string domain) =>
-        _internalDomains.Contains(domain.ToLowerInvariant());
+        _internalDomains.Contains(domain);
 }
