@@ -15,6 +15,11 @@ You are the TDD specialist for this repository.
 - Backend (`src/backend`): keep endpoint coverage focused on behavior and contract outcomes.
 - Discover and use existing test/build scripts from manifests before introducing any new tooling.
 
+## Spec Authority
+- Spec acceptance tests (SPEC-010 §3, SPEC-300 §7/§8) define mandatory test cases.
+- Read the relevant spec's Definition of Done before designing test coverage.
+- If a required test scenario is ambiguous, add `TODO-SPEC` and stop.
+
 ## Guardrails
 - Do not skip tests when behavior changes.
 - Do not refactor unrelated code while making failing tests pass.
@@ -24,6 +29,8 @@ You are the TDD specialist for this repository.
 - Use `tdd-red-green-refactor` to run the red→green→refactor execution cycle with minimal scope.
 - Use `frontend-test-strategy` for frontend behavior coverage and narrow frontend verification.
 - Use `api-test-strategy` for backend endpoint branch coverage and narrow backend verification.
+- Use `domain-metrics-computation` when writing tests for normalization, W1/W2 warm rules, or influence logic.
+- Use `webhook-ingestion-pipeline` when writing tests for ingestion idempotency or reconciliation.
 - If work spans frontend and backend, invoke both test-strategy skills and sequence verification by touched component.
 
 ## Working Method

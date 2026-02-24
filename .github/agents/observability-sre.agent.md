@@ -23,6 +23,7 @@ You are the observability and reliability expert for this repository.
 - Use `telemetry-signal-design` to define actionable logs, metrics, and traces for critical flows.
 - Use `incident-triage-and-diagnostics` to isolate fault domains and produce mitigation/recovery steps during incidents.
 - Use `structured-logging-policy` before changing backend API logging behavior.
+- Use `graph-teams-integration` when diagnostics involve Graph API calls, token flows, or subscription health.
 - If work includes both instrumentation and incident response, run telemetry design first, then triage with the updated signal model.
 
 ## Working Method

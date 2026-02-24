@@ -11,6 +11,16 @@ These instructions apply to the backend project under `src/backend`.
 - After making backend changes, review this file and update it if guidance is no longer accurate.
 - Keep the instruction set aligned with the current architecture and dependencies.
 
+## Spec Authority
+- All implementation must reference and conform to the authoritative specs in `docs/specs/`.
+- SPEC-010 defines domain model, identity rules, and computation logic.
+- SPEC-110 defines API surface, endpoints, and DTO contracts.
+- SPEC-120 defines database schema, column types, constraints, and indexes.
+- SPEC-200 defines Teams/Graph integration, webhook handling, and reconciliation.
+- SPEC-210 defines webhook security and validation.
+- SPEC-300 defines metrics engine computation and transaction boundaries.
+- If a required rule is missing in a spec, add `TODO-SPEC` comment and stop.
+
 ## Architecture
 - Use a minimal API style unless the feature requires controllers.
 - Keep endpoints thin: delegate logic to domain and application services.
@@ -20,8 +30,11 @@ These instructions apply to the backend project under `src/backend`.
 ## Project Structure
 - `Program.cs` for startup and DI registration.
 - `Features/<FeatureName>/` for endpoints, DTOs, handlers, validators.
-- `Domain/` for core entities, value objects, domain rules.
+- `Domain/` for core entities, value objects, domain rules (identity, normalization, warm/influence logic).
 - `Infrastructure/` for data access, external integrations, providers.
+- `Infrastructure/Graph/` for TeamsGraphClient, OBO token service, subscription management.
+- `Ingestion/` for webhook normalization, deduplication, reconciliation pipeline.
+- `Metrics/` for recompute orchestrator per SPEC-300.
 - `Common/` for shared primitives, errors, and result types.
 - Tests live in `tests/backend/` mirroring feature folders.
 
@@ -29,36 +42,63 @@ These instructions apply to the backend project under `src/backend`.
 - Target framework: .NET 10 (`net10.0`).
 - Use built-in DI, configuration, and logging.
 - Prefer `Microsoft.Extensions.*` abstractions over concrete libs.
-- If data access is needed, prefer EF Core with explicit migrations.
+- EF Core with explicit migrations per SPEC-120.
+- Microsoft.Identity.Web for Entra ID JWT validation and OBO token acquisition.
+- Microsoft.Graph SDK for Teams webinar operations.
 
 ## API Design
-- Use resource-oriented routes: `/api/<resource>`.
-- Use proper HTTP verbs and status codes.
-- Validate inputs and return problem details on validation errors.
-- Use DTOs for request/response; never expose entities directly.
+- Base path: `/api/v1` per SPEC-110.
+- Use resource-oriented routes per SPEC-110 endpoint definitions.
+- Use proper HTTP verbs and status codes per SPEC-110 DTO contracts.
+- Validate inputs and return problem details (SPEC-110 error envelope).
+- Use DTOs for request/response; never expose domain entities directly.
 - Prefer async APIs and cancellation tokens for I/O.
+- No pagination in V1 — list endpoints return all results for authenticated user.
+
+## Microsoft Graph Integration
+- Hybrid permission model per SPEC-200:
+  - Delegated (OBO): webinar create, update, delete — `VirtualEvent.ReadWrite`
+  - Application (client credentials): subscriptions, reads, background — `VirtualEvent.Read.All`, `VirtualEvent.Read.Chat`
+- Centralized token acquisition service (TeamsGraphClient).
+- OBO tokens used only in user-initiated request paths.
+- Application tokens used for background hosted services and webhook data fetching.
+- Webhook endpoint: machine-authenticated via clientState validation (SPEC-210), not user JWT.
+
+## Data Schema
+- Follow SPEC-120 for all table definitions, column types, constraints, indexes.
+- UUID primary keys, UTC datetime2, EF Core migrations only.
+- JSON columns (nvarchar(max)) for warm account lists per SPEC-120/SPEC-300.
+- Session.status: Draft | Published (not Reconciled).
+- Session.reconcileStatus: Synced | Reconciling | Retrying | Disabled.
+- Domain normalization: eTLD+1 / public-suffix-aware registrable domain parsing per SPEC-010.
+- Internal domain exclusion list: sourced from validated environment/config setting.
 
 ## Security and Configuration
 - Keep secrets in user secrets or environment variables.
 - Avoid committing `appsettings.*.json` for local overrides.
 - Validate configuration with options binding and `ValidateOnStart`.
+- Required config: Entra client id/tenant id/secret, Graph webhook secret, DB connection string, internal domain list.
 
 ## Error Handling and Logging
 - Centralize error handling via middleware or minimal API filters.
-- Log with structured logging and event ids for key operations.
+- Log with structured logging and correlation IDs for key operations per SPEC-000.
 - Do not log secrets or PII.
+- Teams licensing errors: surface clear "webinar license required" message, do not retry.
 
 ## Test-Driven Development (TDD)
 - Write tests first: red -> green -> refactor.
 - Prefer xUnit and fluent assertions for readability.
-- Use minimal integration tests for endpoints and contracts.
-- Mock external systems; avoid mocking internal logic.
+- Spec acceptance tests (SPEC-010 §3, SPEC-300 §7/§8) must be implemented as unit + integration tests.
+- Mock external systems (Graph API); avoid mocking internal logic.
+- Metrics engine: 100% unit coverage for computation rules.
 
 ## Best Practices
 - Keep methods small and single-purpose.
 - Prefer immutable records for DTOs where possible.
 - Avoid static state; favor DI for time, randomness, and environment.
 - Document endpoints with OpenAPI metadata.
+- Webhook processing must be idempotent.
+- Metrics recompute must be atomic with normalized data writes.
 
 ## Build and Tooling
 - `dotnet build` must remain clean and warning-free.
