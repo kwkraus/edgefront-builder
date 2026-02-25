@@ -58,10 +58,10 @@ export default function SessionDetailPage({ params }: Props) {
     try {
       const [s, m] = await Promise.all([
         getSessionById(id, token),
-        getSessionMetrics(id, token),
+        getSessionMetrics(id, token).catch(() => null),
       ])
       setSession(s)
-      setMetrics(m)
+      setMetrics(m ?? null)
       // Sync form state with loaded data
       setTitle(s.title)
       setStartsAt(toDateTimeLocal(s.startsAt))

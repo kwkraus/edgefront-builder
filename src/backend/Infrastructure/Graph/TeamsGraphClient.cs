@@ -59,12 +59,12 @@ public class TeamsGraphClient : ITeamsGraphClient
                 DisplayName = title,
                 StartDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
                 {
-                    DateTime = startsAt.UtcDateTime.ToString("o"),
+                    DateTime = startsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 },
                 EndDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
                 {
-                    DateTime = endsAt.UtcDateTime.ToString("o"),
+                    DateTime = endsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 }
             };
@@ -109,12 +109,12 @@ public class TeamsGraphClient : ITeamsGraphClient
                 DisplayName = title,
                 StartDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
                 {
-                    DateTime = startsAt.UtcDateTime.ToString("o"),
+                    DateTime = startsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 },
                 EndDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
                 {
-                    DateTime = endsAt.UtcDateTime.ToString("o"),
+                    DateTime = endsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 }
             };

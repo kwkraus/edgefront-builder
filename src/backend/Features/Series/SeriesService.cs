@@ -179,55 +179,68 @@ public class SeriesService
                 session.TeamsWebinarId = webinarId;
             }
 
-            // 4. For each webinar, create 2 subscriptions (registration + attendanceReport)
+            // 4. For each webinar, create 2 subscriptions (registration + attendanceReport).
+            //    Subscription creation is best-effort — it requires a publicly reachable
+            //    notification URL, which won't exist in local dev. The webinar is already
+            //    created and published; subscriptions can be added later via reconciliation.
             foreach (var (session, webinarId) in createdWebinarIds)
             {
-                var regExpiry = DateTimeOffset.UtcNow.AddDays(2);
-                var attExpiry = DateTimeOffset.UtcNow.AddDays(2);
-
-                // Registration subscription
-                var regClientState = Guid.NewGuid().ToString("N");
-                var regSubId = await graphClient.CreateSubscriptionAsync(
-                    resource: $"solutions/virtualEvents/webinars/{webinarId}/registrations",
-                    changeType: "created,updated,deleted",
-                    clientState: regClientState,
-                    expiresAt: regExpiry);
-
-                createdSubscriptionIds.Add(regSubId);
-
-                _db.GraphSubscriptions.Add(new GraphSubscription
+                try
                 {
-                    GraphSubscriptionId = Guid.NewGuid(),
-                    SessionId = session.SessionId,
-                    OwnerUserId = ownerUserId,
-                    SubscriptionId = regSubId,
-                    ChangeType = ChangeType.Registration,
-                    ClientStateHash = ComputeSha256Hex(regClientState),
-                    ExpirationDateTime = regExpiry.UtcDateTime,
-                    CreatedAt = DateTime.UtcNow
-                });
+                    var regExpiry = DateTimeOffset.UtcNow.AddDays(2);
+                    var attExpiry = DateTimeOffset.UtcNow.AddDays(2);
 
-                // AttendanceReport subscription
-                var attClientState = Guid.NewGuid().ToString("N");
-                var attSubId = await graphClient.CreateSubscriptionAsync(
-                    resource: $"solutions/virtualEvents/webinars/{webinarId}/attendanceReports",
-                    changeType: "created",
-                    clientState: attClientState,
-                    expiresAt: attExpiry);
+                    // Registration subscription
+                    var regClientState = Guid.NewGuid().ToString("N");
+                    var regSubId = await graphClient.CreateSubscriptionAsync(
+                        resource: $"solutions/virtualEvents/webinars/{webinarId}/registrations",
+                        changeType: "created,updated,deleted",
+                        clientState: regClientState,
+                        expiresAt: regExpiry);
 
-                createdSubscriptionIds.Add(attSubId);
+                    createdSubscriptionIds.Add(regSubId);
 
-                _db.GraphSubscriptions.Add(new GraphSubscription
+                    _db.GraphSubscriptions.Add(new GraphSubscription
+                    {
+                        GraphSubscriptionId = Guid.NewGuid(),
+                        SessionId = session.SessionId,
+                        OwnerUserId = ownerUserId,
+                        SubscriptionId = regSubId,
+                        ChangeType = ChangeType.Registration,
+                        ClientStateHash = ComputeSha256Hex(regClientState),
+                        ExpirationDateTime = regExpiry.UtcDateTime,
+                        CreatedAt = DateTime.UtcNow
+                    });
+
+                    // AttendanceReport subscription
+                    var attClientState = Guid.NewGuid().ToString("N");
+                    var attSubId = await graphClient.CreateSubscriptionAsync(
+                        resource: $"solutions/virtualEvents/webinars/{webinarId}/attendanceReports",
+                        changeType: "created",
+                        clientState: attClientState,
+                        expiresAt: attExpiry);
+
+                    createdSubscriptionIds.Add(attSubId);
+
+                    _db.GraphSubscriptions.Add(new GraphSubscription
+                    {
+                        GraphSubscriptionId = Guid.NewGuid(),
+                        SessionId = session.SessionId,
+                        OwnerUserId = ownerUserId,
+                        SubscriptionId = attSubId,
+                        ChangeType = ChangeType.AttendanceReport,
+                        ClientStateHash = ComputeSha256Hex(attClientState),
+                        ExpirationDateTime = attExpiry.UtcDateTime,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception subEx)
                 {
-                    GraphSubscriptionId = Guid.NewGuid(),
-                    SessionId = session.SessionId,
-                    OwnerUserId = ownerUserId,
-                    SubscriptionId = attSubId,
-                    ChangeType = ChangeType.AttendanceReport,
-                    ClientStateHash = ComputeSha256Hex(attClientState),
-                    ExpirationDateTime = attExpiry.UtcDateTime,
-                    CreatedAt = DateTime.UtcNow
-                });
+                    logger.LogWarning(subEx,
+                        "Subscription creation skipped for webinar {WebinarId} (session {SessionId}). " +
+                        "Webhooks will not fire until a public notification URL is configured.",
+                        webinarId, session.SessionId);
+                }
             }
 
             // 5. All Teams calls succeeded — commit the publish
