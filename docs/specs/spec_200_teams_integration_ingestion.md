@@ -16,6 +16,7 @@
 | `email` | Delegated | Email claim |
 | `offline_access` | Delegated | Refresh token for silent renewal |
 | `VirtualEvent.ReadWrite` | Delegated | Create, read, update, delete Teams webinars, registrations, and attendance |
+| `OnlineMeetingArtifact.Read.All` | Delegated | Read attendance reports for webinar sessions (required by Graph for `/attendanceReports` endpoint) |
 
 **Permissions to NOT configure (removed):**
 - ~~`VirtualEvent.Read.All` (Application)~~ — replaced by delegated VirtualEvent.ReadWrite

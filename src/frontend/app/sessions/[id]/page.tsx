@@ -1,7 +1,7 @@
 'use client'
 
-import { use, useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw, ExternalLink } from 'lucide-react'
@@ -14,10 +14,6 @@ import { getSessionById } from '@/lib/api/sessions'
 import { updateSession, deleteSession, syncSession } from '@/lib/api/sessions'
 import { getSessionMetrics } from '@/lib/api/metrics'
 import type { SessionResponse, SessionMetricsResponse } from '@/lib/api/types'
-
-interface Props {
-  params: Promise<{ id: string }>
-}
 
 function toDateTimeLocal(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -38,8 +34,9 @@ function formatDateTime(iso: string | null | undefined): string {
   })
 }
 
-export default function SessionDetailPage({ params }: Props) {
-  const { id } = use(params)
+export default function SessionDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const { data: authSession, status: authStatus } = useSession()
   const router = useRouter()
   const token = authSession?.accessToken ?? ''
@@ -139,7 +136,7 @@ export default function SessionDetailPage({ params }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [teamsUpdateFailed, setTeamsUpdateFailed] = useState(false)
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault()
     setTouched(true)
     if (!title.trim() || (startsAt && endsAt && endsAt <= startsAt)) return

@@ -16,20 +16,17 @@ public class SyncService
 {
     private readonly AppDbContext _db;
     private readonly ITeamsGraphClient _graphClient;
-    private readonly InternalDomainFilter _filter;
     private readonly MetricsRecomputeService _metricsRecompute;
     private readonly ILogger _logger;
 
     public SyncService(
         AppDbContext db,
         ITeamsGraphClient graphClient,
-        InternalDomainFilter filter,
         MetricsRecomputeService metricsRecompute,
         ILogger<SyncService> logger)
     {
         _db = db;
         _graphClient = graphClient;
-        _filter = filter;
         _metricsRecompute = metricsRecompute;
         _logger = logger;
     }

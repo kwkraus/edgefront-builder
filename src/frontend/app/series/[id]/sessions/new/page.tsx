@@ -1,24 +1,21 @@
 'use client'
 
-import { use, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
 import { createSession } from '@/lib/api/sessions'
 
-interface Props {
-  params: Promise<{ id: string }>
-}
-
 function fromDateTimeLocal(local: string): string {
   if (!local) return ''
   return new Date(local).toISOString()
 }
 
-export default function NewSessionPage({ params }: Props) {
-  const { id: seriesId } = use(params)
+export default function NewSessionPage() {
+  const params = useParams()
+  const seriesId = params.id as string
   const { data: authSession } = useSession()
   const router = useRouter()
 

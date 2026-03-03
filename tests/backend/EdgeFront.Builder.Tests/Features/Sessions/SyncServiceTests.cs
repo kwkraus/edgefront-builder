@@ -39,7 +39,7 @@ public class SyncServiceTests : IDisposable
         var metricsRecompute = new MetricsRecomputeService(_db, filter, warmRuleEvaluator);
 
         _sut = new SyncService(
-            _db, _graphMock.Object, filter, metricsRecompute,
+            _db, _graphMock.Object, metricsRecompute,
             NullLogger<SyncService>.Instance);
     }
 

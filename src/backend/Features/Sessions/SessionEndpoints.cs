@@ -74,7 +74,7 @@ public static class SessionEndpoints
                 : Results.Ok(result);
         });
 
-        sessionGroup.MapPut("/{id:guid}", async (Guid id, UpdateSessionRequest req, SessionService service, HttpContext ctx) =>
+        sessionGroup.MapPut("/{id:guid}", async (Guid id, UpdateSessionRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
@@ -84,9 +84,14 @@ public static class SessionEndpoints
                 return Results.BadRequest(new ErrorEnvelope(
                     "validation_error", "Title is required.", ctx.TraceIdentifier));
 
-            var (session, errorCode) = await service.UpdateAsync(id, req, userId);
+            // Acquire OBO token so UpdateAsync can push changes to Teams for published sessions
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (session, errorCode) = await service.UpdateAsync(id, req, userId, oboToken, graphClient);
             if (session is null)
             {
+                if (errorCode == "TEAMS_UPDATE_FAILED")
+                    return Results.UnprocessableEntity(new ErrorEnvelope(
+                        "TEAMS_UPDATE_FAILED", "Teams webinar could not be updated.", ctx.TraceIdentifier));
                 return errorCode == "invalid_time_range"
                     ? Results.BadRequest(new ErrorEnvelope(
                         "invalid_time_range", "EndsAt must be after StartsAt.", ctx.TraceIdentifier))
@@ -97,13 +102,16 @@ public static class SessionEndpoints
             return Results.Ok(session);
         });
 
-        sessionGroup.MapDelete("/{id:guid}", async (Guid id, SessionService service, HttpContext ctx) =>
+        sessionGroup.MapDelete("/{id:guid}", async (Guid id, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
                 return Results.Unauthorized();
 
-            var deleted = await service.DeleteAsync(id, userId);
+            // Best-effort OBO token: if token acquisition fails (null), DeleteAsync will
+            // still delete the local record but skip the Teams webinar deletion.
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var deleted = await service.DeleteAsync(id, userId, graphClient, oboToken);
             return deleted
                 ? Results.NoContent()
                 : Results.NotFound(new ErrorEnvelope(
