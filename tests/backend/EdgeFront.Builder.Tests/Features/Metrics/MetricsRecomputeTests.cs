@@ -256,6 +256,48 @@ public class MetricsRecomputeTests : IDisposable
     }
 
     [Fact]
+    public async Task SeriesMetrics_W1_EvaluatedPerSession_OneEmailPerSessionDoesNotTrigger()
+    {
+        // Regression: two distinct emails from the same domain, but each in a DIFFERENT
+        // session, must NOT trigger W1 (W1 requires ≥2 distinct emails within ONE session).
+        var (series, session1) = await SeedSeriesAndSessionAsync();
+        var session2 = await SeedExtraSessionAsync(series.SeriesId);
+
+        // alice in session1, bob in session2 — different sessions, same domain
+        await SeedAttendancesAsync(session1.SessionId, "alice@contoso.com");
+        await SeedAttendancesAsync(session2.SessionId, "bob@contoso.com");
+
+        await _sut.RecomputeSeriesMetricsAsync(series.SeriesId);
+
+        var m = await _db.SeriesMetrics.FindAsync(series.SeriesId);
+        // contoso.com should NOT appear as W1 (only one email per session)
+        m!.WarmAccounts.Should().NotContain(w => w.AccountDomain == "contoso.com" && w.WarmRule == WarmRule.W1);
+    }
+
+    [Fact]
+    public async Task SeriesMetrics_W1_TriggersOnlyWhenTwoEmailsSameSession()
+    {
+        // Confirm W1 IS triggered when two distinct emails share a domain within one session,
+        // even across a multi-session series.
+        var (series, session1) = await SeedSeriesAndSessionAsync();
+        var session2 = await SeedExtraSessionAsync(series.SeriesId);
+
+        // Two emails in session1 → W1 for contoso.com
+        await SeedAttendancesAsync(session1.SessionId,
+            "alice@contoso.com",
+            "bob@contoso.com");
+
+        // session2 has a single email from a different domain → no W1 for fabrikam.com
+        await SeedAttendancesAsync(session2.SessionId, "carol@fabrikam.com");
+
+        await _sut.RecomputeSeriesMetricsAsync(series.SeriesId);
+
+        var m = await _db.SeriesMetrics.FindAsync(series.SeriesId);
+        m!.WarmAccounts.Should().ContainSingle(w => w.AccountDomain == "contoso.com" && w.WarmRule == WarmRule.W1);
+        m.WarmAccounts.Should().NotContain(w => w.AccountDomain == "fabrikam.com");
+    }
+
+    [Fact]
     public async Task SeriesMetrics_TotalCountsIncludeInternal()
     {
         var (series, session1) = await SeedSeriesAndSessionAsync();

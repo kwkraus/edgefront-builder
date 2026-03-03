@@ -138,9 +138,12 @@ public class MetricsRecomputeService
             .Count();
 
         // Warm accounts: W2 > W1 precedence per domain, external only
-        var w1Domains = _warmRuleEvaluator.EvaluateW1(
-            // W1 is per-session; collect all domains that triggered W1 in any session
-            attendances).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // W1 requires ≥2 distinct emails from the same domain within a *single* session.
+        // Evaluate per-session, then union triggered domains across all sessions.
+        var w1Domains = attendances
+            .GroupBy(a => a.SessionId)
+            .SelectMany(g => _warmRuleEvaluator.EvaluateW1(g))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // W2 at series level
         var w2Domains = _warmRuleEvaluator.EvaluateW2(attendances)
