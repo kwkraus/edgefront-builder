@@ -45,3 +45,14 @@ export async function deleteSeries(id: string, accessToken: string): Promise<voi
 export async function publishSeries(id: string, accessToken: string): Promise<SeriesResponse> {
   return apiFetch<SeriesResponse>(`/series/${id}/publish`, { method: 'POST' }, accessToken)
 }
+
+export async function syncSeries(
+  id: string,
+  accessToken: string,
+): Promise<{ synced: number; failed: number }> {
+  return apiFetch<{ synced: number; failed: number }>(
+    `/series/${id}/sync`,
+    { method: 'POST' },
+    accessToken,
+  )
+}

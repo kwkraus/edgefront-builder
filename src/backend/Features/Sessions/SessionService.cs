@@ -44,7 +44,8 @@ public class SessionService
                 s.ReconcileStatus.ToString(),
                 s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,
-                m?.TotalAttendees ?? 0);
+                m?.TotalAttendees ?? 0,
+                s.LastSyncAt);
         });
     }
 
@@ -133,29 +134,13 @@ public class SessionService
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
         if (session is null) return false;
 
-        // SPEC-200: best-effort delete Teams webinar + subscriptions if Published
+        // Best-effort delete Teams webinar if Published
         if (session.Status == SessionStatus.Published
             && session.TeamsWebinarId is not null
             && graphClient is not null
             && !string.IsNullOrEmpty(oboToken))
         {
-            // Best-effort: delete subscriptions first, then webinar; swallow errors
-            var subscriptions = await _db.GraphSubscriptions
-                .Where(s => s.SessionId == sessionId)
-                .ToListAsync();
-
-            foreach (var sub in subscriptions)
-            {
-                try { await graphClient.DeleteSubscriptionAsync(sub.SubscriptionId); }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "Best-effort subscription delete failed for subscription {SubscriptionId}. SessionId={SessionId}",
-                        sub.SubscriptionId, sessionId);
-                }
-            }
-
-            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken ?? string.Empty); }
+            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken); }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,

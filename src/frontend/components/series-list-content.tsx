@@ -12,7 +12,7 @@ function SeriesTableRow({ item }: { item: SeriesListItem }) {
       <td className="px-4 py-3">
         <Link
           href={`/series/${item.seriesId}`}
-          className="font-medium text-foreground after:absolute after:inset-0 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="font-medium text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           {item.title}
         </Link>

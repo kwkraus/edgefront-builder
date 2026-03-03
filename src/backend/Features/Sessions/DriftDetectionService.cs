@@ -34,10 +34,11 @@ public class DriftDetectionService
 
     /// <summary>
     /// Checks whether the live Teams webinar state matches the local session record.
+    /// Uses delegated (OBO) token for Graph API calls.
     /// </summary>
     /// <returns>The current <see cref="DriftStatus"/> for the session.</returns>
     public async Task<DriftStatus> CheckDriftAsync(
-        Guid sessionId, string ownerUserId, CancellationToken ct = default)
+        Guid sessionId, string ownerUserId, string? oboToken = null, CancellationToken ct = default)
     {
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId, ct);
@@ -49,6 +50,10 @@ public class DriftDetectionService
         if (session.Status != SessionStatus.Published || session.TeamsWebinarId is null)
             return DriftStatus.None;
 
+        // Without an OBO token we cannot call Graph — return current status
+        if (string.IsNullOrEmpty(oboToken))
+            return session.DriftStatus;
+
         // Return cached result if available
         var cacheKey = $"drift_{sessionId}";
         if (_cache.TryGetValue(cacheKey, out DriftStatus cached))
@@ -57,7 +62,7 @@ public class DriftDetectionService
         TeamsWebinarInfo? info;
         try
         {
-            info = await _graphClient.GetWebinarMetadataAsync(session.TeamsWebinarId, ct);
+            info = await _graphClient.GetWebinarMetadataAsync(session.TeamsWebinarId, oboToken, ct);
         }
         catch (Exception)
         {

@@ -1,6 +1,7 @@
 using EdgeFront.Builder.Common;
 using EdgeFront.Builder.Common.Extensions;
 using EdgeFront.Builder.Features.Sessions.Dtos;
+using EdgeFront.Builder.Infrastructure.Graph;
 
 namespace EdgeFront.Builder.Features.Sessions;
 
@@ -50,7 +51,7 @@ public static class SessionEndpoints
         // Sessions direct access
         var sessionGroup = app.MapGroup("/api/v1/sessions").RequireAuthorization();
 
-        sessionGroup.MapGet("/{id:guid}", async (Guid id, SessionService service, DriftDetectionService driftService, HttpContext ctx) =>
+        sessionGroup.MapGet("/{id:guid}", async (Guid id, SessionService service, DriftDetectionService driftService, IOboTokenService oboService, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
@@ -61,8 +62,9 @@ public static class SessionEndpoints
                 return Results.NotFound(new ErrorEnvelope(
                     "session_not_found", "Session not found.", ctx.TraceIdentifier));
 
-            // SPEC-200: check for drift before returning
-            await driftService.CheckDriftAsync(id, userId);
+            // Best-effort drift check with OBO token (delegated)
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            await driftService.CheckDriftAsync(id, userId, oboToken);
 
             // Re-fetch to pick up any drift status update
             result = await service.GetByIdAsync(id, userId);
@@ -108,6 +110,84 @@ public static class SessionEndpoints
                     "session_not_found", "Session not found.", ctx.TraceIdentifier));
         });
 
+        // Sync session data from Teams (user-initiated, delegated)
+        sessionGroup.MapPost("/{id:guid}/sync", async (Guid id, SyncService syncService, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            if (string.IsNullOrEmpty(oboToken))
+            {
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    "OBO_EXCHANGE_FAILED",
+                    "Could not acquire a Graph API token. Verify the Entra ID app registration has the VirtualEvent.ReadWrite delegated permission with admin consent.",
+                    ctx.TraceIdentifier));
+            }
+
+            var result = await syncService.SyncSessionAsync(id, userId, oboToken);
+            if (!result.Success)
+            {
+                if (result.ErrorCode == "session_not_found")
+                    return Results.NotFound(new ErrorEnvelope(
+                        "session_not_found", "Session not found.", ctx.TraceIdentifier));
+                if (result.ErrorCode == "session_not_published")
+                    return Results.BadRequest(new ErrorEnvelope(
+                        "session_not_published", "Only published sessions can be synced.", ctx.TraceIdentifier));
+
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    result.ErrorCode ?? "SYNC_FAILED", "Sync failed.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(new { synced = true });
+        });
+
+        // Check drift for a session (user-initiated, delegated)
+        sessionGroup.MapPost("/{id:guid}/check-drift", async (Guid id, DriftDetectionService driftService, IOboTokenService oboService, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            if (string.IsNullOrEmpty(oboToken))
+            {
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    "OBO_EXCHANGE_FAILED",
+                    "Could not acquire a Graph API token.",
+                    ctx.TraceIdentifier));
+            }
+
+            var driftStatus = await driftService.CheckDriftAsync(id, userId, oboToken);
+            return Results.Ok(new { driftStatus = driftStatus.ToString() });
+        });
+
         return app;
+    }
+
+    /// <summary>
+    /// Best-effort extraction of OBO token from the request's Bearer token.
+    /// Returns null if the token exchange fails (e.g. no Graph consent).
+    /// </summary>
+    private static async Task<string?> TryGetOboTokenAsync(HttpContext ctx, IOboTokenService oboService)
+    {
+        var authHeader = ctx.Request.Headers.Authorization.ToString();
+        var rawToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? authHeader["Bearer ".Length..]
+            : string.Empty;
+
+        if (string.IsNullOrEmpty(rawToken))
+            return null;
+
+        try
+        {
+            return await oboService.GetOboTokenAsync(rawToken);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

@@ -9,4 +9,5 @@ public record SessionListItemDto(
     string ReconcileStatus,
     string DriftStatus,
     int TotalRegistrations,
-    int TotalAttendees);
+    int TotalAttendees,
+    DateTime? LastSyncAt);

@@ -45,3 +45,14 @@ export async function updateSession(
 export async function deleteSession(id: string, accessToken: string): Promise<void> {
   return apiFetch<void>(`/sessions/${id}`, { method: 'DELETE' }, accessToken)
 }
+
+export async function syncSession(
+  id: string,
+  accessToken: string,
+): Promise<{ synced: boolean }> {
+  return apiFetch<{ synced: boolean }>(
+    `/sessions/${id}/sync`,
+    { method: 'POST' },
+    accessToken,
+  )
+}

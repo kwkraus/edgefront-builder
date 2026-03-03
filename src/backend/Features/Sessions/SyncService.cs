@@ -5,16 +5,14 @@ using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
 
-namespace EdgeFront.Builder.Features.Webhook;
+namespace EdgeFront.Builder.Features.Sessions;
 
 /// <summary>
-/// Handles inbound Graph change notifications by fetching the current state from
-/// Graph and reconciling NormalizedRegistration / NormalizedAttendance rows.
-/// After reconciliation, metrics are recomputed atomically.
-///
-/// SPEC-200 §3 (ingestion) / SPEC-300 §7–§8 (metrics trigger).
+/// User-initiated sync of registration and attendance data from Teams via Graph.
+/// All Graph calls use delegated (OBO) tokens — no application credentials.
+/// Replaces the former automatic webhook ingestion pipeline.
 /// </summary>
-public class WebhookIngestionService
+public class SyncService
 {
     private readonly AppDbContext _db;
     private readonly ITeamsGraphClient _graphClient;
@@ -22,12 +20,12 @@ public class WebhookIngestionService
     private readonly MetricsRecomputeService _metricsRecompute;
     private readonly ILogger _logger;
 
-    public WebhookIngestionService(
+    public SyncService(
         AppDbContext db,
         ITeamsGraphClient graphClient,
         InternalDomainFilter filter,
         MetricsRecomputeService metricsRecompute,
-        ILogger<WebhookIngestionService> logger)
+        ILogger<SyncService> logger)
     {
         _db = db;
         _graphClient = graphClient;
@@ -36,33 +34,109 @@ public class WebhookIngestionService
         _logger = logger;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Registration change notification
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public async Task HandleRegistrationAsync(
-        string teamsWebinarId, string correlationId, CancellationToken ct = default)
+    /// <summary>
+    /// Fetches registrations and attendance from Graph using a delegated (OBO) token,
+    /// normalizes and upserts into the DB, and recomputes session + series metrics.
+    /// </summary>
+    public async Task<SyncResult> SyncSessionAsync(
+        Guid sessionId, string ownerUserId, string oboToken, CancellationToken ct = default)
     {
-        _logger.LogInformation(
-            "Handling registration notification. TeamsWebinarId={TeamsWebinarId} CorrelationId={CorrelationId}",
-            teamsWebinarId, correlationId);
-
-        // 1. Find session by TeamsWebinarId
         var session = await _db.Sessions
-            .FirstOrDefaultAsync(s => s.TeamsWebinarId == teamsWebinarId, ct);
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId, ct);
 
         if (session is null)
+            return new SyncResult(false, "session_not_found");
+
+        if (session.Status != SessionStatus.Published || session.TeamsWebinarId is null)
+            return new SyncResult(false, "session_not_published");
+
+        _logger.LogInformation(
+            "User-initiated sync starting. SessionId={SessionId} TeamsWebinarId={TeamsWebinarId}",
+            sessionId, session.TeamsWebinarId);
+
+        session.ReconcileStatus = ReconcileStatus.Reconciling;
+        await _db.SaveChangesAsync(ct);
+
+        try
         {
-            _logger.LogWarning(
-                "No session found for TeamsWebinarId={TeamsWebinarId}. CorrelationId={CorrelationId}",
-                teamsWebinarId, correlationId);
-            return;
+            await SyncRegistrationsAsync(session, oboToken, ct);
+            await SyncAttendanceAsync(session, oboToken, ct);
+
+            session.ReconcileStatus = ReconcileStatus.Synced;
+            session.LastSyncAt = DateTime.UtcNow;
+            session.LastError = null;
+            await _db.SaveChangesAsync(ct);
+
+            // Recompute metrics
+            await _metricsRecompute.RecomputeSessionMetricsAsync(session.SessionId, ct);
+            await _metricsRecompute.RecomputeSeriesMetricsAsync(session.SeriesId, ct);
+
+            _logger.LogInformation(
+                "User-initiated sync completed. SessionId={SessionId}", sessionId);
+
+            return new SyncResult(true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "User-initiated sync failed. SessionId={SessionId}", sessionId);
+
+            session.ReconcileStatus = ReconcileStatus.Synced;
+            session.LastError = ex.Message;
+            await _db.SaveChangesAsync(ct);
+
+            return new SyncResult(false, "SYNC_FAILED");
+        }
+    }
+
+    /// <summary>
+    /// Syncs all published sessions in a series. Called automatically when the
+    /// user navigates to the series detail page.
+    /// </summary>
+    public async Task<SyncSeriesResult> SyncSeriesAsync(
+        Guid seriesId, string ownerUserId, string oboToken, CancellationToken ct = default)
+    {
+        var series = await _db.Series
+            .FirstOrDefaultAsync(s => s.SeriesId == seriesId && s.OwnerUserId == ownerUserId, ct);
+
+        if (series is null)
+            return new SyncSeriesResult(false, 0, 0, "series_not_found");
+
+        var sessions = await _db.Sessions
+            .Where(s => s.SeriesId == seriesId
+                && s.Status == SessionStatus.Published
+                && s.TeamsWebinarId != null)
+            .ToListAsync(ct);
+
+        if (sessions.Count == 0)
+            return new SyncSeriesResult(true, 0, 0, null);
+
+        _logger.LogInformation(
+            "Series-level sync starting. SeriesId={SeriesId} SessionCount={Count}",
+            seriesId, sessions.Count);
+
+        int synced = 0, failed = 0;
+        foreach (var session in sessions)
+        {
+            var result = await SyncSessionAsync(session.SessionId, ownerUserId, oboToken, ct);
+            if (result.Success)
+                synced++;
+            else
+                failed++;
         }
 
-        // 2. Fetch registrations from Graph (app credentials)
-        var graphRegistrations = (await _graphClient.GetRegistrationsAsync(teamsWebinarId, ct)).ToList();
+        _logger.LogInformation(
+            "Series-level sync completed. SeriesId={SeriesId} Synced={Synced} Failed={Failed}",
+            seriesId, synced, failed);
 
-        // 3. Normalize and build the canonical set
+        return new SyncSeriesResult(failed == 0, synced, failed, failed > 0 ? "PARTIAL_SYNC_FAILURE" : null);
+    }
+
+    private async Task SyncRegistrationsAsync(Session session, string oboToken, CancellationToken ct)
+    {
+        var graphRegistrations = (await _graphClient.GetRegistrationsAsync(
+            session.TeamsWebinarId!, oboToken, ct)).ToList();
+
         var incoming = graphRegistrations
             .Select(r => new
             {
@@ -71,10 +145,9 @@ public class WebhookIngestionService
                 r.RegisteredAt
             })
             .GroupBy(x => x.Email)
-            .Select(g => g.First())       // deduplicate by email
+            .Select(g => g.First())
             .ToDictionary(x => x.Email, StringComparer.OrdinalIgnoreCase);
 
-        // 4. Load existing registrations for this session
         var existing = await _db.NormalizedRegistrations
             .Where(r => r.SessionId == session.SessionId)
             .ToListAsync(ct);
@@ -82,7 +155,6 @@ public class WebhookIngestionService
         var existingByEmail = existing
             .ToDictionary(r => r.Email, StringComparer.OrdinalIgnoreCase);
 
-        // 5. Upsert (insert missing, update existing)
         foreach (var (email, item) in incoming)
         {
             if (existingByEmail.TryGetValue(email, out var existingReg))
@@ -104,7 +176,6 @@ public class WebhookIngestionService
             }
         }
 
-        // 6. Delete registrations no longer present in the fetched set (reconcile)
         var toDelete = existing
             .Where(r => !incoming.ContainsKey(r.Email))
             .ToList();
@@ -113,39 +184,13 @@ public class WebhookIngestionService
             _db.NormalizedRegistrations.RemoveRange(toDelete);
 
         await _db.SaveChangesAsync(ct);
-
-        // 7. Recompute metrics
-        await _metricsRecompute.RecomputeSessionMetricsAsync(session.SessionId, ct);
-        await _metricsRecompute.RecomputeSeriesMetricsAsync(session.SeriesId, ct);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Attendance report change notification
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public async Task HandleAttendanceReportAsync(
-        string teamsWebinarId, string correlationId, CancellationToken ct = default)
+    private async Task SyncAttendanceAsync(Session session, string oboToken, CancellationToken ct)
     {
-        _logger.LogInformation(
-            "Handling attendance notification. TeamsWebinarId={TeamsWebinarId} CorrelationId={CorrelationId}",
-            teamsWebinarId, correlationId);
+        var graphAttendance = (await _graphClient.GetAttendanceAsync(
+            session.TeamsWebinarId!, oboToken, ct)).ToList();
 
-        // 1. Find session by TeamsWebinarId
-        var session = await _db.Sessions
-            .FirstOrDefaultAsync(s => s.TeamsWebinarId == teamsWebinarId, ct);
-
-        if (session is null)
-        {
-            _logger.LogWarning(
-                "No session found for TeamsWebinarId={TeamsWebinarId}. CorrelationId={CorrelationId}",
-                teamsWebinarId, correlationId);
-            return;
-        }
-
-        // 2. Fetch attendance from Graph (app credentials)
-        var graphAttendance = (await _graphClient.GetAttendanceAsync(teamsWebinarId, ct)).ToList();
-
-        // 3. Normalize and build canonical set
         var incoming = graphAttendance
             .Select(a => new
             {
@@ -161,7 +206,6 @@ public class WebhookIngestionService
             .Select(g => g.First())
             .ToDictionary(x => x.Email, StringComparer.OrdinalIgnoreCase);
 
-        // 4. Load existing attendance for this session
         var existing = await _db.NormalizedAttendances
             .Where(a => a.SessionId == session.SessionId)
             .ToListAsync(ct);
@@ -169,7 +213,6 @@ public class WebhookIngestionService
         var existingByEmail = existing
             .ToDictionary(a => a.Email, StringComparer.OrdinalIgnoreCase);
 
-        // 5. Upsert
         foreach (var (email, item) in incoming)
         {
             if (existingByEmail.TryGetValue(email, out var existingAtt))
@@ -199,7 +242,6 @@ public class WebhookIngestionService
             }
         }
 
-        // 6. Delete attendance not in fetched set
         var toDelete = existing
             .Where(a => !incoming.ContainsKey(a.Email))
             .ToList();
@@ -208,24 +250,8 @@ public class WebhookIngestionService
             _db.NormalizedAttendances.RemoveRange(toDelete);
 
         await _db.SaveChangesAsync(ct);
-
-        // 7. Recompute metrics
-        await _metricsRecompute.RecomputeSessionMetricsAsync(session.SessionId, ct);
-        await _metricsRecompute.RecomputeSeriesMetricsAsync(session.SeriesId, ct);
-
-        // 8. Delete GraphSubscriptions for this session (reconciliation complete)
-        var subscriptions = await _db.GraphSubscriptions
-            .Where(s => s.SessionId == session.SessionId)
-            .ToListAsync(ct);
-
-        if (subscriptions.Count > 0)
-        {
-            _db.GraphSubscriptions.RemoveRange(subscriptions);
-            await _db.SaveChangesAsync(ct);
-
-            _logger.LogInformation(
-                "Cleared {Count} subscriptions for session {SessionId} after attendance reconciliation.",
-                subscriptions.Count, session.SessionId);
-        }
     }
 }
+
+public record SyncResult(bool Success, string? ErrorCode);
+public record SyncSeriesResult(bool Success, int SyncedCount, int FailedCount, string? ErrorCode);

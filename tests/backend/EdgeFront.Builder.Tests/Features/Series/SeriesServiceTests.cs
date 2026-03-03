@@ -75,13 +75,13 @@ public class SeriesServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAllAsync_HasReconcileIssues_WhenSessionIsRetrying()
+    public async Task GetAllAsync_HasReconcileIssues_IsFalse_WithDelegatedOnlyModel()
     {
-        // Arrange
+        // Arrange — with delegated-only model, hasReconcileIssues is always false
         var series = BuildSeries("Alpha", OwnerUserId);
         _db.Series.Add(series);
         var session = BuildSession(series.SeriesId, OwnerUserId);
-        session.ReconcileStatus = ReconcileStatus.Retrying;
+        session.ReconcileStatus = ReconcileStatus.Reconciling;
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
@@ -89,7 +89,7 @@ public class SeriesServiceTests : IDisposable
         var result = (await _sut.GetAllAsync(OwnerUserId)).Single();
 
         // Assert
-        result.HasReconcileIssues.Should().BeTrue();
+        result.HasReconcileIssues.Should().BeFalse();
     }
 
     // ---------- CreateAsync ----------

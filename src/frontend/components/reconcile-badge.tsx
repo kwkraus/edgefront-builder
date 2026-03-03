@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type ReconcileStatus = 'Synced' | 'Reconciling' | 'Retrying' | 'Disabled'
+type ReconcileStatus = 'Synced' | 'Reconciling'
 
 interface ReconcileBadgeProps {
   status: ReconcileStatus
@@ -10,8 +10,6 @@ interface ReconcileBadgeProps {
 const reconcileStyles: Record<ReconcileStatus, string> = {
   Synced: 'bg-green-50 text-green-700 border-green-200',
   Reconciling: 'bg-blue-50 text-blue-700 border-blue-200',
-  Retrying: 'bg-orange-50 text-orange-700 border-orange-200',
-  Disabled: 'bg-red-50 text-red-700 border-red-200',
 }
 
 export function ReconcileBadge({ status, className }: ReconcileBadgeProps) {
@@ -19,7 +17,7 @@ export function ReconcileBadge({ status, className }: ReconcileBadgeProps) {
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium',
-        reconcileStyles[status],
+        reconcileStyles[status] ?? 'bg-gray-50 text-gray-700 border-gray-200',
         className,
       )}
     >

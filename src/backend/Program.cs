@@ -1,15 +1,11 @@
-using Azure.Identity;
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Features.Metrics;
 using EdgeFront.Builder.Features.Series;
 using EdgeFront.Builder.Features.Sessions;
-using EdgeFront.Builder.Features.Webhook;
-using EdgeFront.Builder.Infrastructure.Background;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Graph;
 using Microsoft.Identity.Web;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -58,26 +54,15 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<MetricsService>();
-builder.Services.AddScoped<WebhookService>();
+builder.Services.AddScoped<SyncService>();
 
-// Graph services
-builder.Services.AddSingleton(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var tenantId = config["AzureAd:TenantId"]!;
-    var clientId = config["AzureAd:ClientId"]!;
-    var clientSecret = config["AzureAd:ClientSecret"] ?? string.Empty;
-    var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-    return new GraphServiceClient(credential, new[] { "https://graph.microsoft.com/.default" });
-});
+// Graph services (delegated-only — no app-credential GraphServiceClient)
 builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
 builder.Services.AddScoped<IOboTokenService, OboTokenService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<DriftDetectionService>();
 builder.Services.AddScoped<WarmRuleEvaluator>();
 builder.Services.AddScoped<MetricsRecomputeService>();
-builder.Services.AddScoped<WebhookIngestionService>();
-builder.Services.AddHostedService<SubscriptionRenewalService>();
 
 // CORS: allow configured frontend origins (falls back to localhost:3000 in development)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -136,7 +121,6 @@ app.MapGet("/api/time", () =>
 app.MapSeriesEndpoints();
 app.MapSessionEndpoints();
 app.MapMetricsEndpoints();
-app.MapWebhookEndpoints();
 
 app.Run();
 

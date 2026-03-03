@@ -25,10 +25,11 @@ export interface SessionListItem {
   startsAt: string
   endsAt: string
   status: 'Draft' | 'Published'
-  reconcileStatus: 'Synced' | 'Reconciling' | 'Retrying' | 'Disabled'
+  reconcileStatus: 'Synced' | 'Reconciling'
   driftStatus: 'None' | 'DriftDetected'
   totalRegistrations: number
   totalAttendees: number
+  lastSyncAt: string | null
 }
 
 export interface SessionResponse {
@@ -39,7 +40,7 @@ export interface SessionResponse {
   endsAt: string
   status: 'Draft' | 'Published'
   teamsWebinarId: string | null
-  reconcileStatus: 'Synced' | 'Reconciling' | 'Retrying' | 'Disabled'
+  reconcileStatus: 'Synced' | 'Reconciling'
   driftStatus: 'None' | 'DriftDetected'
   lastSyncAt: string | null
   lastError: string | null

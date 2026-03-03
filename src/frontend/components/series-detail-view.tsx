@@ -1,25 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, Trash2, Rocket, Plus, AlertTriangle } from 'lucide-react'
+import { Pencil, Trash2, Rocket, Plus, AlertTriangle, RefreshCw } from 'lucide-react'
 import { StatusBadge } from '@/components/status-badge'
-import { ReconcileBadge } from '@/components/reconcile-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { MetricsPanel } from '@/components/metrics-panel'
-import { updateSeries, deleteSeries, publishSeries } from '@/lib/api/series'
+import { updateSeries, deleteSeries, publishSeries, syncSeries } from '@/lib/api/series'
 import { deleteSession } from '@/lib/api/sessions'
 import type { SeriesResponse, SessionListItem, SeriesMetricsResponse } from '@/lib/api/types'
 
-function formatDateTime(iso: string) {
+function formatDateTime(iso: string | null | undefined) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
+}
+
+function formatRelativeTime(iso: string | null | undefined) {
+  if (!iso) return null
+  const date = new Date(iso)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d ago`
 }
 
 interface Props {
@@ -33,6 +46,47 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   const router = useRouter()
   const token = authSession?.accessToken ?? ''
   const busy = sessionStatus === 'loading'
+
+  // ── Auto-sync published sessions (stale after 15 min) ────────────────────
+  const [syncing, setSyncing] = useState(false)
+  const hasSynced = useRef(false)
+  const STALE_MS = 15 * 60 * 1000 // 15 minutes
+
+  function isSyncStale(sessionList: SessionListItem[]): boolean {
+    const published = sessionList.filter(s => s.status === 'Published')
+    if (published.length === 0) return false
+    // Stale if any published session has never synced or oldest sync > 15 min
+    return published.some(s => {
+      if (!s.lastSyncAt) return true
+      return Date.now() - new Date(s.lastSyncAt).getTime() > STALE_MS
+    })
+  }
+
+  const doSync = useCallback(async () => {
+    if (!token || series.status !== 'Published') return
+    const hasPublished = sessions.some(s => s.status === 'Published')
+    if (!hasPublished) return
+    setSyncing(true)
+    try {
+      await syncSeries(series.seriesId, token)
+      router.refresh()
+    } catch {
+      // Sync failure is non-blocking — user still sees cached data
+    } finally {
+      setSyncing(false)
+    }
+  }, [token, series.seriesId, series.status, sessions, router])
+
+  const doAutoSync = useCallback(async () => {
+    if (hasSynced.current) return
+    if (!isSyncStale(sessions)) { hasSynced.current = true; return }
+    hasSynced.current = true
+    await doSync()
+  }, [sessions, doSync])
+
+  useEffect(() => {
+    doAutoSync()
+  }, [doAutoSync])
 
   // ── Edit Series ──────────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false)
@@ -133,6 +187,15 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{series.title}</h1>
+            <button
+              type="button"
+              onClick={openEdit}
+              disabled={busy}
+              className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50"
+              aria-label="Edit series title"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
             <StatusBadge status={series.status} />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -154,21 +217,12 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           )}
           <button
             type="button"
-            onClick={openEdit}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
-          >
-            <Pencil className="size-4" aria-hidden="true" />
-            Edit
-          </button>
-          <button
-            type="button"
             onClick={() => { setDeleteError(null); setDeleteOpen(true) }}
             disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 disabled:opacity-50"
+            className="p-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
+            aria-label="Delete series"
           >
             <Trash2 className="size-4" aria-hidden="true" />
-            Delete
           </button>
         </div>
       </div>
@@ -230,9 +284,28 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
       {/* ── Sessions table ───────────────────────────────────────────────── */}
       <section aria-label="Sessions">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Sessions ({sessions.length})
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Sessions ({sessions.length})
+            </h2>
+            {syncing && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="size-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin" aria-hidden="true" />
+                Syncing from Teams…
+              </span>
+            )}
+            {!syncing && series.status === 'Published' && sessions.some(s => s.status === 'Published') && (
+              <button
+                type="button"
+                onClick={doSync}
+                className="inline-flex items-center gap-1.5 p-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Refresh from Teams"
+                title="Refresh from Teams"
+              >
+                <RefreshCw className="size-3.5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <Link
             href={`/series/${series.seriesId}/sessions/new`}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
@@ -255,7 +328,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                   <th className="px-4 py-3 text-left font-medium">Starts</th>
                   <th className="px-4 py-3 text-left font-medium">Ends</th>
                   <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Reconcile</th>
+                  <th className="px-4 py-3 text-left font-medium">Last Synced</th>
                   <th className="px-4 py-3 text-left font-medium">Drift</th>
                   <th className="px-4 py-3 text-right font-medium">Reg.</th>
                   <th className="px-4 py-3 text-right font-medium">Att.</th>
@@ -281,8 +354,10 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     <td className="px-4 py-3">
                       <StatusBadge status={s.status} />
                     </td>
-                    <td className="px-4 py-3">
-                      <ReconcileBadge status={s.reconcileStatus} />
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">
+                      {s.lastSyncAt
+                        ? <span title={formatDateTime(s.lastSyncAt)}>{formatRelativeTime(s.lastSyncAt)}</span>
+                        : s.status === 'Published' ? <span className="text-amber-600">Never</span> : '—'}
                     </td>
                     <td className="px-4 py-3">
                       {s.driftStatus === 'DriftDetected' && (

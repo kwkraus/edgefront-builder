@@ -1,6 +1,7 @@
 using EdgeFront.Builder.Common;
 using EdgeFront.Builder.Common.Extensions;
 using EdgeFront.Builder.Features.Series.Dtos;
+using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Infrastructure.Graph;
 
 namespace EdgeFront.Builder.Features.Series;
@@ -123,6 +124,56 @@ public static class SeriesEndpoints
             return Results.Ok(series);
         });
 
+        // Sync all published sessions in a series (user-initiated, delegated)
+        group.MapPost("/{id:guid}/sync", async (Guid id, SyncService syncService, IOboTokenService oboService, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            if (string.IsNullOrEmpty(oboToken))
+            {
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    "OBO_EXCHANGE_FAILED",
+                    "Could not acquire a Graph API token.",
+                    ctx.TraceIdentifier));
+            }
+
+            var result = await syncService.SyncSeriesAsync(id, userId, oboToken);
+            if (!result.Success)
+            {
+                if (result.ErrorCode == "series_not_found")
+                    return Results.NotFound(new ErrorEnvelope(
+                        "series_not_found", "Series not found.", ctx.TraceIdentifier));
+
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    result.ErrorCode ?? "SYNC_FAILED", "Sync failed.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(new { synced = result.SyncedCount, failed = result.FailedCount });
+        });
+
         return app;
+    }
+
+    private static async Task<string?> TryGetOboTokenAsync(HttpContext ctx, IOboTokenService oboService)
+    {
+        var authHeader = ctx.Request.Headers.Authorization.ToString();
+        var rawToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? authHeader["Bearer ".Length..]
+            : string.Empty;
+
+        if (string.IsNullOrEmpty(rawToken))
+            return null;
+
+        try
+        {
+            return await oboService.GetOboTokenAsync(rawToken);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

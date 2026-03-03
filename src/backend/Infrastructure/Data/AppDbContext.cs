@@ -14,7 +14,6 @@ public class AppDbContext : DbContext
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<NormalizedRegistration> NormalizedRegistrations => Set<NormalizedRegistration>();
     public DbSet<NormalizedAttendance> NormalizedAttendances => Set<NormalizedAttendance>();
-    public DbSet<GraphSubscription> GraphSubscriptions => Set<GraphSubscription>();
     public DbSet<SessionMetrics> SessionMetrics => Set<SessionMetrics>();
     public DbSet<SeriesMetrics> SeriesMetrics => Set<SeriesMetrics>();
 
@@ -77,20 +76,6 @@ public class AppDbContext : DbContext
             e.Property(x => x.LastLeaveAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
             e.HasIndex(x => new { x.OwnerUserId, x.SessionId, x.Email }).IsUnique();
             e.HasIndex(x => new { x.SessionId, x.EmailDomain });
-            e.HasOne<Session>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // --- GraphSubscription ---
-        modelBuilder.Entity<GraphSubscription>(e =>
-        {
-            e.HasKey(x => x.GraphSubscriptionId);
-            e.Property(x => x.GraphSubscriptionId).ValueGeneratedNever();
-            e.Property(x => x.ChangeType).HasConversion<string>();
-            e.Property(x => x.ExpirationDateTime).HasColumnType("datetime2").HasConversion(utcConverter);
-            e.Property(x => x.CreatedAt).HasColumnType("datetime2").HasConversion(utcConverter);
-            e.HasIndex(x => new { x.SessionId, x.SubscriptionId }).IsUnique();
-            e.HasIndex(x => x.SessionId);
-            e.HasIndex(x => x.ExpirationDateTime);
             e.HasOne<Session>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
         });
 

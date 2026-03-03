@@ -4,15 +4,14 @@ import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft, AlertTriangle, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw } from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
-import { ReconcileBadge } from '@/components/reconcile-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { LoadingSkeleton } from '@/components/loading-skeleton'
 import { getSessionById } from '@/lib/api/sessions'
-import { updateSession, deleteSession } from '@/lib/api/sessions'
+import { updateSession, deleteSession, syncSession } from '@/lib/api/sessions'
 import { getSessionMetrics } from '@/lib/api/metrics'
 import type { SessionResponse, SessionMetricsResponse } from '@/lib/api/types'
 
@@ -76,6 +75,52 @@ export default function SessionDetailPage({ params }: Props) {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // ── Auto-sync published sessions from Teams (stale after 15 min) ─────────
+  const [syncing, setSyncing] = useState(false)
+  const [syncDone, setSyncDone] = useState(false)
+  const STALE_MS = 15 * 60 * 1000 // 15 minutes
+
+  function isSyncStale(lastSyncAt: string | null | undefined): boolean {
+    if (!lastSyncAt) return true
+    return Date.now() - new Date(lastSyncAt).getTime() > STALE_MS
+  }
+
+  const doManualSync = useCallback(async () => {
+    if (!session || session.status !== 'Published' || !session.teamsWebinarId || !token) return
+    setSyncing(true)
+    try {
+      await syncSession(session.sessionId, token)
+      setSyncDone(true)
+      loadData()
+    } catch {
+      // Non-blocking — user still sees cached data
+    } finally {
+      setSyncing(false)
+    }
+  }, [session, token, loadData])
+
+  useEffect(() => {
+    if (!session || session.status !== 'Published' || !session.teamsWebinarId || !token || syncDone) return
+    if (!isSyncStale(session.lastSyncAt)) { setSyncDone(true); return }
+    let cancelled = false
+    async function doSync() {
+      setSyncing(true)
+      try {
+        await syncSession(session!.sessionId, token)
+        if (!cancelled) {
+          setSyncDone(true)
+          loadData()
+        }
+      } catch {
+        // Non-blocking — user still sees cached data
+      } finally {
+        if (!cancelled) setSyncing(false)
+      }
+    }
+    doSync()
+    return () => { cancelled = true }
+  }, [session, token, syncDone, loadData])
 
   // ── Form state ───────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
@@ -186,36 +231,54 @@ export default function SessionDetailPage({ params }: Props) {
             <StatusBadge status={session.status} />
           </div>
           <div className="flex items-center gap-3">
-            <ReconcileBadge status={session.reconcileStatus} />
             {session.teamsWebinarId && (
               <span className="text-xs text-muted-foreground">
                 Teams ID: {session.teamsWebinarId}
               </span>
             )}
+            {syncing && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <RefreshCw className="size-3 animate-spin" aria-hidden="true" />
+                Syncing…
+              </span>
+            )}
+            {!syncing && session.lastSyncAt && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={formatDateTime(session.lastSyncAt)}>
+                Last synced: {formatDateTime(session.lastSyncAt)}
+                {session.status === 'Published' && session.teamsWebinarId && (
+                  <button
+                    type="button"
+                    onClick={doManualSync}
+                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                    aria-label="Refresh from Teams"
+                    title="Refresh from Teams"
+                  >
+                    <RefreshCw className="size-3.5" aria-hidden="true" />
+                  </button>
+                )}
+              </span>
+            )}
+            {!syncing && session.status === 'Published' && !session.lastSyncAt && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
+                Never synced
+                {session.teamsWebinarId && (
+                  <button
+                    type="button"
+                    onClick={doManualSync}
+                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                    aria-label="Refresh from Teams"
+                    title="Refresh from Teams"
+                  >
+                    <RefreshCw className="size-3.5" aria-hidden="true" />
+                  </button>
+                )}
+              </span>
+            )}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => { setDeleteError(null); setDeleteOpen(true) }}
-          className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/5"
-          aria-label="Delete session"
-        >
-          <Trash2 className="size-4" aria-hidden="true" />
-          Delete
-        </button>
       </div>
 
       {/* ── Banners ──────────────────────────────────────────────────────────── */}
-      {session.reconcileStatus === 'Disabled' && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>Webhook disabled — manual intervention required.</span>
-        </div>
-      )}
-
       {session.driftStatus === 'DriftDetected' && (
         <div
           role="alert"
@@ -340,21 +403,31 @@ export default function SessionDetailPage({ params }: Props) {
           </p>
         )}
 
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={saveLoading}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="size-4" aria-hidden="true" />
+              {saveLabel}
+            </button>
+            <Link
+              href={`/series/${session.seriesId}`}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
+            >
+              Cancel
+            </Link>
+          </div>
           <button
-            type="submit"
-            disabled={saveLoading}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            type="button"
+            onClick={() => { setDeleteError(null); setDeleteOpen(true) }}
+            className="p-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+            aria-label="Delete session"
           >
-            <Save className="size-4" aria-hidden="true" />
-            {saveLabel}
+            <Trash2 className="size-5" aria-hidden="true" />
           </button>
-          <Link
-            href={`/series/${session.seriesId}`}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
-          >
-            Cancel
-          </Link>
         </div>
       </form>
 

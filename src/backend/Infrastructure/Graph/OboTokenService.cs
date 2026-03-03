@@ -16,9 +16,16 @@ public class OboTokenService : IOboTokenService
 
     public async Task<string> GetOboTokenAsync(string userAccessToken, CancellationToken ct = default)
     {
-        // Uses ITokenAcquisition to perform OBO exchange
+        // VirtualEvent.ReadWrite: webinar CRUD + registrations
+        // OnlineMeetingArtifact.Read.All: attendance reports
+        // TODO-SPEC: SPEC-200 lists only VirtualEvent.ReadWrite but Graph requires
+        //   OnlineMeetingArtifact.Read.All for attendance report access.
         var token = await _tokenAcquisition.GetAccessTokenForUserAsync(
-            new[] { "https://graph.microsoft.com/VirtualEvent.ReadWrite" });
+            new[]
+            {
+                "https://graph.microsoft.com/VirtualEvent.ReadWrite",
+                "https://graph.microsoft.com/OnlineMeetingArtifact.Read.All"
+            });
         return token;
     }
 }

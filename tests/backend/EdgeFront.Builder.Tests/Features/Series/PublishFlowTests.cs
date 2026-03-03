@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Series;
@@ -8,14 +6,13 @@ using EdgeFront.Builder.Infrastructure.Graph;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.InMemory.Infrastructure.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace EdgeFront.Builder.Tests.Features.Series;
 
 /// <summary>
-/// SPEC-200 §3 publish-flow tests using Moq for ITeamsGraphClient.
+/// Publish-flow tests. All Graph calls are delegated (OBO) — no subscriptions.
 /// </summary>
 public class PublishFlowTests : IDisposable
 {
@@ -52,9 +49,6 @@ public class PublishFlowTests : IDisposable
         graphMock.Setup(g => g.CreateWebinarAsync(
                 session2.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
             .ReturnsAsync("webinar-id-2");
-        graphMock.Setup(g => g.CreateSubscriptionAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), default))
-            .ReturnsAsync(() => Guid.NewGuid().ToString());
 
         // Act
         var (result, errorCode) = await _sut.PublishAsync(
@@ -72,49 +66,9 @@ public class PublishFlowTests : IDisposable
             .Where(s => s.SeriesId == series.SeriesId).ToListAsync();
         dbSessions.Should().AllSatisfy(s => s.Status.Should().Be(SessionStatus.Published));
 
-        // 2 webinars × 2 subscriptions each = 4 subscription rows
-        var subs = await _db.GraphSubscriptions.ToListAsync();
-        subs.Should().HaveCount(4);
-
         // Webinar IDs should be stored on sessions
         var teamsIds = dbSessions.Select(s => s.TeamsWebinarId).ToList();
         teamsIds.Should().BeEquivalentTo(new[] { "webinar-id-1", "webinar-id-2" });
-    }
-
-    // ─── ClientState is SHA-256 hashed ──────────────────────────────────────
-
-    [Fact]
-    public async Task PublishAsync_ClientStateIsHashed_SubsStoreSha256Hash()
-    {
-        // Arrange
-        var capturedClientStates = new List<string>();
-
-        var (series, session1) = await SeedSeriesWithOneSessionAsync();
-
-        var graphMock = new Mock<ITeamsGraphClient>();
-        graphMock.Setup(g => g.CreateWebinarAsync(
-                It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-id-hash-test");
-
-        graphMock.Setup(g => g.CreateSubscriptionAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), default))
-            .Callback<string, string, string, DateTimeOffset, CancellationToken>(
-                (_, _, cs, _, _) => capturedClientStates.Add(cs))
-            .ReturnsAsync(() => Guid.NewGuid().ToString());
-
-        // Act
-        await _sut.PublishAsync(series.SeriesId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
-
-        // Assert: every stored hash equals SHA-256 of the original clientState
-        var storedSubs = await _db.GraphSubscriptions.ToListAsync();
-        storedSubs.Should().NotBeEmpty();
-
-        foreach (var sub in storedSubs)
-        {
-            var matchingClientState = capturedClientStates.First(cs =>
-                ComputeSha256Hex(cs) == sub.ClientStateHash);
-            sub.ClientStateHash.Should().Be(ComputeSha256Hex(matchingClientState));
-        }
     }
 
     // ─── License error → rollback ────────────────────────────────────────────
@@ -167,10 +121,6 @@ public class PublishFlowTests : IDisposable
                 It.IsAny<string>(), OboToken, default))
             .Returns(Task.CompletedTask);
 
-        graphMock.Setup(g => g.DeleteSubscriptionAsync(
-                It.IsAny<string>(), default))
-            .Returns(Task.CompletedTask);
-
         // Act
         var (result, errorCode) = await _sut.PublishAsync(
             series.SeriesId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
@@ -208,37 +158,6 @@ public class PublishFlowTests : IDisposable
         // No Teams webinar IDs should be set
         var sessions = await _db.Sessions.Where(s => s.SeriesId == series.SeriesId).ToListAsync();
         sessions.Should().AllSatisfy(s => s.TeamsWebinarId.Should().BeNull());
-
-        // No subscriptions created
-        var subs = await _db.GraphSubscriptions.ToListAsync();
-        subs.Should().BeEmpty();
-    }
-
-    // ─── Subscription is stored per each session (2 per session) ────────────
-
-    [Fact]
-    public async Task PublishAsync_CreatesRegistrationAndAttendanceSubscriptions_PerSession()
-    {
-        // Arrange
-        var (series, _) = await SeedSeriesWithOneSessionAsync();
-
-        var graphMock = new Mock<ITeamsGraphClient>();
-        graphMock.Setup(g => g.CreateWebinarAsync(
-                It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-one");
-
-        graphMock.Setup(g => g.CreateSubscriptionAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), default))
-            .ReturnsAsync(() => Guid.NewGuid().ToString());
-
-        // Act
-        await _sut.PublishAsync(series.SeriesId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
-
-        // Assert: 1 session × 2 subscriptions = 2
-        var subs = await _db.GraphSubscriptions.ToListAsync();
-        subs.Should().HaveCount(2);
-        subs.Should().Contain(s => s.ChangeType == ChangeType.Registration);
-        subs.Should().Contain(s => s.ChangeType == ChangeType.AttendanceReport);
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────
@@ -292,10 +211,4 @@ public class PublishFlowTests : IDisposable
         EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
         Status = SessionStatus.Draft
     };
-
-    private static string ComputeSha256Hex(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
-    }
 }

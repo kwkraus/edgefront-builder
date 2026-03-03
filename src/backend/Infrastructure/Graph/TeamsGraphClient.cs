@@ -1,5 +1,4 @@
 using Azure.Core;
-using Azure.Identity;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -9,20 +8,28 @@ using Microsoft.Kiota.Http.HttpClientLibrary;
 namespace EdgeFront.Builder.Infrastructure.Graph;
 
 /// <summary>
-/// Wraps Microsoft Graph SDK calls for virtual events (webinars), subscriptions,
-/// registrations, and attendance.
-/// App-credential calls use the injected <see cref="GraphServiceClient"/>.
-/// OBO (delegated) calls build a short-lived client from the provided OBO token.
+/// Wraps Microsoft Graph SDK calls for virtual events (webinars), registrations,
+/// and attendance. All calls use delegated (OBO) tokens — no application credentials.
 /// </summary>
 public class TeamsGraphClient : ITeamsGraphClient
 {
-    private readonly GraphServiceClient _appClient;
-    private readonly IConfiguration _config;
+    private const int MaxRetries = 2;
+    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
 
-    public TeamsGraphClient(GraphServiceClient appGraphClient, IConfiguration config)
+    /// <summary>Retries an async operation on transient HttpRequestException (e.g. HTTP/2 INTERNAL_ERROR).</summary>
+    private static async Task<T> WithTransientRetryAsync<T>(Func<Task<T>> action, CancellationToken ct)
     {
-        _appClient = appGraphClient;
-        _config = config;
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (HttpRequestException) when (attempt < MaxRetries)
+            {
+                await Task.Delay(RetryDelays[attempt], ct);
+            }
+        }
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
@@ -44,7 +51,7 @@ public class TeamsGraphClient : ITeamsGraphClient
             || code.Contains("Authorization_RequestDenied", StringComparison.OrdinalIgnoreCase);
     }
 
-    // ── OBO calls ───────────────────────────────────────────────────────────
+    // ── Webinar lifecycle ───────────────────────────────────────────────────
 
     public async Task<string> CreateWebinarAsync(
         string title, DateTimeOffset startsAt, DateTimeOffset endsAt,
@@ -53,16 +60,15 @@ public class TeamsGraphClient : ITeamsGraphClient
         var client = BuildOboClient(oboToken);
         try
         {
-            // TODO-SPEC-200: verify Graph API response shape
-            var body = new Microsoft.Graph.Models.VirtualEventWebinar
+            var body = new VirtualEventWebinar
             {
                 DisplayName = title,
-                StartDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
+                StartDateTime = new DateTimeTimeZone
                 {
                     DateTime = startsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 },
-                EndDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
+                EndDateTime = new DateTimeTimeZone
                 {
                     DateTime = endsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
@@ -70,8 +76,6 @@ public class TeamsGraphClient : ITeamsGraphClient
             };
 
             var result = await client.Solutions.VirtualEvents.Webinars.PostAsync(body, cancellationToken: ct);
-
-            // TODO-SPEC-200: verify Graph API response shape for webinar ID field
             return result?.Id ?? throw new InvalidOperationException("Graph returned null webinar ID.");
         }
         catch (ODataError err) when (IsLicenseError(err))
@@ -83,9 +87,6 @@ public class TeamsGraphClient : ITeamsGraphClient
     public async Task PublishWebinarAsync(
         string teamsWebinarId, string oboToken, CancellationToken ct = default)
     {
-        // The publish endpoint is not yet available in the Microsoft.Graph v5 SDK,
-        // so we issue a raw POST per the v1.0 REST API:
-        // POST /solutions/virtualEvents/webinars/{id}/publish → 204 No Content
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", oboToken);
@@ -103,16 +104,15 @@ public class TeamsGraphClient : ITeamsGraphClient
         var client = BuildOboClient(oboToken);
         try
         {
-            // TODO-SPEC-200: verify Graph API response shape for PATCH body
-            var body = new Microsoft.Graph.Models.VirtualEventWebinar
+            var body = new VirtualEventWebinar
             {
                 DisplayName = title,
-                StartDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
+                StartDateTime = new DateTimeTimeZone
                 {
                     DateTime = startsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
                 },
-                EndDateTime = new Microsoft.Graph.Models.DateTimeTimeZone
+                EndDateTime = new DateTimeTimeZone
                 {
                     DateTime = endsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
                     TimeZone = "UTC"
@@ -135,19 +135,19 @@ public class TeamsGraphClient : ITeamsGraphClient
             .DeleteAsync(cancellationToken: ct);
     }
 
-    // ── App-credential calls ─────────────────────────────────────────────────
+    // ── Read operations (delegated) ─────────────────────────────────────────
 
-    public async Task<TeamsWebinarInfo?> GetWebinarMetadataAsync(string teamsWebinarId, CancellationToken ct = default)
+    public async Task<TeamsWebinarInfo?> GetWebinarMetadataAsync(
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
     {
+        var client = BuildOboClient(oboToken);
         try
         {
-            // TODO-SPEC-200: verify Graph API response shape for webinar metadata
-            var result = await _appClient.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+            var result = await client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
                 .GetAsync(cancellationToken: ct);
 
             if (result is null) return null;
 
-            // Use DateTimeTimeZone extension helpers to convert
             var startsAt = result.StartDateTime is not null
                 ? result.StartDateTime.ToDateTimeOffset()
                 : DateTimeOffset.MinValue;
@@ -168,49 +168,13 @@ public class TeamsGraphClient : ITeamsGraphClient
         }
     }
 
-    public async Task<string> CreateSubscriptionAsync(
-        string resource, string changeType, string clientState,
-        DateTimeOffset expiresAt, CancellationToken ct = default)
-    {
-        var notificationUrl = _config["Graph:WebhookNotificationUrl"]
-            ?? "https://localhost:7000/api/v1/webhooks/graph";
-
-        // TODO-SPEC-200: verify Graph API response shape for subscription creation
-        var body = new Microsoft.Graph.Models.Subscription
-        {
-            ChangeType = changeType,
-            NotificationUrl = notificationUrl,
-            Resource = resource,
-            ExpirationDateTime = expiresAt,
-            ClientState = clientState
-        };
-
-        var result = await _appClient.Subscriptions.PostAsync(body, cancellationToken: ct);
-
-        return result?.Id ?? throw new InvalidOperationException("Graph returned null subscription ID.");
-    }
-
-    public async Task RenewSubscriptionAsync(
-        string graphSubscriptionId, DateTimeOffset newExpiration, CancellationToken ct = default)
-    {
-        var body = new Microsoft.Graph.Models.Subscription
-        {
-            ExpirationDateTime = newExpiration
-        };
-        await _appClient.Subscriptions[graphSubscriptionId].PatchAsync(body, cancellationToken: ct);
-    }
-
-    public async Task DeleteSubscriptionAsync(string graphSubscriptionId, CancellationToken ct = default)
-    {
-        await _appClient.Subscriptions[graphSubscriptionId].DeleteAsync(cancellationToken: ct);
-    }
-
     public async Task<IEnumerable<RegistrationRecord>> GetRegistrationsAsync(
-        string teamsWebinarId, CancellationToken ct = default)
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
     {
-        // TODO-SPEC-200: verify Graph API response shape for registrations
-        var result = await _appClient.Solutions.VirtualEvents.Webinars[teamsWebinarId]
-            .Registrations.GetAsync(cancellationToken: ct);
+        var client = BuildOboClient(oboToken);
+        var result = await WithTransientRetryAsync(
+            () => client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+                .Registrations.GetAsync(cancellationToken: ct), ct);
 
         if (result?.Value is null) return [];
 
@@ -222,11 +186,12 @@ public class TeamsGraphClient : ITeamsGraphClient
     }
 
     public async Task<IEnumerable<AttendanceRecord>> GetAttendanceAsync(
-        string teamsWebinarId, CancellationToken ct = default)
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
     {
-        // TODO-SPEC-200: verify Graph API response shape for attendance (sessions → attendees)
-        var sessionsResult = await _appClient.Solutions.VirtualEvents.Webinars[teamsWebinarId]
-            .Sessions.GetAsync(cancellationToken: ct);
+        var client = BuildOboClient(oboToken);
+        var sessionsResult = await WithTransientRetryAsync(
+            () => client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+                .Sessions.GetAsync(cancellationToken: ct), ct);
 
         if (sessionsResult?.Value is null) return [];
 
@@ -236,9 +201,19 @@ public class TeamsGraphClient : ITeamsGraphClient
         {
             if (session.Id is null) continue;
 
-            var attendanceResult = await _appClient.Solutions.VirtualEvents
-                .Webinars[teamsWebinarId].Sessions[session.Id]
-                .AttendanceReports.GetAsync(cancellationToken: ct);
+            Microsoft.Graph.Models.MeetingAttendanceReportCollectionResponse? attendanceResult;
+            try
+            {
+                attendanceResult = await WithTransientRetryAsync(
+                    () => client.Solutions.VirtualEvents
+                        .Webinars[teamsWebinarId].Sessions[session.Id]
+                        .AttendanceReports.GetAsync(cancellationToken: ct), ct);
+            }
+            catch (ODataError ex) when (ex.ResponseStatusCode == 404)
+            {
+                // No attendance reports yet (webinar hasn't occurred) — skip
+                continue;
+            }
 
             if (attendanceResult?.Value is null) continue;
 
@@ -246,10 +221,11 @@ public class TeamsGraphClient : ITeamsGraphClient
             {
                 if (report.Id is null) continue;
 
-                var attendeesResult = await _appClient.Solutions.VirtualEvents
-                    .Webinars[teamsWebinarId].Sessions[session.Id]
-                    .AttendanceReports[report.Id].AttendanceRecords
-                    .GetAsync(cancellationToken: ct);
+                var attendeesResult = await WithTransientRetryAsync(
+                    () => client.Solutions.VirtualEvents
+                        .Webinars[teamsWebinarId].Sessions[session.Id]
+                        .AttendanceReports[report.Id].AttendanceRecords
+                        .GetAsync(cancellationToken: ct), ct);
 
                 if (attendeesResult?.Value is null) continue;
 
@@ -266,9 +242,9 @@ public class TeamsGraphClient : ITeamsGraphClient
                         email,
                         attended,
                         totalDurationSeconds > 0 ? totalDurationSeconds : null,
-                        null, // DurationPercent: TODO-SPEC-200 — compute from session duration
-                        null, // FirstJoinAt: TODO-SPEC-200 — derive from attendance intervals
-                        null  // LastLeaveAt: TODO-SPEC-200 — derive from attendance intervals
+                        null,
+                        null,
+                        null
                     ));
                 }
             }
