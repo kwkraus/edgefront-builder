@@ -41,6 +41,7 @@ public class SessionService
                 s.StartsAt,
                 s.EndsAt,
                 s.Status.ToString(),
+                s.TeamsWebinarId,
                 s.ReconcileStatus.ToString(),
                 s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,

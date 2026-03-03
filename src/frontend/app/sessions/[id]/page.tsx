@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw } from 'lucide-react'
+import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw, ExternalLink } from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
@@ -232,9 +232,16 @@ export default function SessionDetailPage({ params }: Props) {
           </div>
           <div className="flex items-center gap-3">
             {session.teamsWebinarId && (
-              <span className="text-xs text-muted-foreground">
-                Teams ID: {session.teamsWebinarId}
-              </span>
+              <a
+                href={`https://teams.microsoft.com/l/virtual-event/${session.teamsWebinarId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                title="Open webinar in Teams"
+                aria-label="Open webinar in Teams"
+              >
+                <ExternalLink className="size-4" aria-hidden="true" />
+              </a>
             )}
             {syncing && (
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">

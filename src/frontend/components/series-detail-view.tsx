@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, Trash2, Rocket, Plus, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Pencil, Trash2, Rocket, Plus, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -374,6 +374,18 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-end gap-1">
+                        {s.teamsWebinarId && (
+                          <a
+                            href={`https://teams.microsoft.com/l/virtual-event/${s.teamsWebinarId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Open ${s.title} in Teams`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        )}
                         <button
                           type="button"
                           onClick={() => router.push(`/sessions/${s.sessionId}`)}

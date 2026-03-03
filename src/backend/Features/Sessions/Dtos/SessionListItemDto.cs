@@ -6,6 +6,7 @@ public record SessionListItemDto(
     DateTime StartsAt,
     DateTime EndsAt,
     string Status,
+    string? TeamsWebinarId,
     string ReconcileStatus,
     string DriftStatus,
     int TotalRegistrations,

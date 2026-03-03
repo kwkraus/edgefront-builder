@@ -25,6 +25,7 @@ export interface SessionListItem {
   startsAt: string
   endsAt: string
   status: 'Draft' | 'Published'
+  teamsWebinarId: string | null
   reconcileStatus: 'Synced' | 'Reconciling'
   driftStatus: 'None' | 'DriftDetected'
   totalRegistrations: number
