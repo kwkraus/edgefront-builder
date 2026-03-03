@@ -24,4 +24,18 @@ public class InternalDomainFilterTests
         var filter = new InternalDomainFilter([]);
         filter.IsInternal("anything.com").Should().BeFalse();
     }
+
+    [Fact]
+    public void Constructor_NormalizesDomains_ToLowercase()
+    {
+        var filter = new InternalDomainFilter(["UPPER.COM", "Mixed.Org"]);
+        filter.IsInternal("upper.com").Should().BeTrue();
+        filter.IsInternal("mixed.org").Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsInternal_EmptyString_ReturnsFalse()
+    {
+        _filter.IsInternal("").Should().BeFalse();
+    }
 }

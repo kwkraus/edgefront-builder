@@ -153,6 +153,50 @@ public class WarmRuleEvaluatorTests
         result.Should().BeEquivalentTo(new[] { "acme.com", "widgets.io" });
     }
 
+    [Fact]
+    public void EvaluateW1_EmptyCollection_ReturnsEmpty()
+    {
+        _evaluator.EvaluateW1(Enumerable.Empty<NormalizedAttendance>()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EvaluateW2_EmptyCollection_ReturnsEmpty()
+    {
+        _evaluator.EvaluateW2(Enumerable.Empty<NormalizedAttendance>()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EvaluateW2_MultipleDomains_ReturnsAllQualifying()
+    {
+        var s1 = Guid.NewGuid();
+        var s2 = Guid.NewGuid();
+        var attendances = new List<NormalizedAttendance>
+        {
+            MakeAttendance(s1, "alice@acme.com", "acme.com"),
+            MakeAttendance(s2, "alice@acme.com", "acme.com"),
+            MakeAttendance(s1, "carol@widgets.io", "widgets.io"),
+            MakeAttendance(s2, "carol@widgets.io", "widgets.io"),
+        };
+
+        var result = _evaluator.EvaluateW2(attendances);
+        result.Should().BeEquivalentTo(new[] { "acme.com", "widgets.io" });
+    }
+
+    [Fact]
+    public void EvaluateW1_CaseInsensitiveEmails_CountsDistinctAfterLowering()
+    {
+        var sessionId = Guid.NewGuid();
+        var attendances = new List<NormalizedAttendance>
+        {
+            MakeAttendance(sessionId, "alice@acme.com", "acme.com"),
+            MakeAttendance(sessionId, "ALICE@acme.com", "acme.com"),
+        };
+
+        // Same email (case-insensitive) should NOT trigger W1
+        var result = _evaluator.EvaluateW1(attendances);
+        result.Should().BeEmpty();
+    }
+
     private static NormalizedAttendance MakeAttendance(Guid sessionId, string email, string emailDomain) =>
         new()
         {

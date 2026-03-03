@@ -44,6 +44,7 @@ public class SeriesServiceTests : IDisposable
 
         // Assert
         result.Should().HaveCount(2);
+        result.Select(s => s.Title).Should().BeEquivalentTo("Alpha", "Beta");
         result.Should().AllSatisfy(s => s.Status.Should().Be("Draft"));
     }
 
@@ -189,6 +190,55 @@ public class SeriesServiceTests : IDisposable
 
         // Assert
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ReturnsFalse_ForWrongOwner()
+    {
+        // Arrange
+        var series = BuildSeries("Secret", OwnerUserId);
+        _db.Series.Add(series);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _sut.DeleteAsync(series.SeriesId, OtherUserId);
+
+        // Assert
+        result.Should().BeFalse();
+        (await _db.Series.FindAsync(series.SeriesId)).Should().NotBeNull("series should not be deleted by wrong owner");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsNull_ForNonExistentSeries()
+    {
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), new UpdateSeriesRequest("Anything"), OwnerUserId);
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SetsUpdatedAt_AfterOriginalCreation()
+    {
+        // Arrange
+        var series = BuildSeries("Original", OwnerUserId);
+        _db.Series.Add(series);
+        await _db.SaveChangesAsync();
+
+        var originalUpdatedAt = series.UpdatedAt;
+        await Task.Delay(10); // ensure time advances
+
+        // Act
+        var result = await _sut.UpdateAsync(series.SeriesId, new UpdateSeriesRequest("Changed"), OwnerUserId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.UpdatedAt.Should().BeOnOrAfter(originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ReturnsEmpty_WhenNoSeriesExist()
+    {
+        var result = (await _sut.GetAllAsync(OwnerUserId)).ToList();
+        result.Should().BeEmpty();
     }
 
     // ---------- GetByIdAsync ----------

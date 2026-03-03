@@ -42,4 +42,32 @@ public class DomainNormalizerTests
         var result = DomainNormalizer.NormalizeRegistrableDomain("localhost");
         result.Should().Be("localhost");
     }
+
+    [Theory]
+    [InlineData("  EXAMPLE.COM  ", "example.com")]
+    [InlineData("Example.Com", "example.com")]
+    public void NormalizeRegistrableDomain_ShouldTrimAndLowercase(string domain, string expected)
+    {
+        DomainNormalizer.NormalizeRegistrableDomain(domain).Should().Be(expected);
+    }
+
+    [Fact]
+    public void NormalizeEmailDomain_NoAtSymbol_ReturnsFullStringLowered()
+    {
+        DomainNormalizer.NormalizeEmailDomain("natsymbol").Should().Be("natsymbol");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void NormalizeEmail_EmptyOrWhitespace_ReturnsTrimmedLower(string input)
+    {
+        DomainNormalizer.NormalizeEmail(input).Should().Be(input.Trim().ToLowerInvariant());
+    }
+
+    [Fact]
+    public void NormalizeRegistrableDomain_TwoLabels_ReturnsUnchanged()
+    {
+        DomainNormalizer.NormalizeRegistrableDomain("example.com").Should().Be("example.com");
+    }
 }

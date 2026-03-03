@@ -170,6 +170,122 @@ public class SyncServiceTests : IDisposable
         _graphMock.Verify(g => g.GetAttendanceAsync(session.TeamsWebinarId!, OboToken, default), Times.Once);
     }
 
+    [Fact]
+    public async Task SyncSessionAsync_RemovesStaleAttendance()
+    {
+        var (_, session) = await SeedPublishedSessionAsync();
+
+        // Existing attendance that is NOT in the Graph response
+        _db.NormalizedAttendances.Add(new NormalizedAttendance
+        {
+            AttendanceId = Guid.NewGuid(),
+            SessionId = session.SessionId,
+            OwnerUserId = OwnerUserId,
+            Email = "stale@old.com",
+            EmailDomain = "old.com",
+            Attended = true
+        });
+        await _db.SaveChangesAsync();
+
+        _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(Array.Empty<RegistrationRecord>());
+        _graphMock.Setup(g => g.GetAttendanceAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(new[]
+            {
+                new AttendanceRecord("fresh@new.com", true, 1800, null, null, null),
+            });
+
+        await _sut.SyncSessionAsync(session.SessionId, OwnerUserId, OboToken);
+
+        var atts = await _db.NormalizedAttendances
+            .Where(a => a.SessionId == session.SessionId).ToListAsync();
+        atts.Should().HaveCount(1);
+        atts[0].Email.Should().Be("fresh@new.com");
+    }
+
+    [Fact]
+    public async Task SyncSessionAsync_GraphFailure_ReturnsSyncFailed()
+    {
+        var (_, session) = await SeedPublishedSessionAsync();
+
+        _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
+            .ThrowsAsync(new InvalidOperationException("Graph is down"));
+
+        var result = await _sut.SyncSessionAsync(session.SessionId, OwnerUserId, OboToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorCode.Should().Be("SYNC_FAILED");
+
+        // Session should record the error
+        var dbSession = await _db.Sessions.FindAsync(session.SessionId);
+        dbSession!.LastError.Should().NotBeNullOrEmpty();
+        dbSession.ReconcileStatus.Should().Be(ReconcileStatus.Synced);
+    }
+
+    [Fact]
+    public async Task SyncSessionAsync_NormalizesEmailCasing()
+    {
+        var (_, session) = await SeedPublishedSessionAsync();
+
+        _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(new[]
+            {
+                new RegistrationRecord("ALICE@EXAMPLE.COM", DateTimeOffset.UtcNow),
+            });
+        _graphMock.Setup(g => g.GetAttendanceAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(Array.Empty<AttendanceRecord>());
+
+        await _sut.SyncSessionAsync(session.SessionId, OwnerUserId, OboToken);
+
+        var regs = await _db.NormalizedRegistrations
+            .Where(r => r.SessionId == session.SessionId).ToListAsync();
+        regs.Should().HaveCount(1);
+        regs[0].Email.Should().Be("alice@example.com");
+        regs[0].EmailDomain.Should().Be("example.com");
+    }
+
+    // ─── SyncSeriesAsync ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SyncSeriesAsync_ReturnsNotFound_WhenSeriesMissing()
+    {
+        var result = await _sut.SyncSeriesAsync(Guid.NewGuid(), OwnerUserId, OboToken);
+        result.Success.Should().BeFalse();
+        result.ErrorCode.Should().Be("series_not_found");
+    }
+
+    [Fact]
+    public async Task SyncSeriesAsync_ReturnsSuccess_WithZeroCounts_WhenNoPublishedSessions()
+    {
+        var (series, _) = await SeedPublishedSessionAsync(published: false);
+
+        var result = await _sut.SyncSeriesAsync(series.SeriesId, OwnerUserId, OboToken);
+
+        result.Success.Should().BeTrue();
+        result.SyncedCount.Should().Be(0);
+        result.FailedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SyncSeriesAsync_SyncsAllPublishedSessions()
+    {
+        var (series, session) = await SeedPublishedSessionAsync();
+
+        _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(new[]
+            {
+                new RegistrationRecord("alice@test.com", DateTimeOffset.UtcNow),
+            });
+        _graphMock.Setup(g => g.GetAttendanceAsync(session.TeamsWebinarId!, OboToken, default))
+            .ReturnsAsync(Array.Empty<AttendanceRecord>());
+
+        var result = await _sut.SyncSeriesAsync(series.SeriesId, OwnerUserId, OboToken);
+
+        result.Success.Should().BeTrue();
+        result.SyncedCount.Should().Be(1);
+        result.FailedCount.Should().Be(0);
+    }
+
     // ─── helpers ────────────────────────────────────────────────────────────
 
     private async Task<(EdgeFront.Builder.Domain.Entities.Series, Session)> SeedPublishedSessionAsync(bool published = true)

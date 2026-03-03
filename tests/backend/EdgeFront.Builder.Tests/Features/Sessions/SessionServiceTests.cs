@@ -202,6 +202,134 @@ public class SessionServiceTests : IDisposable
         saved.Should().BeNull();
     }
 
+    [Fact]
+    public async Task DeleteAsync_ReturnsFalse_ForNonExistentSession()
+    {
+        var result = await _sut.DeleteAsync(Guid.NewGuid(), OwnerUserId);
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ReturnsFalse_ForWrongOwner()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _sut.DeleteAsync(session.SessionId, OtherUserId);
+
+        // Assert
+        result.Should().BeFalse();
+        (await _db.Sessions.FindAsync(session.SessionId)).Should().NotBeNull("session should not be deleted by wrong owner");
+    }
+
+    // ---------- UpdateAsync ----------
+
+    [Fact]
+    public async Task UpdateAsync_UpdatesAllFields()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var newStart = DateTime.UtcNow.AddDays(5);
+        var newEnd = newStart.AddHours(2);
+        var req = new UpdateSessionRequest("New Title", newStart, newEnd);
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateAsync(session.SessionId, req, OwnerUserId);
+
+        // Assert
+        errorCode.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Title.Should().Be("New Title");
+        result.StartsAt.Should().BeCloseTo(newStart, TimeSpan.FromSeconds(1));
+        result.EndsAt.Should().BeCloseTo(newEnd, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsError_WhenEndsAtNotAfterStartsAt()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var when = DateTime.UtcNow.AddDays(1);
+        var req = new UpdateSessionRequest("Title", when, when.AddHours(-1));
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateAsync(session.SessionId, req, OwnerUserId);
+
+        // Assert
+        result.Should().BeNull();
+        errorCode.Should().Be("invalid_time_range");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsError_WhenSessionNotFound()
+    {
+        var req = new UpdateSessionRequest("Title", DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+        var (result, errorCode) = await _sut.UpdateAsync(Guid.NewGuid(), req, OwnerUserId);
+
+        result.Should().BeNull();
+        errorCode.Should().Be("session_not_found");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsError_ForWrongOwner()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var req = new UpdateSessionRequest("Hack", DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateAsync(session.SessionId, req, OtherUserId);
+
+        // Assert
+        result.Should().BeNull();
+        errorCode.Should().Be("session_not_found");
+    }
+
+    // ---------- GetByIdAsync (success) ----------
+
+    [Fact]
+    public async Task GetByIdAsync_ReturnsSession_WithCorrectFields()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _sut.GetByIdAsync(session.SessionId, OwnerUserId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.SessionId.Should().Be(session.SessionId);
+        result.SeriesId.Should().Be(series.SeriesId);
+        result.Title.Should().Be("Test Session");
+        result.Status.Should().Be("Draft");
+        result.DriftStatus.Should().Be("None");
+        result.ReconcileStatus.Should().Be("Synced");
+    }
+
     // ---------- Helpers ----------
 
     private EdgeFront.Builder.Domain.Entities.Series BuildSeries(string? ownerOverride = null) =>

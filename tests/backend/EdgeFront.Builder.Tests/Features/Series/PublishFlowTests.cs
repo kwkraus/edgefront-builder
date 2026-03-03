@@ -69,6 +69,10 @@ public class PublishFlowTests : IDisposable
         // Webinar IDs should be stored on sessions
         var teamsIds = dbSessions.Select(s => s.TeamsWebinarId).ToList();
         teamsIds.Should().BeEquivalentTo(new[] { "webinar-id-1", "webinar-id-2" });
+
+        // Verify PublishWebinarAsync was called for each webinar
+        graphMock.Verify(g => g.PublishWebinarAsync("webinar-id-1", OboToken, default), Times.Once);
+        graphMock.Verify(g => g.PublishWebinarAsync("webinar-id-2", OboToken, default), Times.Once);
     }
 
     // ─── License error → rollback ────────────────────────────────────────────
@@ -158,6 +162,28 @@ public class PublishFlowTests : IDisposable
         // No Teams webinar IDs should be set
         var sessions = await _db.Sessions.Where(s => s.SeriesId == series.SeriesId).ToListAsync();
         sessions.Should().AllSatisfy(s => s.TeamsWebinarId.Should().BeNull());
+    }
+
+    // ─── Non-existent series ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task PublishAsync_ReturnsSeriesNotFound_WhenSeriesDoesNotExist()
+    {
+        var (result, errorCode) = await _sut.PublishAsync(Guid.NewGuid(), OwnerUserId);
+
+        result.Should().BeNull();
+        errorCode.Should().Be("series_not_found");
+    }
+
+    [Fact]
+    public async Task PublishAsync_ReturnsSeriesNotFound_ForWrongOwner()
+    {
+        var (series, _, _) = await SeedSeriesWithTwoSessionsAsync();
+
+        var (result, errorCode) = await _sut.PublishAsync(series.SeriesId, "other-user");
+
+        result.Should().BeNull();
+        errorCode.Should().Be("series_not_found");
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────
