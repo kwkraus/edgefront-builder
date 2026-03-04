@@ -1,6 +1,6 @@
 ---
 name: graph-teams-integration
-description: 'Design and implement Microsoft Graph Virtual Events integration with hybrid OBO/client-credential token flows, webinar lifecycle, and subscription management.'
+description: 'Design and implement Microsoft Graph Virtual Events integration with delegated-only OBO token flow, webinar lifecycle, and user-initiated data sync.'
 argument-hint: 'Describe the Graph operation, token flow context, and target SPEC section.'
 ---
 
@@ -8,26 +8,26 @@ argument-hint: 'Describe the Graph operation, token flow context, and target SPE
 
 ## When to Use
 - Implementing webinar create/update/delete via Graph API
-- Setting up OBO token exchange or client credential flows
-- Managing Graph subscription lifecycle (create, renew, delete)
+- Setting up OBO token exchange for delegated Graph calls
+- Implementing user-initiated data sync (registrations, attendance)
 - Implementing drift detection against Graph metadata
 - Any work involving Microsoft.Identity.Web or Microsoft.Graph SDK
 
 ## Quick Checklist
-1. Identify operation and required token flow (OBO vs client credentials).
-2. Verify Graph API endpoint and permission requirements.
-3. Implement centralized token acquisition via TeamsGraphClient.
+1. All Graph operations use OBO flow — user must be authenticated.
+2. Verify Graph API endpoint and delegated permission requirements.
+3. Implement centralized token acquisition via TeamsGraphClient + OboTokenService.
 4. Add error handling with correlation IDs and Graph-specific failure modes.
 
 ## Deep Workflow
 1. Classify the operation:
    - Webinar CRUD → OBO flow (delegated `VirtualEvent.ReadWrite`)
-   - Registration/attendance reads → client credentials (`VirtualEvent.Read.Chat`)
-   - Subscription management → client credentials (`VirtualEvent.Read.All`)
-   - Background renewal → client credentials (no user present)
+   - Registration reads → OBO flow (delegated `VirtualEvent.ReadWrite`)
+   - Attendance reads → OBO flow (delegated `OnlineMeetingArtifact.Read.All`)
+   - Drift detection → OBO flow (delegated)
 2. Implement token acquisition:
    - OBO: Extract user JWT from request → call `ITokenAcquisition.GetAccessTokenForUserAsync` with Graph scopes
-   - Client credentials: Use `IConfidentialClientApplication` or `GraphServiceClient` with app-only auth
+   - **No client credentials** — all operations require an authenticated user per SPEC-200
 3. Implement the Graph API call with retry and error classification:
    - 401/403: Token or permission issue — log and surface clearly
    - 404: Resource not found — handle gracefully for drift/delete
@@ -39,29 +39,26 @@ argument-hint: 'Describe the Graph operation, token flow context, and target SPE
 ## Publish Flow (SPEC-200)
 1. For each session in series:
    a. Create webinar via OBO → store teamsWebinarId
-   b. Create registration subscription via client credentials → store subscriptionId + expirationDateTime
-   c. Create attendance report subscription via client credentials → store subscriptionId + expirationDateTime
+   b. Publish webinar via OBO → POST .../publish
 2. If any step fails:
-   a. Run compensating rollback: best-effort delete created webinars + subscriptions
+   a. Run compensating rollback: best-effort delete created webinars
    b. If rollback fails: log failures, surface partial-failure state
    c. Return failure to caller
 
-## Subscription Renewal (Background Worker)
-1. Query GraphSubscription table for expiring subscriptions (within renewal window).
-2. Filter to sessions where status=Published and reconcileStatus != Disabled.
-3. PATCH subscription via client credentials to extend expirationDateTime.
-4. On failure: exponential backoff, 24h retry window, then mark reconcileStatus=Disabled.
-5. On successful reconciliation: DELETE subscriptions for that session.
+## Data Sync Flow (SPEC-200)
+1. User opens session/series page → triggers sync.
+2. Fetch registrations via OBO: `GET /solutions/virtualEvents/webinars/{id}/registrations`.
+3. Fetch attendance via OBO: sessions → attendanceReports → attendanceRecords.
+4. Hand off to normalize → upsert → recompute pipeline.
+5. Update `LastSyncAt` timestamp on session.
 
 ## Decision Points
 - If Graph API returns licensing error (e.g., user lacks Teams Premium): classify as non-retryable, surface clear message.
-- If subscription renewal fails beyond 24h window: mark Disabled and stop retrying.
 - If drift detection fetch fails: keep previous driftStatus, do not clear.
 - If webinar delete fails during series/session delete: log as best-effort failure, continue with local delete.
 
 ## Completion Checks
-- Token flow matches operation requirements (never OBO in background, never client creds for webinar CRUD).
+- All Graph calls use OBO tokens (no client credentials).
 - All Graph calls have error handling with correlation IDs.
 - Publish is atomic with compensating rollback.
-- Subscription lifecycle is fully automated.
 - Integration tests mock Graph API responses for all flows.

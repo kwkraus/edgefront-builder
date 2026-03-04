@@ -31,7 +31,7 @@ These instructions apply to the frontend project under `src/frontend`.
 - `lib/` for data access, API clients, and helpers.
 - `lib/api/` for typed API client helpers consuming SPEC-110 DTOs.
 - `public/` for static assets.
-- Tests live in `tests/frontend/` mirroring `app/` features.
+- E2E tests live in `src/frontend/e2e/`.
 
 ## Core Dependencies
 - Next.js 16 with React 19.
