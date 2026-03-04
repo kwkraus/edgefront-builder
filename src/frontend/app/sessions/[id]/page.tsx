@@ -17,8 +17,13 @@ import type { SessionResponse, SessionMetricsResponse } from '@/lib/api/types'
 
 function toDateTimeLocal(iso: string | null | undefined): string {
   if (!iso) return ''
-  // Use the ISO string up to minutes for datetime-local
-  return iso.slice(0, 16)
+  const d = new Date(iso)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 function fromDateTimeLocal(local: string): string {
