@@ -45,10 +45,10 @@ public class PublishFlowTests : IDisposable
         var graphMock = new Mock<ITeamsGraphClient>();
         graphMock.Setup(g => g.CreateWebinarAsync(
                 session1.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-id-1");
+            .ReturnsAsync(new CreateWebinarResult("webinar-id-1", "https://teams.microsoft.com/l/meetup-join/1"));
         graphMock.Setup(g => g.CreateWebinarAsync(
                 session2.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-id-2");
+            .ReturnsAsync(new CreateWebinarResult("webinar-id-2", "https://teams.microsoft.com/l/meetup-join/2"));
 
         // Act
         var (result, errorCode) = await _sut.PublishAsync(
@@ -114,7 +114,7 @@ public class PublishFlowTests : IDisposable
         // First webinar succeeds
         graphMock.Setup(g => g.CreateWebinarAsync(
                 session1.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-id-partial");
+            .ReturnsAsync(new CreateWebinarResult("webinar-id-partial", "https://teams.microsoft.com/l/meetup-join/partial"));
 
         // Second webinar fails with a generic error
         graphMock.Setup(g => g.CreateWebinarAsync(

@@ -4,4 +4,5 @@ public record TeamsWebinarInfo(
     string WebinarId,
     string Title,
     DateTimeOffset StartsAt,
-    DateTimeOffset EndsAt);
+    DateTimeOffset EndsAt,
+    string? JoinWebUrl);

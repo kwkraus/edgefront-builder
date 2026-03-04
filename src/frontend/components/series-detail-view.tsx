@@ -438,9 +438,9 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                             <Rocket className="size-3.5" />
                           </button>
                         )}
-                        {s.status === 'Published' && s.teamsWebinarId && (
+                        {s.status === 'Published' && s.joinWebUrl && (
                           <a
-                            href={`https://teams.microsoft.com/l/virtual-event/${s.teamsWebinarId}`}
+                            href={s.joinWebUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

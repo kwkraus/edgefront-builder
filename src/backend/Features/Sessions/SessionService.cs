@@ -42,6 +42,7 @@ public class SessionService
                 s.EndsAt,
                 s.Status.ToString(),
                 s.TeamsWebinarId,
+                s.JoinWebUrl,
                 s.ReconcileStatus.ToString(),
                 s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,
@@ -197,15 +198,17 @@ public class SessionService
         string? createdWebinarId = null;
         try
         {
-            createdWebinarId = await graphClient.CreateWebinarAsync(
+            var webinarResult = await graphClient.CreateWebinarAsync(
                 session.Title,
                 new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
                 new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
                 oboToken);
+            createdWebinarId = webinarResult.WebinarId;
 
             await graphClient.PublishWebinarAsync(createdWebinarId, oboToken);
 
             session.TeamsWebinarId = createdWebinarId;
+            session.JoinWebUrl = webinarResult.JoinWebUrl;
             session.Status = SessionStatus.Published;
             session.ReconcileStatus = ReconcileStatus.Synced;
             session.LastSyncAt = DateTime.UtcNow;
@@ -246,7 +249,7 @@ public class SessionService
 
     private static SessionResponseDto ToResponseDto(Session s) =>
         new(s.SessionId, s.SeriesId, s.Title, s.StartsAt, s.EndsAt,
-            s.Status.ToString(), s.TeamsWebinarId,
+            s.Status.ToString(), s.TeamsWebinarId, s.JoinWebUrl,
             s.ReconcileStatus.ToString(), s.DriftStatus.ToString(),
             s.LastSyncAt, s.LastError);
 }
