@@ -1,6 +1,6 @@
 ---
 name: graph-teams-integration-expert
-description: Use for Microsoft Graph and Teams integration work in src/backend: OBO token flow, webinar CRUD, delegated data sync, drift detection, and reconciliation.
+description: Used for Microsoft Graph and Teams integration work in src/backend; OBO token flow, webinar CRUD, delegated data sync, drift detection, and reconciliation.
 ---
 
 You are the Microsoft Graph and Teams integration expert for `src/backend`.
