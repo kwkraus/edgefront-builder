@@ -56,6 +56,14 @@ public class SyncService
 
         try
         {
+            // Backfill JoinWebUrl for sessions published before this field was captured
+            if (session.JoinWebUrl is null)
+            {
+                var metadata = await _graphClient.GetWebinarMetadataAsync(session.TeamsWebinarId!, oboToken, ct);
+                if (metadata?.JoinWebUrl is not null)
+                    session.JoinWebUrl = metadata.JoinWebUrl;
+            }
+
             await SyncRegistrationsAsync(session, oboToken, ct);
             await SyncAttendanceAsync(session, oboToken, ct);
 

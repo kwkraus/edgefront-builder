@@ -80,7 +80,8 @@ public class DriftDetectionServiceTests : IDisposable
                 session.TeamsWebinarId!,
                 session.Title,
                 new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                new DateTimeOffset(session.EndsAt, TimeSpan.Zero)));
+                new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                "https://teams.microsoft.com/l/meetup-join/test"));
 
         var result = await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
 
@@ -97,7 +98,8 @@ public class DriftDetectionServiceTests : IDisposable
                 session.TeamsWebinarId!,
                 "Different Title",
                 new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                new DateTimeOffset(session.EndsAt, TimeSpan.Zero)));
+                new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                "https://teams.microsoft.com/l/meetup-join/test"));
 
         var result = await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
 
@@ -118,7 +120,8 @@ public class DriftDetectionServiceTests : IDisposable
                 session.TeamsWebinarId!,
                 session.Title,
                 new DateTimeOffset(session.StartsAt.AddHours(1), TimeSpan.Zero),
-                new DateTimeOffset(session.EndsAt, TimeSpan.Zero)));
+                new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                "https://teams.microsoft.com/l/meetup-join/test"));
 
         var result = await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
 
@@ -161,7 +164,8 @@ public class DriftDetectionServiceTests : IDisposable
                 session.TeamsWebinarId!,
                 session.Title,
                 new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                new DateTimeOffset(session.EndsAt, TimeSpan.Zero)));
+                new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                "https://teams.microsoft.com/l/meetup-join/test"));
 
         // First call — hits Graph
         await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
@@ -185,7 +189,8 @@ public class DriftDetectionServiceTests : IDisposable
                 session.TeamsWebinarId!,
                 session.Title,
                 new DateTimeOffset(session.StartsAt.AddMilliseconds(500), TimeSpan.Zero),
-                new DateTimeOffset(session.EndsAt.AddMilliseconds(-500), TimeSpan.Zero)));
+                new DateTimeOffset(session.EndsAt.AddMilliseconds(-500), TimeSpan.Zero),
+                "https://teams.microsoft.com/l/meetup-join/test"));
 
         var result = await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
 

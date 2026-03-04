@@ -44,7 +44,7 @@ public class SessionPublishTests : IDisposable
         var graphMock = new Mock<ITeamsGraphClient>();
         graphMock.Setup(g => g.CreateWebinarAsync(
                 session.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-session-1");
+            .ReturnsAsync(new CreateWebinarResult("webinar-session-1", "https://teams.microsoft.com/l/meetup-join/session-1"));
 
         var (result, errorCode) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
@@ -53,10 +53,12 @@ public class SessionPublishTests : IDisposable
         result.Should().NotBeNull();
         result!.Status.Should().Be("Published");
         result.TeamsWebinarId.Should().Be("webinar-session-1");
+        result.JoinWebUrl.Should().Be("https://teams.microsoft.com/l/meetup-join/session-1");
 
         var dbSession = await _db.Sessions.FindAsync(session.SessionId);
         dbSession!.Status.Should().Be(SessionStatus.Published);
         dbSession.TeamsWebinarId.Should().Be("webinar-session-1");
+        dbSession.JoinWebUrl.Should().Be("https://teams.microsoft.com/l/meetup-join/session-1");
         dbSession.ReconcileStatus.Should().Be(ReconcileStatus.Synced);
         dbSession.LastSyncAt.Should().NotBeNull();
 
@@ -151,7 +153,7 @@ public class SessionPublishTests : IDisposable
         var graphMock = new Mock<ITeamsGraphClient>();
         graphMock.Setup(g => g.CreateWebinarAsync(
                 It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
-            .ReturnsAsync("webinar-to-rollback");
+            .ReturnsAsync(new CreateWebinarResult("webinar-to-rollback", "https://teams.microsoft.com/l/meetup-join/rollback"));
         graphMock.Setup(g => g.PublishWebinarAsync("webinar-to-rollback", OboToken, default))
             .ThrowsAsync(new InvalidOperationException("Graph publish failed"));
         graphMock.Setup(g => g.DeleteWebinarAsync("webinar-to-rollback", OboToken, default))

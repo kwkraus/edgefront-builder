@@ -167,16 +167,17 @@ public class SeriesService
         {
             foreach (var session in sessions)
             {
-                var webinarId = await graphClient.CreateWebinarAsync(
+                var webinarResult = await graphClient.CreateWebinarAsync(
                     session.Title,
                     new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
                     new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
                     oboToken);
 
-                await graphClient.PublishWebinarAsync(webinarId, oboToken);
+                await graphClient.PublishWebinarAsync(webinarResult.WebinarId, oboToken);
 
-                createdWebinarIds.Add((session, webinarId));
-                session.TeamsWebinarId = webinarId;
+                createdWebinarIds.Add((session, webinarResult.WebinarId));
+                session.TeamsWebinarId = webinarResult.WebinarId;
+                session.JoinWebUrl = webinarResult.JoinWebUrl;
             }
 
             // 4. All Teams calls succeeded — commit the publish

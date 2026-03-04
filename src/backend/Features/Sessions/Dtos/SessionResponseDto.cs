@@ -8,6 +8,7 @@ public record SessionResponseDto(
     DateTime EndsAt,
     string Status,
     string? TeamsWebinarId,
+    string? JoinWebUrl,
     string ReconcileStatus,
     string DriftStatus,
     DateTime? LastSyncAt,

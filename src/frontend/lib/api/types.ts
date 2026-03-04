@@ -28,6 +28,7 @@ export interface SessionListItem {
   endsAt: string
   status: 'Draft' | 'Published'
   teamsWebinarId: string | null
+  joinWebUrl: string | null
   reconcileStatus: 'Synced' | 'Reconciling'
   driftStatus: 'None' | 'DriftDetected'
   totalRegistrations: number
@@ -43,6 +44,7 @@ export interface SessionResponse {
   endsAt: string
   status: 'Draft' | 'Published'
   teamsWebinarId: string | null
+  joinWebUrl: string | null
   reconcileStatus: 'Synced' | 'Reconciling'
   driftStatus: 'None' | 'DriftDetected'
   lastSyncAt: string | null

@@ -311,9 +311,9 @@ export default function SessionDetailPage() {
             <StatusBadge status={session.status} />
           </div>
           <div className="flex items-center gap-3">
-            {session.teamsWebinarId && (
+            {session.joinWebUrl && (
               <a
-                href={`https://teams.microsoft.com/l/virtual-event/${session.teamsWebinarId}`}
+                href={session.joinWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"

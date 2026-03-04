@@ -53,7 +53,7 @@ public class TeamsGraphClient : ITeamsGraphClient
 
     // ── Webinar lifecycle ───────────────────────────────────────────────────
 
-    public async Task<string> CreateWebinarAsync(
+    public async Task<CreateWebinarResult> CreateWebinarAsync(
         string title, DateTimeOffset startsAt, DateTimeOffset endsAt,
         string oboToken, CancellationToken ct = default)
     {
@@ -76,7 +76,9 @@ public class TeamsGraphClient : ITeamsGraphClient
             };
 
             var result = await client.Solutions.VirtualEvents.Webinars.PostAsync(body, cancellationToken: ct);
-            return result?.Id ?? throw new InvalidOperationException("Graph returned null webinar ID.");
+            var id = result?.Id ?? throw new InvalidOperationException("Graph returned null webinar ID.");
+            var joinWebUrl = ResolveWebinarUrl(result);
+            return new CreateWebinarResult(id, joinWebUrl);
         }
         catch (ODataError err) when (IsLicenseError(err))
         {
@@ -137,6 +139,45 @@ public class TeamsGraphClient : ITeamsGraphClient
 
     // ── Read operations (delegated) ─────────────────────────────────────────
 
+    /// <summary>Safely parses a <see cref="DateTimeTimeZone"/> without relying on the SDK's
+    /// <c>ToDateTimeOffset</c> which uses <c>ParseExact</c> and fails on datetime strings
+    /// that lack fractional seconds (e.g. "2026-03-05T22:00:00").</summary>
+    private static DateTimeOffset ParseDateTimeTimeZone(DateTimeTimeZone? dtz)
+    {
+        if (dtz?.DateTime is null) return DateTimeOffset.MinValue;
+
+        if (DateTimeOffset.TryParse(dtz.DateTime, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+            return parsed;
+
+        return DateTimeOffset.MinValue;
+    }
+
+    /// <summary>
+    /// Resolves the best available URL for a webinar. Prefers <c>joinWebUrl</c> from the
+    /// base VirtualEvent type (the Teams deep link), then <c>registrationWebUrl</c> from the
+    /// registration config, then constructs the standard Teams event page URL from the webinar ID.
+    /// </summary>
+    private static string? ResolveWebinarUrl(VirtualEventWebinar webinar)
+    {
+        // 1. Try joinWebUrl on the webinar itself (AdditionalData — not typed in SDK v5.68)
+        if (webinar.AdditionalData?.TryGetValue("joinWebUrl", out var joinObj) == true
+            && joinObj is string joinUrl && !string.IsNullOrWhiteSpace(joinUrl))
+            return joinUrl;
+
+        // 2. Try registrationWebUrl from the typed RegistrationConfiguration
+        if (webinar.RegistrationConfiguration?.AdditionalData?
+                .TryGetValue("registrationWebUrl", out var regObj) == true
+            && regObj is string regUrl && !string.IsNullOrWhiteSpace(regUrl))
+            return regUrl;
+
+        // 3. Construct the standard Teams event page URL from the webinar ID
+        if (!string.IsNullOrWhiteSpace(webinar.Id))
+            return $"https://events.teams.microsoft.com/event/{webinar.Id}";
+
+        return null;
+    }
+
     public async Task<TeamsWebinarInfo?> GetWebinarMetadataAsync(
         string teamsWebinarId, string oboToken, CancellationToken ct = default)
     {
@@ -148,19 +189,17 @@ public class TeamsGraphClient : ITeamsGraphClient
 
             if (result is null) return null;
 
-            var startsAt = result.StartDateTime is not null
-                ? result.StartDateTime.ToDateTimeOffset()
-                : DateTimeOffset.MinValue;
+            var startsAt = ParseDateTimeTimeZone(result.StartDateTime);
+            var endsAt = ParseDateTimeTimeZone(result.EndDateTime);
 
-            var endsAt = result.EndDateTime is not null
-                ? result.EndDateTime.ToDateTimeOffset()
-                : DateTimeOffset.MinValue;
+            var joinWebUrl = ResolveWebinarUrl(result);
 
             return new TeamsWebinarInfo(
                 result.Id ?? teamsWebinarId,
                 result.DisplayName ?? string.Empty,
                 startsAt,
-                endsAt);
+                endsAt,
+                joinWebUrl);
         }
         catch (ODataError err) when (err.ResponseStatusCode == 404)
         {

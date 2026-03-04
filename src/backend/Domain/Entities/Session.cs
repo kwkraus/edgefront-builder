@@ -10,6 +10,7 @@ public class Session
     public DateTime EndsAt { get; set; }
     public SessionStatus Status { get; set; } = SessionStatus.Draft;
     public string? TeamsWebinarId { get; set; }
+    public string? JoinWebUrl { get; set; }
     public DriftStatus DriftStatus { get; set; } = DriftStatus.None;
     public ReconcileStatus ReconcileStatus { get; set; } = ReconcileStatus.Synced;
     public DateTime? LastSyncAt { get; set; }
