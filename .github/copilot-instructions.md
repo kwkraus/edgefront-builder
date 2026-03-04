@@ -18,10 +18,10 @@
 - `src/backend/` — ASP.NET Core minimal API (.NET 10, EF Core, Azure SQL)
 - Frontend authenticates users via Entra ID (MSAL.js / next-auth).
 - Backend validates JWT access tokens on all user/business endpoints.
-- Webhook endpoint uses Graph notification validation (clientState), not user JWT.
-- Microsoft Graph uses hybrid permission model:
-  - Delegated (OBO flow): webinar create/update/delete — user must be present
-  - Application (client credentials): subscriptions, registration/attendance reads, background renewal
+- Data sync is user-initiated via delegated token on page load (no webhooks or background services).
+- Microsoft Graph uses delegated-only permission model per SPEC-200:
+  - All Graph operations use OBO flow — user must be present
+  - No application permissions required
 - Treat frontend and backend as separate components; avoid coupling unless a task explicitly introduces shared contracts.
 - Put project documentation and decisions in `docs/`.
 

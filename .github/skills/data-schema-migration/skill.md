@@ -35,10 +35,6 @@ argument-hint: 'Describe the table, column, constraint, or migration change need
 - attendanceId (UUID, PK), sessionId (FK→Session), ownerUserId, email, emailDomain, attended (bool), durationSeconds (nullable), durationPercent (nullable), firstJoinAt (nullable), lastLeaveAt (nullable)
 - Unique: (ownerUserId, sessionId, email)
 
-### GraphSubscription
-- graphSubscriptionId (UUID, PK), sessionId (FK→Session), ownerUserId, subscriptionId, changeType, clientStateHash, expirationDateTime, createdAt
-- Unique: (sessionId, subscriptionId)
-
 ### SessionMetrics
 - sessionId (UUID, PK, FK→Session), totalRegistrations, totalAttendees, uniqueRegistrantAccountDomains, uniqueAttendeeAccountDomains, warmAccountsTriggered (nvarchar(max) JSON)
 
@@ -57,8 +53,6 @@ argument-hint: 'Describe the table, column, constraint, or migration change need
 - Session(seriesId, startsAt)
 - NormalizedRegistration(sessionId, emailDomain)
 - NormalizedAttendance(sessionId, emailDomain)
-- GraphSubscription(sessionId)
-- GraphSubscription(expirationDateTime)
 
 ## Decision Points
 - If a column type in code doesn't match SPEC-120: fix the code, not the spec.

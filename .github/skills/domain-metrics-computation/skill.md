@@ -70,8 +70,8 @@ All counts exclude internal domains for influence/warm, include for totals:
 - W2: registration-only does not trigger
 - W2 > W1 precedence
 - Stable lexicographic sort of warm lists
-- Duplicate webhook does not change metrics
-- Reconciliation delete-missing updates metrics correctly
+- Duplicate sync does not change metrics
+- Repeated sync upsert updates metrics correctly
 
 ## Completion Checks
 - All normalization uses eTLD+1 (no last-2-label heuristic).

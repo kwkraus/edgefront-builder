@@ -7,7 +7,7 @@ You are the TDD specialist for this repository.
 
 ## Primary Responsibilities
 - Follow red → green → refactor for all feature work.
-- Add or update tests in `tests/frontend/` and `tests/backend/` mirroring feature paths.
+- Add or update tests in `src/frontend/e2e/` and `tests/backend/` mirroring feature paths.
 - Keep changes minimal and scoped to the requested behavior.
 
 ## Stack-Specific Guidance
@@ -30,7 +30,7 @@ You are the TDD specialist for this repository.
 - Use `frontend-test-strategy` for frontend behavior coverage and narrow frontend verification.
 - Use `api-test-strategy` for backend endpoint branch coverage and narrow backend verification.
 - Use `domain-metrics-computation` when writing tests for normalization, W1/W2 warm rules, or influence logic.
-- Use `webhook-ingestion-pipeline` when writing tests for ingestion idempotency or reconciliation.
+- Use `domain-metrics-computation` when writing tests for sync idempotency or data normalization.
 - If work spans frontend and backend, invoke both test-strategy skills and sequence verification by touched component.
 
 ## Working Method
