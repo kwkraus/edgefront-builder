@@ -30,14 +30,22 @@ export default async function SeriesDetailPage({ params }: Props) {
     redirect('/api/auth/signin')
   }
 
-  const [series, sessions, metrics] = await Promise.all([
-    getSeriesById(id, session.accessToken),
-    getSessionsBySeries(id, session.accessToken),
-    getSeriesMetrics(id, session.accessToken).catch((err) => {
-      if (err instanceof ApiError && err.status === 404) return null
-      throw err
-    }),
-  ])
+  let series, sessions, metrics
+  try {
+    ;[series, sessions, metrics] = await Promise.all([
+      getSeriesById(id, session.accessToken),
+      getSessionsBySeries(id, session.accessToken),
+      getSeriesMetrics(id, session.accessToken).catch((err) => {
+        if (err instanceof ApiError && err.status === 404) return null
+        throw err
+      }),
+    ])
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(`/series/${id}`)}`)
+    }
+    throw err
+  }
 
   return (
     <SeriesDetailView

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getServerSession } from '@/lib/auth'
 import { getSeries } from '@/lib/api/series'
+import { ApiError } from '@/lib/api/client'
 import { StatusBadge } from '@/components/status-badge'
 import { AlertTriangle } from 'lucide-react'
 import type { SeriesListItem } from '@/lib/api/types'
@@ -46,7 +47,15 @@ export default async function SeriesListContent() {
     redirect('/api/auth/signin')
   }
 
-  const series = await getSeries(session.accessToken)
+  let series: SeriesListItem[]
+  try {
+    series = await getSeries(session.accessToken)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      redirect('/api/auth/signin?callbackUrl=%2Fseries')
+    }
+    throw err
+  }
 
   if (series.length === 0) {
     return (

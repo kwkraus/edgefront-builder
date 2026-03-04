@@ -9,7 +9,7 @@ import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { LoadingSkeleton } from '@/components/loading-skeleton'
+
 import { getSessionById } from '@/lib/api/sessions'
 import { updateSession, deleteSession, syncSession } from '@/lib/api/sessions'
 import { getSessionMetrics } from '@/lib/api/metrics'
@@ -187,10 +187,61 @@ export default function SessionDetailPage() {
   // ── Loading state ────────────────────────────────────────────────────────
   if (loadingData) {
     return (
-      <div className="space-y-6">
-        <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
-        <div className="h-8 w-64 rounded bg-stone-200 animate-pulse" />
-        <LoadingSkeleton rows={3} />
+      <div className="max-w-2xl space-y-6" aria-label="Loading session…" aria-busy="true">
+        {/* Back link */}
+        <div className="h-4 w-28 rounded bg-stone-200 animate-pulse" />
+
+        {/* Header: title + status badge */}
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-64 rounded bg-stone-200 animate-pulse" />
+          <div className="h-6 w-20 rounded-full bg-stone-200 animate-pulse" />
+        </div>
+
+        {/* Form card */}
+        <div className="space-y-5 rounded-lg border bg-card p-6">
+          {/* Section heading */}
+          <div className="h-5 w-32 rounded bg-stone-200 animate-pulse" />
+
+          {/* Title field */}
+          <div className="space-y-1.5">
+            <div className="h-4 w-12 rounded bg-stone-200 animate-pulse" />
+            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+          </div>
+
+          {/* Starts At field */}
+          <div className="space-y-1.5">
+            <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
+            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+          </div>
+
+          {/* Ends At field */}
+          <div className="space-y-1.5">
+            <div className="h-4 w-14 rounded bg-stone-200 animate-pulse" />
+            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+          </div>
+
+          {/* Button row */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-24 rounded-md bg-stone-200 animate-pulse" />
+              <div className="h-10 w-20 rounded-md bg-stone-200 animate-pulse" />
+            </div>
+            <div className="h-10 w-10 rounded-md bg-stone-200 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Metrics section */}
+        <div className="space-y-3">
+          <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border bg-card p-4 space-y-2">
+                <div className="h-3 w-20 rounded bg-stone-200 animate-pulse" />
+                <div className="h-7 w-10 rounded bg-stone-200 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

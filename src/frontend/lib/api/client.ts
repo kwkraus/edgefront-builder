@@ -48,6 +48,12 @@ export async function apiFetch<T>(
   })
 
   if (res.status === 401) {
+    // Client-side: redirect to sign-in preserving current URL as return destination
+    if (typeof window !== 'undefined') {
+      const callbackUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/api/auth/signin?callbackUrl=${callbackUrl}`
+      return new Promise<T>(() => {}) // suspend to prevent downstream error handling
+    }
     throw new ApiError('UNAUTHORIZED', 401)
   }
 
