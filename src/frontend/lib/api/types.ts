@@ -3,6 +3,7 @@ export interface SeriesListItem {
   title: string
   status: 'Draft' | 'Published'
   sessionCount: number
+  draftSessionCount: number
   totalRegistrations: number
   totalAttendees: number
   uniqueAccountsInfluenced: number
@@ -15,6 +16,7 @@ export interface SeriesResponse {
   seriesId: string
   title: string
   status: 'Draft' | 'Published'
+  draftSessionCount: number
   createdAt: string
   updatedAt: string
 }

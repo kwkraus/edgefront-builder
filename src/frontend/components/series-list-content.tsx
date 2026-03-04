@@ -19,7 +19,7 @@ function SeriesTableRow({ item }: { item: SeriesListItem }) {
         </Link>
       </td>
       <td className="px-4 py-3">
-        <StatusBadge status={item.status} />
+        <StatusBadge status={item.status === 'Published' && item.draftSessionCount > 0 ? 'Partially Published' : item.status} />
       </td>
       <td className="px-4 py-3 tabular-nums text-right">{item.sessionCount}</td>
       <td className="px-4 py-3 tabular-nums text-right">{item.totalRegistrations}</td>

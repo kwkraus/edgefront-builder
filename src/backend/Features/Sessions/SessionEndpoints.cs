@@ -118,6 +118,36 @@ public static class SessionEndpoints
                     "session_not_found", "Session not found.", ctx.TraceIdentifier));
         });
 
+        // TODO-SPEC: POST /sessions/{id}/publish not yet in SPEC-110; added for incremental session publish.
+        sessionGroup.MapPost("/{id:guid}/publish", async (Guid id, SessionService service, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+
+            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger);
+            if (session is null)
+            {
+                if (errorCode == "session_not_found")
+                    return Results.NotFound(new ErrorEnvelope(
+                        errorCode, "Session not found.", ctx.TraceIdentifier));
+                if (errorCode is "SESSION_ALREADY_PUBLISHED" or "SERIES_NOT_PUBLISHED")
+                    return Results.BadRequest(new ErrorEnvelope(
+                        errorCode, errorCode == "SESSION_ALREADY_PUBLISHED"
+                            ? "Session is already published."
+                            : "Series must be published before publishing individual sessions.",
+                        ctx.TraceIdentifier));
+
+                return Results.UnprocessableEntity(new ErrorEnvelope(
+                    errorCode ?? "SESSION_PUBLISH_FAILED", "Session publish failed.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(session);
+        });
+
         // Sync session data from Teams (user-initiated, delegated)
         sessionGroup.MapPost("/{id:guid}/sync", async (Guid id, SyncService syncService, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
         {
