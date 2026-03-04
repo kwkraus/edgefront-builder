@@ -10,7 +10,7 @@ import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { updateSeries, deleteSeries, publishSeries, syncSeries } from '@/lib/api/series'
-import { deleteSession } from '@/lib/api/sessions'
+import { deleteSession, publishSession } from '@/lib/api/sessions'
 import type { SeriesResponse, SessionListItem, SeriesMetricsResponse } from '@/lib/api/types'
 
 function formatDateTime(iso: string | null | undefined) {
@@ -180,6 +180,38 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
+  // ── Publish Session (individual) ──────────────────────────────────────────
+  const [publishSessionId, setPublishSessionId] = useState<string | null>(null)
+  const [publishSessionLoading, setPublishSessionLoading] = useState(false)
+  const [publishSessionError, setPublishSessionError] = useState<string | null>(null)
+  const [publishSessionLicenseError, setPublishSessionLicenseError] = useState(false)
+
+  async function handlePublishSession() {
+    if (!publishSessionId) return
+    setPublishSessionLoading(true)
+    setPublishSessionError(null)
+    setPublishSessionLicenseError(false)
+    try {
+      await publishSession(publishSessionId, token)
+      setPublishSessionId(null)
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Session publish failed'
+      if (msg.includes('TEAMS_LICENSE_REQUIRED')) {
+        setPublishSessionLicenseError(true)
+      } else {
+        setPublishSessionError(msg)
+      }
+      setPublishSessionLoading(false)
+      setPublishSessionId(null)
+    }
+  }
+
+  const seriesDisplayStatus =
+    series.status === 'Published' && series.draftSessionCount > 0
+      ? 'Partially Published'
+      : series.status
+
   return (
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -196,7 +228,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
             >
               <Pencil className="size-4" aria-hidden="true" />
             </button>
-            <StatusBadge status={series.status} />
+            <StatusBadge status={seriesDisplayStatus} />
           </div>
           <p className="text-xs text-muted-foreground">
             Created {formatDateTime(series.createdAt)} · Updated {formatDateTime(series.updatedAt)}
@@ -249,6 +281,21 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           service account, then retry publishing.
         </div>
       )}
+      {publishSessionError && (
+        <ErrorBanner
+          message={publishSessionError}
+          onRetry={() => { setPublishSessionError(null) }}
+        />
+      )}
+      {publishSessionLicenseError && (
+        <div
+          role="alert"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <strong>Teams webinar license required.</strong> Cannot publish session — assign a Teams
+          webinar license, then retry.
+        </div>
+      )}
 
       {/* ── Metrics ──────────────────────────────────────────────────────── */}
       <section aria-label="Series metrics">
@@ -288,6 +335,11 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Sessions ({sessions.length})
             </h2>
+            {series.status === 'Published' && series.draftSessionCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                {series.draftSessionCount} unpublished
+              </span>
+            )}
             {syncing && (
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="size-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin" aria-hidden="true" />
@@ -374,7 +426,19 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        {s.teamsWebinarId && (
+                        {series.status === 'Published' && s.status === 'Draft' && (
+                          <button
+                            type="button"
+                            onClick={() => setPublishSessionId(s.sessionId)}
+                            disabled={publishSessionLoading}
+                            className="rounded p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                            aria-label={`Publish ${s.title} to Teams`}
+                            title="Publish to Teams"
+                          >
+                            <Rocket className="size-3.5" />
+                          </button>
+                        )}
+                        {s.status === 'Published' && s.teamsWebinarId && (
                           <a
                             href={`https://teams.microsoft.com/l/virtual-event/${s.teamsWebinarId}`}
                             target="_blank"
@@ -502,6 +566,17 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         loading={deleteSessionLoading}
         onConfirm={handleDeleteSession}
         onCancel={() => setDeleteSessionId(null)}
+      />
+
+      {/* ── Publish Session Confirm ───────────────────────────────────────── */}
+      <ConfirmDialog
+        open={publishSessionId !== null}
+        title="Publish Session to Teams"
+        description="This will create a Teams webinar for this session. Continue?"
+        confirmLabel="Publish"
+        loading={publishSessionLoading}
+        onConfirm={handlePublishSession}
+        onCancel={() => setPublishSessionId(null)}
       />
     </div>
   )

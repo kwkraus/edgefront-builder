@@ -56,3 +56,14 @@ export async function syncSession(
     accessToken,
   )
 }
+
+export async function publishSession(
+  id: string,
+  accessToken: string,
+): Promise<SessionResponse> {
+  return apiFetch<SessionResponse>(
+    `/sessions/${id}/publish`,
+    { method: 'POST' },
+    accessToken,
+  )
+}

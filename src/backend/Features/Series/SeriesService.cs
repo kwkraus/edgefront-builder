@@ -36,6 +36,12 @@ public class SeriesService
             .Select(g => new { SeriesId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.SeriesId, x => x.Count);
 
+        var draftSessionCounts = await _db.Sessions
+            .Where(s => seriesIds.Contains(s.SeriesId) && s.Status == SessionStatus.Draft)
+            .GroupBy(s => s.SeriesId)
+            .Select(g => new { SeriesId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SeriesId, x => x.Count);
+
         return series.Select(s =>
         {
             var m = metrics.TryGetValue(s.SeriesId, out var sm) ? sm : null;
@@ -44,6 +50,7 @@ public class SeriesService
                 s.Title,
                 s.Status.ToString(),
                 sessionCounts.TryGetValue(s.SeriesId, out var count) ? count : 0,
+                draftSessionCounts.TryGetValue(s.SeriesId, out var draftCount) ? draftCount : 0,
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
                 m?.UniqueAccountsInfluenced ?? 0,
@@ -57,7 +64,11 @@ public class SeriesService
     {
         var series = await _db.Series
             .FirstOrDefaultAsync(s => s.SeriesId == id && s.OwnerUserId == ownerUserId);
-        return series is null ? null : ToResponseDto(series);
+        if (series is null) return null;
+
+        var draftCount = await _db.Sessions
+            .CountAsync(s => s.SeriesId == id && s.Status == SessionStatus.Draft);
+        return ToResponseDto(series, draftCount);
     }
 
     public async Task<SeriesResponseDto> CreateAsync(CreateSeriesRequest req, string ownerUserId)
@@ -74,7 +85,7 @@ public class SeriesService
 
         _db.Series.Add(series);
         await _db.SaveChangesAsync();
-        return ToResponseDto(series);
+        return ToResponseDto(series, draftSessionCount: 0);
     }
 
     public async Task<SeriesResponseDto?> UpdateAsync(Guid id, UpdateSeriesRequest req, string ownerUserId)
@@ -86,7 +97,10 @@ public class SeriesService
         series.Title = req.Title;
         series.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return ToResponseDto(series);
+
+        var draftCount = await _db.Sessions
+            .CountAsync(s => s.SeriesId == id && s.Status == SessionStatus.Draft);
+        return ToResponseDto(series, draftCount);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string ownerUserId)
@@ -143,7 +157,7 @@ public class SeriesService
                 s.LastSyncAt = DateTime.UtcNow;
             }
             await _db.SaveChangesAsync();
-            return (ToResponseDto(series), null);
+            return (ToResponseDto(series, draftSessionCount: 0), null);
         }
 
         // 3. Create and publish webinars in Teams; track created IDs for rollback
@@ -177,7 +191,7 @@ public class SeriesService
             }
 
             await _db.SaveChangesAsync();
-            return (ToResponseDto(series), null);
+            return (ToResponseDto(series, draftSessionCount: 0), null);
         }
         catch (TeamsLicenseException lex)
         {
@@ -219,6 +233,6 @@ public class SeriesService
         return allOk;
     }
 
-    private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s) =>
-        new(s.SeriesId, s.Title, s.Status.ToString(), s.CreatedAt, s.UpdatedAt);
+    private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s, int draftSessionCount = 0) =>
+        new(s.SeriesId, s.Title, s.Status.ToString(), draftSessionCount, s.CreatedAt, s.UpdatedAt);
 }

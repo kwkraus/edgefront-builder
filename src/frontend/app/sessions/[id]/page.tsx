@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw, ExternalLink } from 'lucide-react'
+import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw, ExternalLink, Rocket } from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 import { getSessionById } from '@/lib/api/sessions'
-import { updateSession, deleteSession, syncSession } from '@/lib/api/sessions'
+import { updateSession, deleteSession, syncSession, publishSession } from '@/lib/api/sessions'
 import { getSessionMetrics } from '@/lib/api/metrics'
 import type { SessionResponse, SessionMetricsResponse } from '@/lib/api/types'
 
@@ -186,6 +186,33 @@ export default function SessionDetailPage() {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete session')
       setDeleteLoading(false)
       setDeleteOpen(false)
+    }
+  }
+
+  // ── Publish individual session to Teams ──────────────────────────────────
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [publishLicenseError, setPublishLicenseError] = useState(false)
+
+  async function handlePublishSession() {
+    setPublishLoading(true)
+    setPublishError(null)
+    setPublishLicenseError(false)
+    try {
+      await publishSession(id, token)
+      setPublishOpen(false)
+      setPublishLoading(false)
+      loadData()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Session publish failed'
+      if (msg.includes('TEAMS_LICENSE_REQUIRED')) {
+        setPublishLicenseError(true)
+      } else {
+        setPublishError(msg)
+      }
+      setPublishLoading(false)
+      setPublishOpen(false)
     }
   }
 
@@ -367,6 +394,21 @@ export default function SessionDetailPage() {
 
       {deleteError && <ErrorBanner message={deleteError} />}
       {saveError && <ErrorBanner message={saveError} />}
+      {publishError && (
+        <ErrorBanner
+          message={publishError}
+          onRetry={() => { setPublishError(null); setPublishOpen(true) }}
+        />
+      )}
+      {publishLicenseError && (
+        <div
+          role="alert"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <strong>Teams webinar license required.</strong> Cannot publish session — assign a Teams
+          webinar license, then retry.
+        </div>
+      )}
       {teamsUpdateFailed && (
         <div
           role="alert"
@@ -473,6 +515,17 @@ export default function SessionDetailPage() {
               <Save className="size-4" aria-hidden="true" />
               {saveLabel}
             </button>
+            {!isPublished && (
+              <button
+                type="button"
+                onClick={() => { setPublishError(null); setPublishLicenseError(false); setPublishOpen(true) }}
+                disabled={publishLoading}
+                className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+              >
+                <Rocket className="size-4" aria-hidden="true" />
+                Publish to Teams
+              </button>
+            )}
             <Link
               href={`/series/${session.seriesId}`}
               className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
@@ -535,6 +588,17 @@ export default function SessionDetailPage() {
         loading={deleteLoading}
         onConfirm={handleDelete}
         onCancel={() => setDeleteOpen(false)}
+      />
+
+      {/* ── Publish Session Confirm ──────────────────────────────────────── */}
+      <ConfirmDialog
+        open={publishOpen}
+        title="Publish Session to Teams"
+        description="This will create a Teams webinar for this session. Continue?"
+        confirmLabel="Publish"
+        loading={publishLoading}
+        onConfirm={handlePublishSession}
+        onCancel={() => setPublishOpen(false)}
       />
     </div>
   )
