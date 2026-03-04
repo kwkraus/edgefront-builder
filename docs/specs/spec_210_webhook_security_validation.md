@@ -1,26 +1,8 @@
-# SPEC-210 — Webhook Security & Validation (Build Ready)
+# SPEC-210 — Webhook Security & Validation (Deprecated)
 
-## Endpoint
-POST /api/v1/webhooks/graph
-
-## Handshake
-- Echo validationToken
-
-## Security
-- Validate clientState (stored hashed)
-- Reject unknown subscription
-- Single-tenant enforcement
-
-## Replay Handling
-- Optional dedupe store (24h TTL)
-- Idempotent ingestion required
-
-## Logging
-- CorrelationId per request
-- Required security event logs
-
-## Definition of Done
-- Handshake implemented
-- clientState validation enforced
-- Duplicate handling validated via tests
+> **Status: DEPRECATED** — Webhooks have been removed in favor of user-initiated delegated sync.
+> See SPEC-200 for the current data sync model.
+>
+> All Graph API operations now use delegated (OBO) permissions only.
+> There is no webhook endpoint, no subscription management, and no background services.
 

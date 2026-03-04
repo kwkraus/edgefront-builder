@@ -56,12 +56,13 @@ These instructions apply to the frontend project under `src/frontend`.
 - No pagination in V1 — list endpoints return all results.
 
 ## Screens and UX Contracts (per SPEC-100)
-- Series List: title, status, session count, metrics summary, reconcile badge.
-- Series Detail: header with SeriesMetrics, sessions table with per-session metrics/status.
+- Series List: title, status, session count, metrics summary.
+- Series Detail: header with SeriesMetrics, sessions table with per-session metrics/status and "Last Synced" column.
 - Session Create/Edit (Draft): title, startsAt, endsAt fields; save locally only.
 - Session Edit (Published): "Save & Publish to Teams" atomic action.
 - Publish Series: confirmation dialog, progress indicator, failure with retry.
-- Drift/Reconcile: badges and comparison values per SPEC-100 display rules.
+- Drift: badges and comparison values per SPEC-100 display rules.
+- Data Sync: auto-sync on page load for published sessions; "Syncing from Teams…" indicator; "Last Synced" timestamps.
 - Delete: confirmation dialogs for both session and series deletion.
 - Teams licensing error: "webinar license required" message, no retry.
 - Empty states: defined per screen in SPEC-100.

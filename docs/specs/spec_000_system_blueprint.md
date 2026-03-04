@@ -9,14 +9,13 @@ Defines V1 architecture baseline, stack, environments, CI/CD, and operational gu
 - Azure SQL
 - Entra ID (single tenant)
 - Azure App Service (single region)
-- Background hosted services (subscription renewal, retries)
 - OpenAPI enabled
 
 ## Architecture
 - Monolith with modular boundaries
 - Web UI → REST API → Azure SQL
-- Webhook endpoint inside API
 - Metrics persisted (no compute-on-read)
+- Data sync (registrations, attendance) is user-initiated via delegated token on page load
 
 ## Repo Structure
 /src/frontend
@@ -38,11 +37,20 @@ Local, Dev, Prod
 
 ## Security
 - JWT validation for all user/business endpoints
-- Webhook validation (machine endpoint; Graph notification validation, not user JWT)
-- Hybrid Graph permission model:
-  - Delegated (OBO flow): webinar create/update/delete — requires user's Teams webinar-capable license
-  - Application (client credentials): subscriptions, registration/attendance reads, background renewal
-- Least-privilege Graph permissions: `VirtualEvent.ReadWrite` (delegated), `VirtualEvent.Read.All` + `VirtualEvent.Read.Chat` (application)
+- Delegated-only Graph permission model (no application permissions):
+  - All Graph API calls use OBO flow — user must be authenticated
+  - Single delegated permission: `VirtualEvent.ReadWrite`
+  - User must have Teams account with webinar-capable license
+
+## App Registration Requirements
+- **Type:** Single-tenant
+- **Platform:** Web (redirect URI for frontend auth)
+- **API permissions (Delegated only):**
+  - `openid`, `profile`, `email`, `offline_access` — standard OIDC
+  - `VirtualEvent.ReadWrite` — Teams virtual events (create, read, update, delete webinars, registrations, attendance)
+- **No application permissions required**
+- **Expose an API:** `api://{ClientId}/access_as_user` scope for frontend → backend token exchange
+- **Client secret:** Required for OBO token exchange
 
 ## Definition of Done
 - Scaffolding complete

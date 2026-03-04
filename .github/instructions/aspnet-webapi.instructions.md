@@ -16,8 +16,7 @@ These instructions apply to the backend project under `src/backend`.
 - SPEC-010 defines domain model, identity rules, and computation logic.
 - SPEC-110 defines API surface, endpoints, and DTO contracts.
 - SPEC-120 defines database schema, column types, constraints, and indexes.
-- SPEC-200 defines Teams/Graph integration, webhook handling, and reconciliation.
-- SPEC-210 defines webhook security and validation.
+- SPEC-200 defines Teams/Graph integration, delegated data sync, and drift detection.
 - SPEC-300 defines metrics engine computation and transaction boundaries.
 - If a required rule is missing in a spec, add `TODO-SPEC` comment and stop.
 
@@ -32,8 +31,7 @@ These instructions apply to the backend project under `src/backend`.
 - `Features/<FeatureName>/` for endpoints, DTOs, handlers, validators.
 - `Domain/` for core entities, value objects, domain rules (identity, normalization, warm/influence logic).
 - `Infrastructure/` for data access, external integrations, providers.
-- `Infrastructure/Graph/` for TeamsGraphClient, OBO token service, subscription management.
-- `Ingestion/` for webhook normalization, deduplication, reconciliation pipeline.
+- `Infrastructure/Graph/` for TeamsGraphClient, OBO token service.
 - `Metrics/` for recompute orchestrator per SPEC-300.
 - `Common/` for shared primitives, errors, and result types.
 - Tests live in `tests/backend/` mirroring feature folders.
@@ -56,20 +54,19 @@ These instructions apply to the backend project under `src/backend`.
 - No pagination in V1 — list endpoints return all results for authenticated user.
 
 ## Microsoft Graph Integration
-- Hybrid permission model per SPEC-200:
-  - Delegated (OBO): webinar create, update, delete — `VirtualEvent.ReadWrite`
-  - Application (client credentials): subscriptions, reads, background — `VirtualEvent.Read.All`, `VirtualEvent.Read.Chat`
+- Delegated-only permission model per SPEC-200:
+  - All Graph operations use OBO flow — `VirtualEvent.ReadWrite` (delegated)
+  - No application permissions required
 - Centralized token acquisition service (TeamsGraphClient).
-- OBO tokens used only in user-initiated request paths.
-- Application tokens used for background hosted services and webhook data fetching.
-- Webhook endpoint: machine-authenticated via clientState validation (SPEC-210), not user JWT.
+- OBO tokens used for all Graph operations — user must be authenticated.
+- Data sync (registrations, attendance) triggered on page load via delegated token.
 
 ## Data Schema
 - Follow SPEC-120 for all table definitions, column types, constraints, indexes.
 - UUID primary keys, UTC datetime2, EF Core migrations only.
 - JSON columns (nvarchar(max)) for warm account lists per SPEC-120/SPEC-300.
 - Session.status: Draft | Published (not Reconciled).
-- Session.reconcileStatus: Synced | Reconciling | Retrying | Disabled.
+- Session.reconcileStatus: Synced | Reconciling.
 - Domain normalization: eTLD+1 / public-suffix-aware registrable domain parsing per SPEC-010.
 - Internal domain exclusion list: sourced from validated environment/config setting.
 
@@ -77,7 +74,7 @@ These instructions apply to the backend project under `src/backend`.
 - Keep secrets in user secrets or environment variables.
 - Avoid committing `appsettings.*.json` for local overrides.
 - Validate configuration with options binding and `ValidateOnStart`.
-- Required config: Entra client id/tenant id/secret, Graph webhook secret, DB connection string, internal domain list.
+- Required config: Entra client id/tenant id/secret, DB connection string, internal domain list.
 
 ## Error Handling and Logging
 - Centralize error handling via middleware or minimal API filters.
@@ -97,7 +94,7 @@ These instructions apply to the backend project under `src/backend`.
 - Prefer immutable records for DTOs where possible.
 - Avoid static state; favor DI for time, randomness, and environment.
 - Document endpoints with OpenAPI metadata.
-- Webhook processing must be idempotent.
+- Sync processing must be idempotent.
 - Metrics recompute must be atomic with normalized data writes.
 
 ## Build and Tooling
