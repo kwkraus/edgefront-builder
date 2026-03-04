@@ -151,7 +151,26 @@ public class SessionService
             }
         }
 
+        var seriesId = session.SeriesId;
         _db.Sessions.Remove(session);
+
+        // If the parent series is Published, check whether any published sessions remain.
+        // If none remain, revert the series to Draft so it doesn't show as "Partially Published".
+        var series = await _db.Series
+            .FirstOrDefaultAsync(s => s.SeriesId == seriesId && s.OwnerUserId == ownerUserId);
+        if (series is not null && series.Status == SeriesStatus.Published)
+        {
+            var hasPublishedSessions = await _db.Sessions
+                .AnyAsync(s => s.SeriesId == seriesId
+                            && s.SessionId != sessionId
+                            && s.Status == SessionStatus.Published);
+            if (!hasPublishedSessions)
+            {
+                series.Status = SeriesStatus.Draft;
+                series.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
         await _db.SaveChangesAsync();
         return true;
     }

@@ -227,6 +227,79 @@ public class SessionServiceTests : IDisposable
         (await _db.Sessions.FindAsync(session.SessionId)).Should().NotBeNull("session should not be deleted by wrong owner");
     }
 
+    [Fact]
+    public async Task DeleteAsync_RevertsSeriesStatusToDraft_WhenLastPublishedSessionDeleted()
+    {
+        // Arrange: Published series with one Published session
+        var series = BuildSeries();
+        series.Status = SeriesStatus.Published;
+        _db.Series.Add(series);
+
+        var session = BuildSession(series.SeriesId);
+        session.Status = SessionStatus.Published;
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _sut.DeleteAsync(session.SessionId, OwnerUserId);
+
+        // Assert
+        result.Should().BeTrue();
+        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
+        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
+            "series should revert to Draft when no published sessions remain");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_KeepsSeriesPublished_WhenOtherPublishedSessionsRemain()
+    {
+        // Arrange: Published series with two Published sessions
+        var series = BuildSeries();
+        series.Status = SeriesStatus.Published;
+        _db.Series.Add(series);
+
+        var session1 = BuildSession(series.SeriesId);
+        session1.Status = SessionStatus.Published;
+        var session2 = BuildSession(series.SeriesId);
+        session2.Status = SessionStatus.Published;
+        _db.Sessions.AddRange(session1, session2);
+        await _db.SaveChangesAsync();
+
+        // Act: delete one of the two published sessions
+        var result = await _sut.DeleteAsync(session1.SessionId, OwnerUserId);
+
+        // Assert
+        result.Should().BeTrue();
+        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
+        updatedSeries!.Status.Should().Be(SeriesStatus.Published,
+            "series should stay Published while other published sessions exist");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RevertsSeriesStatusToDraft_WhenOnlyDraftSessionsRemain()
+    {
+        // Arrange: Published series with one Published and one Draft session
+        var series = BuildSeries();
+        series.Status = SeriesStatus.Published;
+        _db.Series.Add(series);
+
+        var publishedSession = BuildSession(series.SeriesId);
+        publishedSession.Status = SessionStatus.Published;
+        var draftSession = BuildSession(series.SeriesId);
+        draftSession.Status = SessionStatus.Draft;
+        _db.Sessions.AddRange(publishedSession, draftSession);
+        await _db.SaveChangesAsync();
+
+        // Act: delete the only published session
+        var result = await _sut.DeleteAsync(publishedSession.SessionId, OwnerUserId);
+
+        // Assert
+        result.Should().BeTrue();
+        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
+        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
+            "series should revert to Draft when remaining sessions are all Draft");
+    }
+
     // ---------- UpdateAsync ----------
 
     [Fact]
