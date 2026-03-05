@@ -49,6 +49,34 @@ export interface SessionResponse {
   driftStatus: 'None' | 'DriftDetected'
   lastSyncAt: string | null
   lastError: string | null
+  presenters: SessionPresenterDto[]
+  coordinators: SessionCoordinatorDto[]
+}
+
+export interface PersonSearchResult {
+  entraUserId: string
+  displayName: string
+  email: string
+}
+
+export interface SessionPresenterDto {
+  sessionPresenterId: string
+  entraUserId: string
+  displayName: string
+  email: string
+}
+
+export interface SessionCoordinatorDto {
+  sessionCoordinatorId: string
+  entraUserId: string
+  displayName: string
+  email: string
+}
+
+export interface PersonInput {
+  entraUserId: string
+  displayName: string
+  email: string
 }
 
 export interface SeriesMetricsResponse {

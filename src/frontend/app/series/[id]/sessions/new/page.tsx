@@ -6,12 +6,8 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
+import { DateTimePicker } from '@/components/date-time-picker'
 import { createSession } from '@/lib/api/sessions'
-
-function fromDateTimeLocal(local: string): string {
-  if (!local) return ''
-  return new Date(local).toISOString()
-}
 
 export default function NewSessionPage() {
   const params = useParams()
@@ -20,22 +16,23 @@ export default function NewSessionPage() {
   const router = useRouter()
 
   const [title, setTitle] = useState('')
-  const [startsAt, setStartsAt] = useState('')
-  const [endsAt, setEndsAt] = useState('')
+  const [startsAtDate, setStartsAtDate] = useState<Date | null>(null)
+  const [endsAtDate, setEndsAtDate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
 
   const titleError = touched && !title.trim() ? 'Title is required' : null
   const endsAtError =
-    touched && startsAt && endsAt && endsAt <= startsAt
+    touched && startsAtDate && endsAtDate && endsAtDate.getTime() <= startsAtDate.getTime()
       ? 'End time must be after start time'
       : null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (!title.trim() || (startsAt && endsAt && endsAt <= startsAt)) return
+    if (!title.trim()) return
+    if (startsAtDate && endsAtDate && endsAtDate.getTime() <= startsAtDate.getTime()) return
 
     setLoading(true)
     setError(null)
@@ -44,8 +41,8 @@ export default function NewSessionPage() {
         seriesId,
         {
           title: title.trim(),
-          startsAt: startsAt ? fromDateTimeLocal(startsAt) : '',
-          endsAt: endsAt ? fromDateTimeLocal(endsAt) : '',
+          startsAt: startsAtDate ? startsAtDate.toISOString() : '',
+          endsAt: endsAtDate ? endsAtDate.toISOString() : '',
         },
         authSession?.accessToken ?? '',
       )
@@ -72,7 +69,6 @@ export default function NewSessionPage() {
 
       {error && <ErrorBanner message={error} />}
 
-      {/* Loading overlay */}
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" aria-live="polite" aria-busy="true">
           <div className="flex items-center gap-3 rounded-lg bg-background px-6 py-4 shadow-lg">
@@ -106,37 +102,27 @@ export default function NewSessionPage() {
           )}
         </div>
 
-        <div>
-          <label htmlFor="startsAt" className="block text-sm font-medium mb-1.5">
-            Starts At
-          </label>
-          <input
-            id="startsAt"
-            type="datetime-local"
-            value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <div className="rounded-lg border bg-card p-6 space-y-4">
+          <h2 className="text-base font-semibold">Schedule</h2>
+          <DateTimePicker
+            label="Start Time"
+            value={startsAtDate}
+            onChange={setStartsAtDate}
+            disabled={loading}
           />
-        </div>
-
-        <div>
-          <label htmlFor="endsAt" className="block text-sm font-medium mb-1.5">
-            Ends At
-          </label>
-          <input
-            id="endsAt"
-            type="datetime-local"
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-            aria-invalid={endsAtError ? 'true' : undefined}
-            aria-describedby={endsAtError ? 'endsAt-error' : undefined}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
-          />
-          {endsAtError && (
-            <p id="endsAt-error" role="alert" className="mt-1 text-xs text-destructive">
-              {endsAtError}
-            </p>
-          )}
+          <div>
+            <DateTimePicker
+              label="End Time"
+              value={endsAtDate}
+              onChange={setEndsAtDate}
+              disabled={loading}
+            />
+            {endsAtError && (
+              <p id="endsAt-error" role="alert" className="mt-1 text-xs text-destructive">
+                {endsAtError}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-3 pt-2">

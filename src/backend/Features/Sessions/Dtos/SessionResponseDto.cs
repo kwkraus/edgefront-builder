@@ -12,4 +12,6 @@ public record SessionResponseDto(
     string ReconcileStatus,
     string DriftStatus,
     DateTime? LastSyncAt,
-    string? LastError);
+    string? LastError,
+    List<SessionPresenterDto> Presenters,
+    List<SessionCoordinatorDto> Coordinators);

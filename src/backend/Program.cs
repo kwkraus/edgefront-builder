@@ -1,5 +1,6 @@
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Features.Metrics;
+using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Series;
 using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Infrastructure.Data;
@@ -120,6 +121,7 @@ app.MapGet("/api/time", () =>
 // Feature endpoints
 app.MapSeriesEndpoints();
 app.MapSessionEndpoints();
+app.MapPeopleEndpoints();
 app.MapMetricsEndpoints();
 
 app.Run();

@@ -18,7 +18,7 @@ Non-authoritative planning/playbook docs may guide execution process, but they c
 | SPEC-110 | API Surface & OpenAPI Contract | BUILD READY ✅ | SPEC-000, SPEC-010, SPEC-100 |
 | SPEC-120 | Data Schema & Migrations | BUILD READY ✅ | SPEC-000, SPEC-010 |
 | SPEC-200 | Teams Integration & Data Sync | BUILD READY ✅ | SPEC-000, SPEC-010 |
-| SPEC-210 | Webhook Security & Validation | DEPRECATED ❌ | — |
+| SPEC-210 | ~~Webhook Security & Validation~~ → People Roles & Presenter/Coordinator Management | BUILD READY ✅ | SPEC-000, SPEC-010, SPEC-110, SPEC-120, SPEC-200 |
 | SPEC-300 | Metrics Engine & Aggregation | BUILD READY ✅ | SPEC-010, SPEC-200 |
 
 ---
@@ -36,7 +36,7 @@ Non-authoritative planning/playbook docs may guide execution process, but they c
 
 ### Phase 3 — Teams Integration
 6. SPEC-200
-7. ~~SPEC-210~~ (Deprecated — webhooks removed)
+7. SPEC-210 (People Roles & Presenter/Coordinator Management)
 
 ### Phase 4 — Metrics Engine
 8. SPEC-300

@@ -291,6 +291,102 @@ public class TeamsGraphClient : ITeamsGraphClient
 
         return records;
     }
+
+    // ── People search ───────────────────────────────────────────────────────
+
+    public async Task<IEnumerable<PersonSearchResult>> SearchUsersAsync(
+        string query, string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        var result = await client.Users.GetAsync(r =>
+        {
+            r.QueryParameters.Filter = $"startswith(displayName,'{EscapeODataString(query)}')";
+            r.QueryParameters.Select = ["id", "displayName", "mail", "userPrincipalName"];
+            r.QueryParameters.Top = 10;
+        }, cancellationToken: ct);
+
+        if (result?.Value is null) return [];
+
+        return result.Value
+            .Select(u => new PersonSearchResult(
+                u.Id ?? string.Empty,
+                u.DisplayName ?? string.Empty,
+                u.Mail ?? u.UserPrincipalName ?? string.Empty))
+            .Where(p => !string.IsNullOrEmpty(p.EntraUserId));
+    }
+
+    // ── Presenter/co-organizer management ───────────────────────────────────
+
+    public async Task<IEnumerable<TeamsPresenterInfo>> GetWebinarPresentersAsync(
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        var result = await WithTransientRetryAsync(
+            () => client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+                .Presenters.GetAsync(cancellationToken: ct), ct);
+
+        if (result?.Value is null) return [];
+
+        return result.Value
+            .Where(p => p.Id is not null)
+            .Select(p =>
+            {
+                var entraUserId = string.Empty;
+                if (p.Identity is Microsoft.Graph.Models.CommunicationsUserIdentity userIdentity)
+                    entraUserId = userIdentity.Id ?? string.Empty;
+                return new TeamsPresenterInfo(p.Id!, entraUserId);
+            });
+    }
+
+    public async Task AddWebinarPresenterAsync(
+        string teamsWebinarId, string entraUserId, string tenantId,
+        string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        var presenter = new VirtualEventPresenter
+        {
+            Identity = new Microsoft.Graph.Models.CommunicationsUserIdentity
+            {
+                OdataType = "#microsoft.graph.communicationsUserIdentity",
+                Id = entraUserId,
+                TenantId = tenantId
+            }
+        };
+
+        await client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+            .Presenters.PostAsync(presenter, cancellationToken: ct);
+    }
+
+    public async Task RemoveWebinarPresenterAsync(
+        string teamsWebinarId, string presenterId,
+        string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        await client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+            .Presenters[presenterId].DeleteAsync(cancellationToken: ct);
+    }
+
+    public async Task SetWebinarCoOrganizersAsync(
+        string teamsWebinarId, IEnumerable<string> entraUserIds,
+        string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        var body = new VirtualEventWebinar
+        {
+            CoOrganizers = entraUserIds.Select(id => new Microsoft.Graph.Models.CommunicationsUserIdentity
+            {
+                OdataType = "#microsoft.graph.communicationsUserIdentity",
+                Id = id
+            }).ToList()
+        };
+
+        await client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+            .PatchAsync(body, cancellationToken: ct);
+    }
+
+    /// <summary>Escapes single quotes in OData filter strings.</summary>
+    private static string EscapeODataString(string value)
+        => value.Replace("'", "''");
 }
 
 /// <summary>

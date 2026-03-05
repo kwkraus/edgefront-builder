@@ -4,32 +4,41 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft, AlertTriangle, Save, Trash2, RefreshCw, ExternalLink, Rocket } from 'lucide-react'
+import {
+  ChevronLeft,
+  AlertTriangle,
+  Save,
+  Trash2,
+  RefreshCw,
+  ExternalLink,
+  Rocket,
+  Pencil,
+} from 'lucide-react'
 import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { PeoplePicker } from '@/components/people-picker'
+import { DateTimePicker } from '@/components/date-time-picker'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 
 import { getSessionById } from '@/lib/api/sessions'
-import { updateSession, deleteSession, syncSession, publishSession } from '@/lib/api/sessions'
+import {
+  updateSession,
+  deleteSession,
+  syncSession,
+  publishSession,
+  setSessionPresenters,
+  setSessionCoordinators,
+} from '@/lib/api/sessions'
 import { getSessionMetrics } from '@/lib/api/metrics'
-import type { SessionResponse, SessionMetricsResponse } from '@/lib/api/types'
-
-function toDateTimeLocal(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
-}
-
-function fromDateTimeLocal(local: string): string {
-  if (!local) return ''
-  return new Date(local).toISOString()
-}
+import type { SessionResponse, SessionMetricsResponse, PersonInput } from '@/lib/api/types'
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -37,6 +46,12 @@ function formatDateTime(iso: string | null | undefined): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
+}
+
+function toDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? null : d
 }
 
 export default function SessionDetailPage() {
@@ -65,8 +80,22 @@ export default function SessionDetailPage() {
       setMetrics(m ?? null)
       // Sync form state with loaded data
       setTitle(s.title)
-      setStartsAt(toDateTimeLocal(s.startsAt))
-      setEndsAt(toDateTimeLocal(s.endsAt))
+      setStartsAtDate(toDate(s.startsAt))
+      setEndsAtDate(toDate(s.endsAt))
+      setPresenters(
+        s.presenters.map((p) => ({
+          entraUserId: p.entraUserId,
+          displayName: p.displayName,
+          email: p.email,
+        })),
+      )
+      setCoordinators(
+        s.coordinators.map((c) => ({
+          entraUserId: c.entraUserId,
+          displayName: c.displayName,
+          email: c.email,
+        })),
+      )
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load session')
     } finally {
@@ -126,15 +155,32 @@ export default function SessionDetailPage() {
 
   // ── Form state ───────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
-  const [startsAt, setStartsAt] = useState('')
-  const [endsAt, setEndsAt] = useState('')
+  const [startsAtDate, setStartsAtDate] = useState<Date | null>(null)
+  const [endsAtDate, setEndsAtDate] = useState<Date | null>(null)
+  const [presenters, setPresenters] = useState<PersonInput[]>([])
+  const [coordinators, setCoordinators] = useState<PersonInput[]>([])
   const [touched, setTouched] = useState(false)
 
   const titleError = touched && !title.trim() ? 'Title is required' : null
   const endsAtError =
-    touched && startsAt && endsAt && endsAt <= startsAt
+    touched && startsAtDate && endsAtDate && endsAtDate.getTime() <= startsAtDate.getTime()
       ? 'End time must be after start time'
       : null
+
+  // ── Title edit dialog ────────────────────────────────────────────────────
+  const [editTitleOpen, setEditTitleOpen] = useState(false)
+  const [editTitleDraft, setEditTitleDraft] = useState('')
+
+  function openTitleEdit() {
+    setEditTitleDraft(title)
+    setEditTitleOpen(true)
+  }
+
+  function handleTitleSave() {
+    if (!editTitleDraft.trim()) return
+    setTitle(editTitleDraft.trim())
+    setEditTitleOpen(false)
+  }
 
   // ── Save ─────────────────────────────────────────────────────────────────
   const [saveLoading, setSaveLoading] = useState(false)
@@ -144,7 +190,8 @@ export default function SessionDetailPage() {
   async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault()
     setTouched(true)
-    if (!title.trim() || (startsAt && endsAt && endsAt <= startsAt)) return
+    if (!title.trim()) return
+    if (startsAtDate && endsAtDate && endsAtDate.getTime() <= startsAtDate.getTime()) return
 
     setSaveLoading(true)
     setSaveError(null)
@@ -154,11 +201,13 @@ export default function SessionDetailPage() {
         id,
         {
           title: title.trim(),
-          startsAt: startsAt ? fromDateTimeLocal(startsAt) : '',
-          endsAt: endsAt ? fromDateTimeLocal(endsAt) : '',
+          startsAt: startsAtDate ? startsAtDate.toISOString() : '',
+          endsAt: endsAtDate ? endsAtDate.toISOString() : '',
         },
         token,
       )
+      await setSessionPresenters(id, presenters, token)
+      await setSessionCoordinators(id, coordinators, token)
       router.push(`/series/${session?.seriesId}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Save failed'
@@ -216,50 +265,62 @@ export default function SessionDetailPage() {
     }
   }
 
-  // ── Loading state ────────────────────────────────────────────────────────
+  // ── Derived state ────────────────────────────────────────────────────────
+  const busy = saveLoading || deleteLoading || publishLoading
+
+  // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loadingData) {
     return (
       <div className="max-w-2xl space-y-6" aria-label="Loading session…" aria-busy="true">
         {/* Back link */}
         <div className="h-4 w-28 rounded bg-stone-200 animate-pulse" />
 
-        {/* Header: title + status badge */}
+        {/* Header: title + pencil + status badge */}
         <div className="flex items-center gap-3">
           <div className="h-8 w-64 rounded bg-stone-200 animate-pulse" />
+          <div className="h-8 w-8 rounded bg-stone-200 animate-pulse" />
           <div className="h-6 w-20 rounded-full bg-stone-200 animate-pulse" />
         </div>
 
-        {/* Form card */}
-        <div className="space-y-5 rounded-lg border bg-card p-6">
-          {/* Section heading */}
-          <div className="h-5 w-32 rounded bg-stone-200 animate-pulse" />
-
-          {/* Title field */}
+        {/* Schedule card */}
+        <div className="space-y-4 rounded-lg border bg-card p-6">
+          <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
           <div className="space-y-1.5">
-            <div className="h-4 w-12 rounded bg-stone-200 animate-pulse" />
+            <div className="h-4 w-20 rounded bg-stone-200 animate-pulse" />
             <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
           </div>
-
-          {/* Starts At field */}
           <div className="space-y-1.5">
             <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
             <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
           </div>
+        </div>
 
-          {/* Ends At field */}
-          <div className="space-y-1.5">
-            <div className="h-4 w-14 rounded bg-stone-200 animate-pulse" />
-            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
-          </div>
+        {/* Presenters card */}
+        <div className="space-y-4 rounded-lg border bg-card p-6">
+          <div className="h-5 w-28 rounded bg-stone-200 animate-pulse" />
+          <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+        </div>
 
-          {/* Button row */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-24 rounded-md bg-stone-200 animate-pulse" />
-              <div className="h-10 w-20 rounded-md bg-stone-200 animate-pulse" />
-            </div>
-            <div className="h-10 w-10 rounded-md bg-stone-200 animate-pulse" />
+        {/* Coordinators card */}
+        <div className="space-y-4 rounded-lg border bg-card p-6">
+          <div className="h-5 w-32 rounded bg-stone-200 animate-pulse" />
+          <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+        </div>
+
+        {/* Teams Integration card */}
+        <div className="space-y-4 rounded-lg border bg-card p-6">
+          <div className="h-5 w-36 rounded bg-stone-200 animate-pulse" />
+          <div className="h-4 w-48 rounded bg-stone-200 animate-pulse" />
+        </div>
+
+        {/* Button row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-24 rounded-md bg-stone-200 animate-pulse" />
+            <div className="h-10 w-32 rounded-md bg-stone-200 animate-pulse" />
+            <div className="h-10 w-20 rounded-md bg-stone-200 animate-pulse" />
           </div>
+          <div className="h-10 w-10 rounded-md bg-stone-200 animate-pulse" />
         </div>
 
         {/* Metrics section */}
@@ -303,13 +364,27 @@ export default function SessionDetailPage() {
         Back to Series
       </Link>
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* ── Header: Title + Pencil + StatusBadge ───────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{session.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+            <button
+              type="button"
+              onClick={openTitleEdit}
+              disabled={busy}
+              className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50"
+              aria-label="Edit session title"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
             <StatusBadge status={session.status} />
           </div>
+          {titleError && (
+            <p role="alert" className="text-xs text-destructive">
+              {titleError}
+            </p>
+          )}
           <div className="flex items-center gap-3">
             {session.joinWebUrl && (
               <a
@@ -425,7 +500,7 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      {/* ── Edit form ───────────────────────────────────────────────────────── */}
+      {/* ── Save overlay ─────────────────────────────────────────────────────── */}
       {saveLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" aria-live="polite" aria-busy="true">
           <div className="flex items-center gap-3 rounded-lg bg-background px-6 py-4 shadow-lg">
@@ -437,75 +512,104 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} noValidate className="space-y-5 rounded-lg border bg-card p-6">
-        <h2 className="text-base font-semibold">Session Details</h2>
+      {/* ── Schedule card ────────────────────────────────────────────────────── */}
+      <form onSubmit={handleSave} noValidate className="space-y-6">
+        <section className="rounded-lg border bg-card p-6 space-y-4">
+          <h2 className="text-base font-semibold">Schedule</h2>
 
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium mb-1.5">
-            Title <span className="text-destructive" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => setTouched(true)}
-            aria-invalid={titleError ? 'true' : undefined}
-            aria-describedby={titleError ? 'title-error' : undefined}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+          <DateTimePicker
+            label="Start Time"
+            value={startsAtDate}
+            onChange={(d) => setStartsAtDate(d)}
+            disabled={saveLoading}
           />
-          {titleError && (
-            <p id="title-error" role="alert" className="mt-1 text-xs text-destructive">
-              {titleError}
-            </p>
-          )}
-        </div>
 
-        <div>
-          <label htmlFor="startsAt" className="block text-sm font-medium mb-1.5">
-            Starts At
-          </label>
-          <input
-            id="startsAt"
-            type="datetime-local"
-            value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div>
+            <DateTimePicker
+              label="End Time"
+              value={endsAtDate}
+              onChange={(d) => setEndsAtDate(d)}
+              disabled={saveLoading}
+            />
+            {endsAtError && (
+              <p role="alert" className="mt-1 text-xs text-destructive">
+                {endsAtError}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* ── Presenters card ──────────────────────────────────────────────────── */}
+        <section className="rounded-lg border bg-card p-6 space-y-4">
+          <h2 className="text-base font-semibold">Presenters</h2>
+          <PeoplePicker
+            label="Presenters"
+            value={presenters}
+            onChange={setPresenters}
+            disabled={saveLoading}
           />
-        </div>
+        </section>
 
-        <div>
-          <label htmlFor="endsAt" className="block text-sm font-medium mb-1.5">
-            Ends At
-          </label>
-          <input
-            id="endsAt"
-            type="datetime-local"
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-            aria-invalid={endsAtError ? 'true' : undefined}
-            aria-describedby={endsAtError ? 'endsAt-error' : undefined}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+        {/* ── Coordinators card ────────────────────────────────────────────────── */}
+        <section className="rounded-lg border bg-card p-6 space-y-4">
+          <h2 className="text-base font-semibold">Coordinators</h2>
+          <PeoplePicker
+            label="Coordinators"
+            value={coordinators}
+            onChange={setCoordinators}
+            disabled={saveLoading}
           />
-          {endsAtError && (
-            <p id="endsAt-error" role="alert" className="mt-1 text-xs text-destructive">
-              {endsAtError}
-            </p>
-          )}
-        </div>
+        </section>
 
-        {session.lastSyncAt && (
-          <p className="text-xs text-muted-foreground">
-            Last synced: {formatDateTime(session.lastSyncAt)}
-          </p>
-        )}
-        {session.lastError && (
-          <p className="text-xs text-destructive">
-            Last error: {session.lastError}
-          </p>
-        )}
+        {/* ── Teams Integration card ───────────────────────────────────────────── */}
+        <section className="rounded-lg border bg-card p-6 space-y-3">
+          <h2 className="text-base font-semibold">Teams Integration</h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Status</dt>
+            <dd>{isPublished ? 'Published' : 'Draft (not published)'}</dd>
 
-        <div className="flex items-center justify-between pt-1">
+            {session.joinWebUrl && (
+              <>
+                <dt className="text-muted-foreground">Join Link</dt>
+                <dd>
+                  <a
+                    href={session.joinWebUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    Open in Teams
+                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                  </a>
+                </dd>
+              </>
+            )}
+
+            <dt className="text-muted-foreground">Last Synced</dt>
+            <dd>
+              {syncing ? (
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                  <RefreshCw className="size-3 animate-spin" aria-hidden="true" />
+                  Syncing…
+                </span>
+              ) : session.lastSyncAt ? (
+                formatDateTime(session.lastSyncAt)
+              ) : (
+                <span className="text-amber-600">Never synced</span>
+              )}
+            </dd>
+
+            {session.lastError && (
+              <>
+                <dt className="text-muted-foreground">Last Error</dt>
+                <dd className="text-destructive">{session.lastError}</dd>
+              </>
+            )}
+          </dl>
+        </section>
+
+        {/* ── Action buttons ───────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="submit"
@@ -544,12 +648,10 @@ export default function SessionDetailPage() {
         </div>
       </form>
 
-      {/* ── Session Metrics ───────────────────────────────────────────────── */}
+      {/* ── Metrics card ───────────────────────────────────────────────────── */}
       {metrics && (
-        <section aria-label="Session metrics">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Metrics
-          </h2>
+        <section className="rounded-lg border bg-card p-6 space-y-4" aria-label="Session metrics">
+          <h2 className="text-base font-semibold">Metrics</h2>
           <MetricsPanel
             metrics={[
               { label: 'Registrations', value: metrics.totalRegistrations },
@@ -559,7 +661,7 @@ export default function SessionDetailPage() {
             ]}
           />
           {metrics.warmAccountsTriggered.length > 0 && (
-            <div className="mt-3">
+            <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Warm accounts triggered:
               </p>
@@ -577,6 +679,51 @@ export default function SessionDetailPage() {
           )}
         </section>
       )}
+
+      {/* ── Title edit dialog ──────────────────────────────────────────────── */}
+      <Dialog open={editTitleOpen} onOpenChange={setEditTitleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Session Title</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <label htmlFor="edit-session-title" className="block text-sm font-medium mb-1.5">
+              Title <span className="text-destructive" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="edit-session-title"
+              type="text"
+              value={editTitleDraft}
+              onChange={(e) => setEditTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleTitleSave()
+                }
+              }}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setEditTitleOpen(false)}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleTitleSave}
+              disabled={!editTitleDraft.trim()}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Delete Confirm ────────────────────────────────────────────────── */}
       <ConfirmDialog

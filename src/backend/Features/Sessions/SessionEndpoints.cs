@@ -202,6 +202,76 @@ public static class SessionEndpoints
             return Results.Ok(new { driftStatus = driftStatus.ToString() });
         });
 
+        // --- Presenter / Coordinator role management (SPEC-210) ---
+
+        sessionGroup.MapGet("/{id:guid}/presenters", async (Guid id, SessionService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            // Verify session exists and belongs to user
+            var session = await service.GetByIdAsync(id, userId);
+            if (session is null)
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+
+            var presenters = await service.GetPresentersAsync(id);
+            return Results.Ok(presenters);
+        });
+
+        sessionGroup.MapPut("/{id:guid}/presenters", async (Guid id, SetPresentersRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, IConfiguration config, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (presenters, errorCode) = await service.SetPresentersAsync(id, userId, req, oboToken, graphClient, config, logger);
+            if (presenters is null)
+            {
+                return Results.NotFound(new ErrorEnvelope(
+                    errorCode ?? "session_not_found", "Session not found.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(presenters);
+        });
+
+        sessionGroup.MapGet("/{id:guid}/coordinators", async (Guid id, SessionService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            // Verify session exists and belongs to user
+            var session = await service.GetByIdAsync(id, userId);
+            if (session is null)
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+
+            var coordinators = await service.GetCoordinatorsAsync(id);
+            return Results.Ok(coordinators);
+        });
+
+        sessionGroup.MapPut("/{id:guid}/coordinators", async (Guid id, SetCoordinatorsRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (coordinators, errorCode) = await service.SetCoordinatorsAsync(id, userId, req, oboToken, graphClient, logger);
+            if (coordinators is null)
+            {
+                return Results.NotFound(new ErrorEnvelope(
+                    errorCode ?? "session_not_found", "Session not found.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(coordinators);
+        });
+
         return app;
     }
 
