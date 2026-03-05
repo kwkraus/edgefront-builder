@@ -119,7 +119,7 @@ public static class SessionEndpoints
         });
 
         // TODO-SPEC: POST /sessions/{id}/publish not yet in SPEC-110; added for incremental session publish.
-        sessionGroup.MapPost("/{id:guid}/publish", async (Guid id, SessionService service, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        sessionGroup.MapPost("/{id:guid}/publish", async (Guid id, SessionService service, ITeamsGraphClient graphClient, IOboTokenService oboService, IConfiguration config, HttpContext ctx, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("SessionEndpoints");
             var userId = ctx.GetUserOid();
@@ -128,7 +128,7 @@ public static class SessionEndpoints
 
             var oboToken = await TryGetOboTokenAsync(ctx, oboService);
 
-            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger);
+            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger, config);
             if (session is null)
             {
                 if (errorCode == "session_not_found")
@@ -200,6 +200,74 @@ public static class SessionEndpoints
 
             var driftStatus = await driftService.CheckDriftAsync(id, userId, oboToken);
             return Results.Ok(new { driftStatus = driftStatus.ToString() });
+        });
+
+        // --- Presenter / Coordinator role management (SPEC-210) ---
+
+        sessionGroup.MapGet("/{id:guid}/presenters", async (Guid id, SessionService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            // Verify session exists and belongs to user; roles are already loaded as part of the response
+            var session = await service.GetByIdAsync(id, userId);
+            if (session is null)
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+
+            return Results.Ok(session.Presenters);
+        });
+
+        sessionGroup.MapPut("/{id:guid}/presenters", async (Guid id, SetPresentersRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, IConfiguration config, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (presenters, errorCode) = await service.SetPresentersAsync(id, userId, req, oboToken, graphClient, config, logger);
+            if (presenters is null)
+            {
+                return Results.NotFound(new ErrorEnvelope(
+                    errorCode ?? "session_not_found", "Session not found.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(presenters);
+        });
+
+        sessionGroup.MapGet("/{id:guid}/coordinators", async (Guid id, SessionService service, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            // Verify session exists and belongs to user; roles are already loaded as part of the response
+            var session = await service.GetByIdAsync(id, userId);
+            if (session is null)
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+
+            return Results.Ok(session.Coordinators);
+        });
+
+        sessionGroup.MapPut("/{id:guid}/coordinators", async (Guid id, SetCoordinatorsRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        {
+            var logger = loggerFactory.CreateLogger("SessionEndpoints");
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (coordinators, errorCode) = await service.SetCoordinatorsAsync(id, userId, req, oboToken, graphClient, logger);
+            if (coordinators is null)
+            {
+                return Results.NotFound(new ErrorEnvelope(
+                    errorCode ?? "session_not_found", "Session not found.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(coordinators);
         });
 
         return app;

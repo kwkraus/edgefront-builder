@@ -1,9 +1,11 @@
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
+using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EdgeFront.Builder.Features.Sessions;
@@ -55,7 +57,10 @@ public class SessionService
     {
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
-        return session is null ? null : ToResponseDto(session);
+        if (session is null) return null;
+
+        var (presenters, coordinators) = await GetRolesAsync(sessionId);
+        return ToResponseDto(session, presenters, coordinators);
     }
 
     public async Task<(SessionResponseDto? session, string? errorCode)> CreateAsync(
@@ -125,7 +130,9 @@ public class SessionService
         }
 
         await _db.SaveChangesAsync();
-        return (ToResponseDto(session), null);
+
+        var (presenters, coordinators) = await GetRolesAsync(sessionId);
+        return (ToResponseDto(session, presenters, coordinators), null);
     }
 
     public async Task<bool> DeleteAsync(
@@ -183,7 +190,8 @@ public class SessionService
     /// </summary>
     public async Task<(SessionResponseDto? session, string? errorCode)> PublishAsync(
         Guid sessionId, string ownerUserId,
-        string? oboToken = null, ITeamsGraphClient? graphClient = null, ILogger? logger = null)
+        string? oboToken = null, ITeamsGraphClient? graphClient = null, ILogger? logger = null,
+        IConfiguration? config = null)
     {
         logger ??= NullLogger.Instance;
 
@@ -210,7 +218,9 @@ public class SessionService
             session.ReconcileStatus = ReconcileStatus.Synced;
             session.LastSyncAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            return (ToResponseDto(session), null);
+
+            var (p, c) = await GetRolesAsync(sessionId);
+            return (ToResponseDto(session, p, c), null);
         }
 
         // Create and publish the Teams webinar
@@ -233,7 +243,38 @@ public class SessionService
             session.LastSyncAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
-            return (ToResponseDto(session), null);
+
+            var (p, c) = await GetRolesAsync(sessionId);
+
+            // SPEC-210: best-effort sync of local presenters/co-organizers to the new Teams webinar
+            if (config is null && (p.Count > 0 || c.Count > 0))
+            {
+                logger.LogWarning(
+                    "Skipping role sync after publish: IConfiguration not provided. SessionId={SessionId}",
+                    sessionId);
+            }
+            else if (config is not null && (p.Count > 0 || c.Count > 0))
+            {
+                var tenantId = config["AzureAd:TenantId"];
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    try
+                    {
+                        await Task.WhenAll(p.Select(presenter =>
+                            graphClient.AddWebinarPresenterAsync(createdWebinarId, presenter.EntraUserId, tenantId, oboToken)));
+                        if (c.Count > 0)
+                            await graphClient.SetWebinarCoOrganizersAsync(createdWebinarId, c.Select(co => co.EntraUserId), oboToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex,
+                            "Role sync after publish failed for SessionId={SessionId}. Local roles are correct.",
+                            sessionId);
+                    }
+                }
+            }
+
+            return (ToResponseDto(session, p, c), null);
         }
         catch (TeamsLicenseException lex)
         {
@@ -247,6 +288,187 @@ public class SessionService
             var rollbackOk = await RollbackWebinarAsync(graphClient, oboToken, createdWebinarId, logger);
             return (null, rollbackOk ? "SESSION_PUBLISH_FAILED" : "SESSION_PUBLISH_PARTIAL_FAILURE");
         }
+    }
+
+    // --- Presenter / Coordinator role management (SPEC-210) ---
+
+    public async Task<List<SessionPresenterDto>> GetPresentersAsync(Guid sessionId)
+    {
+        return await _db.SessionPresenters
+            .Where(p => p.SessionId == sessionId)
+            .OrderBy(p => p.CreatedAt)
+            .Select(p => new SessionPresenterDto(p.SessionPresenterId, p.EntraUserId, p.DisplayName, p.Email))
+            .ToListAsync();
+    }
+
+    public async Task<List<SessionCoordinatorDto>> GetCoordinatorsAsync(Guid sessionId)
+    {
+        return await _db.SessionCoordinators
+            .Where(c => c.SessionId == sessionId)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new SessionCoordinatorDto(c.SessionCoordinatorId, c.EntraUserId, c.DisplayName, c.Email))
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Replace all presenters for a session. If the session is Published with a Teams webinar,
+    /// performs a diff-based sync (add new, remove old) against Teams. Teams sync failures are
+    /// logged as warnings; local changes are still committed.
+    /// </summary>
+    public async Task<(List<SessionPresenterDto>? presenters, string? errorCode)> SetPresentersAsync(
+        Guid sessionId, string ownerUserId, SetPresentersRequest req,
+        string? oboToken, ITeamsGraphClient? graphClient, IConfiguration config, ILogger? logger = null)
+    {
+        logger ??= NullLogger.Instance;
+
+        if (req.People is null)
+            return (null, "people_required");
+
+        var duplicates = req.People
+            .GroupBy(p => p.EntraUserId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        if (duplicates.Count > 0)
+            return (null, "duplicate_entra_user_id");
+
+        var session = await _db.Sessions
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
+        if (session is null)
+            return (null, "session_not_found");
+
+        // Remove existing presenters
+        var existing = await _db.SessionPresenters
+            .Where(p => p.SessionId == sessionId)
+            .ToListAsync();
+        _db.SessionPresenters.RemoveRange(existing);
+
+        // Insert new presenters
+        var now = DateTime.UtcNow;
+        var newPresenters = req.People.Select(p => new SessionPresenter
+        {
+            SessionPresenterId = Guid.NewGuid(),
+            SessionId = sessionId,
+            EntraUserId = p.EntraUserId,
+            DisplayName = p.DisplayName,
+            Email = p.Email,
+            CreatedAt = now
+        }).ToList();
+        _db.SessionPresenters.AddRange(newPresenters);
+        await _db.SaveChangesAsync();
+
+        // SPEC-210: diff-based sync to Teams if published
+        if (session.Status == SessionStatus.Published
+            && session.TeamsWebinarId is not null
+            && graphClient is not null
+            && !string.IsNullOrEmpty(oboToken))
+        {
+            try
+            {
+                var tenantId = config["AzureAd:TenantId"]!;
+                var teamsPresenters = await graphClient.GetWebinarPresentersAsync(session.TeamsWebinarId, oboToken);
+                var teamsEntraIds = teamsPresenters.Select(tp => tp.EntraUserId).ToHashSet();
+                var desiredEntraIds = req.People.Select(p => p.EntraUserId).ToHashSet();
+
+                // Add new presenters to Teams
+                foreach (var entraUserId in desiredEntraIds.Except(teamsEntraIds))
+                {
+                    await graphClient.AddWebinarPresenterAsync(session.TeamsWebinarId, entraUserId, tenantId, oboToken);
+                }
+
+                // Remove old presenters from Teams
+                foreach (var tp in teamsPresenters.Where(tp => !desiredEntraIds.Contains(tp.EntraUserId)))
+                {
+                    await graphClient.RemoveWebinarPresenterAsync(session.TeamsWebinarId, tp.PresenterId, oboToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Teams presenter sync failed for SessionId={SessionId}. Local changes saved.",
+                    sessionId);
+            }
+        }
+
+        return (newPresenters.Select(p =>
+            new SessionPresenterDto(p.SessionPresenterId, p.EntraUserId, p.DisplayName, p.Email)).ToList(), null);
+    }
+
+    /// <summary>
+    /// Replace all coordinators for a session. If the session is Published with a Teams webinar,
+    /// performs a full replacement via SetWebinarCoOrganizersAsync. Teams sync failures are
+    /// logged as warnings; local changes are still committed.
+    /// </summary>
+    public async Task<(List<SessionCoordinatorDto>? coordinators, string? errorCode)> SetCoordinatorsAsync(
+        Guid sessionId, string ownerUserId, SetCoordinatorsRequest req,
+        string? oboToken, ITeamsGraphClient? graphClient, ILogger? logger = null)
+    {
+        logger ??= NullLogger.Instance;
+
+        if (req.People is null)
+            return (null, "people_required");
+
+        var duplicates = req.People
+            .GroupBy(p => p.EntraUserId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        if (duplicates.Count > 0)
+            return (null, "duplicate_entra_user_id");
+
+        var session = await _db.Sessions
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
+        if (session is null)
+            return (null, "session_not_found");
+
+        // Remove existing coordinators
+        var existing = await _db.SessionCoordinators
+            .Where(c => c.SessionId == sessionId)
+            .ToListAsync();
+        _db.SessionCoordinators.RemoveRange(existing);
+
+        // Insert new coordinators
+        var now = DateTime.UtcNow;
+        var newCoordinators = req.People.Select(p => new SessionCoordinator
+        {
+            SessionCoordinatorId = Guid.NewGuid(),
+            SessionId = sessionId,
+            EntraUserId = p.EntraUserId,
+            DisplayName = p.DisplayName,
+            Email = p.Email,
+            CreatedAt = now
+        }).ToList();
+        _db.SessionCoordinators.AddRange(newCoordinators);
+        await _db.SaveChangesAsync();
+
+        // SPEC-210: full replacement sync to Teams if published
+        if (session.Status == SessionStatus.Published
+            && session.TeamsWebinarId is not null
+            && graphClient is not null
+            && !string.IsNullOrEmpty(oboToken))
+        {
+            try
+            {
+                var entraUserIds = req.People.Select(p => p.EntraUserId);
+                await graphClient.SetWebinarCoOrganizersAsync(session.TeamsWebinarId, entraUserIds, oboToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Teams coordinator sync failed for SessionId={SessionId}. Local changes saved.",
+                    sessionId);
+            }
+        }
+
+        return (newCoordinators.Select(c =>
+            new SessionCoordinatorDto(c.SessionCoordinatorId, c.EntraUserId, c.DisplayName, c.Email)).ToList(), null);
+    }
+
+    // --- Helpers ---
+
+    private async Task<(List<SessionPresenterDto>, List<SessionCoordinatorDto>)> GetRolesAsync(Guid sessionId)
+    {
+        var presenters = await GetPresentersAsync(sessionId);
+        var coordinators = await GetCoordinatorsAsync(sessionId);
+        return (presenters, coordinators);
     }
 
     private static async Task<bool> RollbackWebinarAsync(
@@ -266,9 +488,14 @@ public class SessionService
         }
     }
 
-    private static SessionResponseDto ToResponseDto(Session s) =>
+    private static SessionResponseDto ToResponseDto(
+        Session s,
+        List<SessionPresenterDto>? presenters = null,
+        List<SessionCoordinatorDto>? coordinators = null) =>
         new(s.SessionId, s.SeriesId, s.Title, s.StartsAt, s.EndsAt,
             s.Status.ToString(), s.TeamsWebinarId, s.JoinWebUrl,
             s.ReconcileStatus.ToString(), s.DriftStatus.ToString(),
-            s.LastSyncAt, s.LastError);
+            s.LastSyncAt, s.LastError,
+            presenters ?? new List<SessionPresenterDto>(),
+            coordinators ?? new List<SessionCoordinatorDto>());
 }
