@@ -1,7 +1,8 @@
 'use client'
 
-import { signOut, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import UserMenu from '@/components/user-menu'
 
 export default function AppHeader() {
   const { data: session } = useSession()
@@ -20,14 +21,7 @@ export default function AppHeader() {
             About
           </Link>
         </div>
-        {session && (
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sign out
-          </button>
-        )}
+        {session && <UserMenu />}
       </div>
     </header>
   )

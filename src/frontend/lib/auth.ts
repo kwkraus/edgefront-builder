@@ -16,15 +16,32 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Persist the access_token to the token right after sign in
       if (account?.access_token) {
         token.accessToken = account.access_token
+
+        // Fetch Entra ID profile photo from Microsoft Graph
+        try {
+          const photoResponse = await fetch(
+            'https://graph.microsoft.com/v1.0/me/photo/$value',
+            { headers: { Authorization: `Bearer ${account.access_token}` } }
+          )
+          if (photoResponse.ok) {
+            const arrayBuffer = await photoResponse.arrayBuffer()
+            const base64 = Buffer.from(arrayBuffer).toString('base64')
+            const contentType = photoResponse.headers.get('content-type') || 'image/jpeg'
+            token.picture = `data:${contentType};base64,${base64}`
+          }
+        } catch {
+          // No profile photo available — avatar will use initials fallback
+        }
       }
       return token
     },
     async session({ session, token }) {
-      // Forward accessToken to the client session
       session.accessToken = token.accessToken
+      if (token.picture && session.user) {
+        session.user.image = token.picture
+      }
       return session
     },
   },
