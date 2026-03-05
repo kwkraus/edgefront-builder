@@ -5,7 +5,7 @@ import Link from 'next/link'
 import UserMenu from '@/components/user-menu'
 
 export default function AppHeader() {
-  const { data: session } = useSession()
+  const { status } = useSession()
 
   return (
     <header className="border-b bg-background sticky top-0 z-30">
@@ -21,7 +21,7 @@ export default function AppHeader() {
             About
           </Link>
         </div>
-        {session && <UserMenu />}
+        {status === 'authenticated' && <UserMenu />}
       </div>
     </header>
   )
