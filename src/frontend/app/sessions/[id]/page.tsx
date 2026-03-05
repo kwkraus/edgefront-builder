@@ -271,7 +271,7 @@ export default function SessionDetailPage() {
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loadingData) {
     return (
-      <div className="max-w-2xl space-y-6" aria-label="Loading session…" aria-busy="true">
+      <div className="space-y-6" aria-label="Loading session…" aria-busy="true">
         {/* Back link */}
         <div className="h-4 w-28 rounded bg-stone-200 animate-pulse" />
 
@@ -282,35 +282,32 @@ export default function SessionDetailPage() {
           <div className="h-6 w-20 rounded-full bg-stone-200 animate-pulse" />
         </div>
 
-        {/* Schedule card */}
-        <div className="space-y-4 rounded-lg border bg-card p-6">
-          <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
-          <div className="space-y-1.5">
-            <div className="h-4 w-20 rounded bg-stone-200 animate-pulse" />
-            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+        {/* Two-column grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
+          {/* Schedule card */}
+          <div className="space-y-4 rounded-lg border bg-card p-6">
+            <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-20 rounded bg-stone-200 animate-pulse" />
+              <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
+              <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
-            <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+
+          {/* Presenters + Coordinators */}
+          <div className="space-y-6">
+            <div className="space-y-3 rounded-lg border bg-card p-6">
+              <div className="h-5 w-28 rounded bg-stone-200 animate-pulse" />
+              <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+            </div>
+            <div className="space-y-3 rounded-lg border bg-card p-6">
+              <div className="h-5 w-32 rounded bg-stone-200 animate-pulse" />
+              <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
+            </div>
           </div>
-        </div>
-
-        {/* Presenters card */}
-        <div className="space-y-4 rounded-lg border bg-card p-6">
-          <div className="h-5 w-28 rounded bg-stone-200 animate-pulse" />
-          <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
-        </div>
-
-        {/* Coordinators card */}
-        <div className="space-y-4 rounded-lg border bg-card p-6">
-          <div className="h-5 w-32 rounded bg-stone-200 animate-pulse" />
-          <div className="h-10 w-full rounded-md bg-stone-200 animate-pulse" />
-        </div>
-
-        {/* Teams Integration card */}
-        <div className="space-y-4 rounded-lg border bg-card p-6">
-          <div className="h-5 w-36 rounded bg-stone-200 animate-pulse" />
-          <div className="h-4 w-48 rounded bg-stone-200 animate-pulse" />
         </div>
 
         {/* Button row */}
@@ -354,7 +351,7 @@ export default function SessionDetailPage() {
   const saveLabel = isPublished ? 'Save & Publish to Teams' : 'Save'
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       {/* ── Back link ──────────────────────────────────────────────────────── */}
       <Link
         href={`/series/${session.seriesId}`}
@@ -512,101 +509,60 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      {/* ── Schedule card ────────────────────────────────────────────────────── */}
+      {/* ── Form: Two-column layout ──────────────────────────────────────── */}
       <form onSubmit={handleSave} noValidate className="space-y-6">
-        <section className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-base font-semibold">Schedule</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
+          {/* ── Left column: Schedule ──────────────────────────────────────── */}
+          <section className="rounded-lg border bg-card p-6 space-y-4">
+            <h2 className="text-base font-semibold">Schedule</h2>
 
-          <DateTimePicker
-            label="Start Time"
-            value={startsAtDate}
-            onChange={(d) => setStartsAtDate(d)}
-            disabled={saveLoading}
-          />
-
-          <div>
             <DateTimePicker
-              label="End Time"
-              value={endsAtDate}
-              onChange={(d) => setEndsAtDate(d)}
+              label="Start Time"
+              value={startsAtDate}
+              onChange={(d) => setStartsAtDate(d)}
               disabled={saveLoading}
             />
-            {endsAtError && (
-              <p role="alert" className="mt-1 text-xs text-destructive">
-                {endsAtError}
-              </p>
-            )}
-          </div>
-        </section>
 
-        {/* ── Presenters card ──────────────────────────────────────────────────── */}
-        <section className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-base font-semibold">Presenters</h2>
-          <PeoplePicker
-            label="Presenters"
-            value={presenters}
-            onChange={setPresenters}
-            disabled={saveLoading}
-          />
-        </section>
-
-        {/* ── Coordinators card ────────────────────────────────────────────────── */}
-        <section className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-base font-semibold">Coordinators</h2>
-          <PeoplePicker
-            label="Coordinators"
-            value={coordinators}
-            onChange={setCoordinators}
-            disabled={saveLoading}
-          />
-        </section>
-
-        {/* ── Teams Integration card ───────────────────────────────────────────── */}
-        <section className="rounded-lg border bg-card p-6 space-y-3">
-          <h2 className="text-base font-semibold">Teams Integration</h2>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Status</dt>
-            <dd>{isPublished ? 'Published' : 'Draft (not published)'}</dd>
-
-            {session.joinWebUrl && (
-              <>
-                <dt className="text-muted-foreground">Join Link</dt>
-                <dd>
-                  <a
-                    href={session.joinWebUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
-                  >
-                    Open in Teams
-                    <ExternalLink className="size-3.5" aria-hidden="true" />
-                  </a>
-                </dd>
-              </>
-            )}
-
-            <dt className="text-muted-foreground">Last Synced</dt>
-            <dd>
-              {syncing ? (
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <RefreshCw className="size-3 animate-spin" aria-hidden="true" />
-                  Syncing…
-                </span>
-              ) : session.lastSyncAt ? (
-                formatDateTime(session.lastSyncAt)
-              ) : (
-                <span className="text-amber-600">Never synced</span>
+            <div>
+              <DateTimePicker
+                label="End Time"
+                value={endsAtDate}
+                onChange={(d) => setEndsAtDate(d)}
+                disabled={saveLoading}
+              />
+              {endsAtError && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {endsAtError}
+                </p>
               )}
-            </dd>
+            </div>
+          </section>
 
-            {session.lastError && (
-              <>
-                <dt className="text-muted-foreground">Last Error</dt>
-                <dd className="text-destructive">{session.lastError}</dd>
-              </>
-            )}
-          </dl>
-        </section>
+          {/* ── Right column: Presenters & Coordinators ────────────────────── */}
+          <div className="space-y-6">
+            <section className="rounded-lg border bg-card p-6 space-y-3">
+              <h2 className="text-base font-semibold">Presenters</h2>
+              <PeoplePicker
+                label="Presenters"
+                hideLabel
+                value={presenters}
+                onChange={setPresenters}
+                disabled={saveLoading}
+              />
+            </section>
+
+            <section className="rounded-lg border bg-card p-6 space-y-3">
+              <h2 className="text-base font-semibold">Coordinators</h2>
+              <PeoplePicker
+                label="Coordinators"
+                hideLabel
+                value={coordinators}
+                onChange={setCoordinators}
+                disabled={saveLoading}
+              />
+            </section>
+          </div>
+        </div>
 
         {/* ── Action buttons ───────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">

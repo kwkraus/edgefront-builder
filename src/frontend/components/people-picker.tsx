@@ -26,6 +26,7 @@ interface PeoplePickerProps {
   value: PersonInput[]
   onChange: (people: PersonInput[]) => void
   disabled?: boolean
+  hideLabel?: boolean
 }
 
 export function PeoplePicker({
@@ -33,6 +34,7 @@ export function PeoplePicker({
   value,
   onChange,
   disabled = false,
+  hideLabel = false,
 }: PeoplePickerProps) {
   const { data: session } = useSession()
   const [open, setOpen] = React.useState(false)
@@ -97,7 +99,7 @@ export function PeoplePicker({
 
   return (
     <div className="flex flex-col gap-2" data-disabled={disabled || undefined}>
-      <Label id={labelId}>{label}</Label>
+      <Label id={labelId} className={hideLabel ? 'sr-only' : undefined}>{label}</Label>
 
       <Popover open={open && query.length >= 2} onOpenChange={setOpen}>
         <PopoverAnchor asChild>
