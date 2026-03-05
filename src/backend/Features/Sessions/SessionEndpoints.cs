@@ -119,7 +119,7 @@ public static class SessionEndpoints
         });
 
         // TODO-SPEC: POST /sessions/{id}/publish not yet in SPEC-110; added for incremental session publish.
-        sessionGroup.MapPost("/{id:guid}/publish", async (Guid id, SessionService service, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx, ILoggerFactory loggerFactory) =>
+        sessionGroup.MapPost("/{id:guid}/publish", async (Guid id, SessionService service, ITeamsGraphClient graphClient, IOboTokenService oboService, IConfiguration config, HttpContext ctx, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("SessionEndpoints");
             var userId = ctx.GetUserOid();
@@ -128,7 +128,7 @@ public static class SessionEndpoints
 
             var oboToken = await TryGetOboTokenAsync(ctx, oboService);
 
-            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger);
+            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger, config);
             if (session is null)
             {
                 if (errorCode == "session_not_found")
@@ -210,14 +210,13 @@ public static class SessionEndpoints
             if (userId is null)
                 return Results.Unauthorized();
 
-            // Verify session exists and belongs to user
+            // Verify session exists and belongs to user; roles are already loaded as part of the response
             var session = await service.GetByIdAsync(id, userId);
             if (session is null)
                 return Results.NotFound(new ErrorEnvelope(
                     "session_not_found", "Session not found.", ctx.TraceIdentifier));
 
-            var presenters = await service.GetPresentersAsync(id);
-            return Results.Ok(presenters);
+            return Results.Ok(session.Presenters);
         });
 
         sessionGroup.MapPut("/{id:guid}/presenters", async (Guid id, SetPresentersRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, IConfiguration config, HttpContext ctx, ILoggerFactory loggerFactory) =>
@@ -244,14 +243,13 @@ public static class SessionEndpoints
             if (userId is null)
                 return Results.Unauthorized();
 
-            // Verify session exists and belongs to user
+            // Verify session exists and belongs to user; roles are already loaded as part of the response
             var session = await service.GetByIdAsync(id, userId);
             if (session is null)
                 return Results.NotFound(new ErrorEnvelope(
                     "session_not_found", "Session not found.", ctx.TraceIdentifier));
 
-            var coordinators = await service.GetCoordinatorsAsync(id);
-            return Results.Ok(coordinators);
+            return Results.Ok(session.Coordinators);
         });
 
         sessionGroup.MapPut("/{id:guid}/coordinators", async (Guid id, SetCoordinatorsRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx, ILoggerFactory loggerFactory) =>

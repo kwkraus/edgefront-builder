@@ -5,6 +5,7 @@ using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EdgeFront.Builder.Features.Sessions;
@@ -189,7 +190,8 @@ public class SessionService
     /// </summary>
     public async Task<(SessionResponseDto? session, string? errorCode)> PublishAsync(
         Guid sessionId, string ownerUserId,
-        string? oboToken = null, ITeamsGraphClient? graphClient = null, ILogger? logger = null)
+        string? oboToken = null, ITeamsGraphClient? graphClient = null, ILogger? logger = null,
+        IConfiguration? config = null)
     {
         logger ??= NullLogger.Instance;
 
@@ -243,6 +245,35 @@ public class SessionService
             await _db.SaveChangesAsync();
 
             var (p, c) = await GetRolesAsync(sessionId);
+
+            // SPEC-210: best-effort sync of local presenters/co-organizers to the new Teams webinar
+            if (config is null && (p.Count > 0 || c.Count > 0))
+            {
+                logger.LogWarning(
+                    "Skipping role sync after publish: IConfiguration not provided. SessionId={SessionId}",
+                    sessionId);
+            }
+            else if (config is not null && (p.Count > 0 || c.Count > 0))
+            {
+                var tenantId = config["AzureAd:TenantId"];
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    try
+                    {
+                        await Task.WhenAll(p.Select(presenter =>
+                            graphClient.AddWebinarPresenterAsync(createdWebinarId, presenter.EntraUserId, tenantId, oboToken)));
+                        if (c.Count > 0)
+                            await graphClient.SetWebinarCoOrganizersAsync(createdWebinarId, c.Select(co => co.EntraUserId), oboToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex,
+                            "Role sync after publish failed for SessionId={SessionId}. Local roles are correct.",
+                            sessionId);
+                    }
+                }
+            }
+
             return (ToResponseDto(session, p, c), null);
         }
         catch (TeamsLicenseException lex)
@@ -289,6 +320,16 @@ public class SessionService
         string? oboToken, ITeamsGraphClient? graphClient, IConfiguration config, ILogger? logger = null)
     {
         logger ??= NullLogger.Instance;
+
+        if (req.People is null)
+            return (null, "people_required");
+
+        var duplicates = req.People
+            .GroupBy(p => p.EntraUserId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        if (duplicates.Count > 0)
+            return (null, "duplicate_entra_user_id");
 
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
@@ -362,6 +403,16 @@ public class SessionService
         string? oboToken, ITeamsGraphClient? graphClient, ILogger? logger = null)
     {
         logger ??= NullLogger.Instance;
+
+        if (req.People is null)
+            return (null, "people_required");
+
+        var duplicates = req.People
+            .GroupBy(p => p.EntraUserId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        if (duplicates.Count > 0)
+            return (null, "duplicate_entra_user_id");
 
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
