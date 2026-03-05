@@ -24,7 +24,7 @@ This document describes the required Entra ID (Azure AD) app registration permis
 
 ### Prerequisites
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed
-- Admin user (`kwkraus@6gsx0j.onmicrosoft.com`) with Application Admin or Global Admin role
+- An admin user with Application Admin or Global Admin role in your tenant
 
 ### Run the Script
 
@@ -45,14 +45,14 @@ The script will:
 ### Troubleshooting
 
 If `az login` fails:
-- Try device code flow: `az login --tenant 6gsx0j.onmicrosoft.com --allow-no-subscriptions --use-device-code`
+- Try device code flow: `az login --tenant YOUR_TENANT_ID --allow-no-subscriptions --use-device-code`
 - Or use Option 2 (Graph PowerShell) or Option 3 (portal) below
 
 ## Option 2: Microsoft Graph PowerShell SDK
 
 ```powershell
 Install-Module Microsoft.Graph -Scope CurrentUser
-Connect-MgGraph -TenantId "6gsx0j.onmicrosoft.com" -Scopes "Application.ReadWrite.All"
+Connect-MgGraph -TenantId "YOUR_TENANT_ID" -Scopes "Application.ReadWrite.All"
 
 $AppId = "YOUR_CLIENT_ID"
 $App = Get-MgApplication -Filter "appId eq '$AppId'"
