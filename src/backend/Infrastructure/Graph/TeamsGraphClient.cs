@@ -298,12 +298,14 @@ public class TeamsGraphClient : ITeamsGraphClient
         string query, string oboToken, CancellationToken ct = default)
     {
         var client = BuildOboClient(oboToken);
-        var result = await client.Users.GetAsync(r =>
-        {
-            r.QueryParameters.Filter = $"startswith(displayName,'{EscapeODataString(query)}')";
-            r.QueryParameters.Select = ["id", "displayName", "mail", "userPrincipalName"];
-            r.QueryParameters.Top = 10;
-        }, cancellationToken: ct);
+        var result = await WithTransientRetryAsync(
+            () => client.Users.GetAsync(r =>
+            {
+                r.QueryParameters.Filter = $"startswith(displayName,'{EscapeODataString(query)}')";
+                r.QueryParameters.Select = ["id", "displayName", "mail", "userPrincipalName"];
+                r.QueryParameters.Top = 10;
+            }, cancellationToken: ct),
+            ct);
 
         if (result?.Value is null) return [];
 
