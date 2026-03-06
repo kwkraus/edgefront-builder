@@ -5,7 +5,6 @@ import { format, setHours, setMinutes } from 'date-fns'
 import { CalendarIcon } from '@primer/octicons-react'
 import { AnchoredOverlay, Button, Text } from '@primer/react'
 import { DayPicker } from 'react-day-picker'
-import 'react-day-picker/style.css'
 
 interface DateTimePickerProps {
   label: string

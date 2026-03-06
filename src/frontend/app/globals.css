@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* react-day-picker default styles */
+@import "react-day-picker/style.css";
+
 /* Primer Primitives — sizing, typography, and color themes */
 @import "@primer/primitives/dist/css/base/size/size.css";
 @import "@primer/primitives/dist/css/base/typography/typography.css";

@@ -289,7 +289,7 @@ export default function SessionDetailPage() {
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
           {/* Schedule card */}
-          <div className="space-y-4 rounded-lg border bg-card p-6">
+          <div className="space-y-4 rounded-lg border p-6" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
             <SkeletonText size="bodySmall" maxWidth={96} />
             <div className="space-y-1.5">
               <SkeletonText size="bodySmall" maxWidth={80} />
@@ -303,12 +303,10 @@ export default function SessionDetailPage() {
 
           {/* Presenters + Coordinators */}
           <div className="space-y-6">
-            <div className="space-y-3 rounded-lg border bg-card p-6">
-              <SkeletonText size="bodySmall" maxWidth={112} />
+            <div className="space-y-3 rounded-lg border p-6" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <SkeletonBox height={40} />
             </div>
-            <div className="space-y-3 rounded-lg border bg-card p-6">
-              <SkeletonText size="bodySmall" maxWidth={128} />
+            <div className="space-y-3 rounded-lg border p-6" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <SkeletonBox height={40} />
             </div>
           </div>
@@ -329,7 +327,7 @@ export default function SessionDetailPage() {
           <SkeletonText size="bodySmall" maxWidth={64} />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-lg border bg-card p-4 space-y-2">
+              <div key={i} className="rounded-lg border p-4 space-y-2" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
                 <SkeletonText size="bodySmall" maxWidth={80} />
                 <SkeletonBox height={28} width={40} />
               </div>
@@ -359,7 +357,10 @@ export default function SessionDetailPage() {
       {/* ── Back link ──────────────────────────────────────────────────────── */}
       <Link
         href={`/series/${session.seriesId}`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex items-center gap-1 text-sm transition-colors"
+        style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-default, var(--color-fg-default))' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-muted, var(--color-fg-muted))' }}
       >
         <ChevronLeftIcon size={16} aria-hidden="true" />
         Back to Series
@@ -381,7 +382,7 @@ export default function SessionDetailPage() {
             <StatusBadge status={session.status} />
           </div>
           {titleError && (
-            <p role="alert" className="text-xs text-destructive">
+            <p role="alert" className="text-xs" style={{ color: 'var(--fgColor-danger, var(--color-danger-fg))' }}>
               {titleError}
             </p>
           )}
@@ -391,7 +392,10 @@ export default function SessionDetailPage() {
                 href={session.joinWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded p-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                className="rounded p-1 transition-colors focus:outline-none focus-visible:ring-2"
+                style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-default, var(--color-fg-default))' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-muted, var(--color-fg-muted))' }}
                 title="Open webinar in Teams"
                 aria-label="Open webinar in Teams"
               >
@@ -399,13 +403,13 @@ export default function SessionDetailPage() {
               </a>
             )}
             {syncing && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}>
                 <Spinner size="small" />
                 Syncing…
               </span>
             )}
             {!syncing && session.lastSyncAt && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={formatDateTime(session.lastSyncAt)}>
+              <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }} title={formatDateTime(session.lastSyncAt)}>
                 Last synced: {formatDateTime(session.lastSyncAt)}
                 {session.status === 'Published' && session.teamsWebinarId && (
                   <IconButton
@@ -497,7 +501,7 @@ export default function SessionDetailPage() {
       <form onSubmit={handleSave} noValidate className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
           {/* ── Left column: Schedule ──────────────────────────────────────── */}
-          <section className="rounded-lg border bg-card p-6 space-y-4">
+          <section className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
             <h2 className="text-base font-semibold">Schedule</h2>
 
             <DateTimePicker
@@ -515,7 +519,7 @@ export default function SessionDetailPage() {
                 disabled={saveLoading}
               />
               {endsAtError && (
-                <p role="alert" className="mt-1 text-xs text-destructive">
+                <p role="alert" className="mt-1 text-xs" style={{ color: 'var(--fgColor-danger, var(--color-danger-fg))' }}>
                   {endsAtError}
                 </p>
               )}
@@ -524,7 +528,7 @@ export default function SessionDetailPage() {
 
           {/* ── Right column: Presenters & Coordinators ────────────────────── */}
           <div className="space-y-6">
-            <section className="rounded-lg border bg-card p-6 space-y-3">
+            <section className="rounded-lg border p-6 space-y-3" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <h2 className="text-base font-semibold">Presenters</h2>
               <PeoplePicker
                 label="Presenters"
@@ -535,7 +539,7 @@ export default function SessionDetailPage() {
               />
             </section>
 
-            <section className="rounded-lg border bg-card p-6 space-y-3">
+            <section className="rounded-lg border p-6 space-y-3" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <h2 className="text-base font-semibold">Coordinators</h2>
               <PeoplePicker
                 label="Coordinators"
@@ -584,7 +588,7 @@ export default function SessionDetailPage() {
 
       {/* ── Metrics card ───────────────────────────────────────────────────── */}
       {metrics && (
-        <section className="rounded-lg border bg-card p-6 space-y-4" aria-label="Session metrics">
+        <section className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }} aria-label="Session metrics">
           <h2 className="text-base font-semibold">Metrics</h2>
           <MetricsPanel
             metrics={[
@@ -596,7 +600,7 @@ export default function SessionDetailPage() {
           />
           {metrics.warmAccountsTriggered.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
+              <p className="mb-2 text-xs font-medium" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}>
                 Warm accounts triggered:
               </p>
               <div className="flex flex-wrap gap-2">

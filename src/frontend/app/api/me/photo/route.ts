@@ -13,6 +13,16 @@ import type { NextRequest } from 'next/server'
  * Returns 204 No Content if the user has no photo set.
  */
 export async function GET(request: NextRequest) {
+  // Validate required Azure AD environment variables up-front so misconfiguration
+  // produces a diagnosable 500 rather than a cryptic runtime error.
+  const tenantId = process.env.AZURE_AD_TENANT_ID
+  const clientId = process.env.AZURE_AD_CLIENT_ID
+  const clientSecret = process.env.AZURE_AD_CLIENT_SECRET
+  if (!tenantId || !clientId || !clientSecret) {
+    console.error('[/api/me/photo] Missing required Azure AD environment variables (AZURE_AD_TENANT_ID / AZURE_AD_CLIENT_ID / AZURE_AD_CLIENT_SECRET)')
+    return new NextResponse(null, { status: 500 })
+  }
+
   const token = await getToken({ req: request })
   if (!token?.refreshToken) {
     return new NextResponse(null, { status: 401 })
@@ -21,13 +31,13 @@ export async function GET(request: NextRequest) {
   try {
     // Acquire a Graph-scoped access token via refresh_token grant
     const graphTokenRes = await fetch(
-      `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: process.env.AZURE_AD_CLIENT_ID!,
-          client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
+          client_id: clientId,
+          client_secret: clientSecret,
           grant_type: 'refresh_token',
           refresh_token: token.refreshToken,
           scope: 'https://graph.microsoft.com/User.Read',
@@ -36,7 +46,17 @@ export async function GET(request: NextRequest) {
     )
 
     if (!graphTokenRes.ok) {
-      return new NextResponse(null, { status: 204 })
+      const upstreamStatus = graphTokenRes.status
+      const upstreamBody = await graphTokenRes.text().catch(() => '<unreadable>')
+      // Log status + body (body will contain the OAuth error code, not secrets)
+      console.error(`[/api/me/photo] Graph token exchange failed: HTTP ${upstreamStatus} — ${upstreamBody}`)
+      // 400 (invalid_scope/bad_request) or 401/403 (auth/consent failure) →
+      // surface as 401 so the caller knows auth is the issue.
+      // 5xx or unexpected codes → 502 Bad Gateway (upstream failure).
+      if (upstreamStatus === 400 || upstreamStatus === 401 || upstreamStatus === 403) {
+        return new NextResponse(null, { status: 401 })
+      }
+      return new NextResponse(null, { status: 502 })
     }
 
     const { access_token: graphToken } = await graphTokenRes.json()

@@ -36,6 +36,7 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 'var(--base-text-weight-medium, 500)',
   textDecoration: 'none',
   transition: 'background-color 0.15s ease',
+  outlineColor: 'var(--borderColor-focus, var(--color-accent-fg))',
 }
 
 export default function SeriesListPage() {
@@ -43,7 +44,11 @@ export default function SeriesListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 style={headingStyle}>Series</h1>
-        <Link href="/series/new" style={primaryButtonStyle}>
+        <Link
+          href="/series/new"
+          style={primaryButtonStyle}
+          className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
           <PlusIcon size={16} aria-hidden="true" />
           Create Series
         </Link>

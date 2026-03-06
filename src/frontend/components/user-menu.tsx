@@ -15,6 +15,7 @@ function getInitials(name: string | null | undefined): string {
 export default function UserMenu() {
   const { data: session } = useSession()
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [anchorFocused, setAnchorFocused] = useState(false)
 
   useEffect(() => {
     if (!session?.user) return
@@ -61,7 +62,14 @@ export default function UserMenu() {
             cursor: 'pointer',
             color: 'inherit',
             lineHeight: 1,
+            borderRadius: 'var(--borderRadius-medium, 6px)',
+            outline: 'none',
+            boxShadow: anchorFocused
+              ? '0 0 0 2px var(--borderColor-focus, var(--color-accent-fg))'
+              : 'none',
           }}
+          onFocus={() => setAnchorFocused(true)}
+          onBlur={() => setAnchorFocused(false)}
         >
           {photoUrl ? (
             <Avatar src={photoUrl} size={24} square={false} alt={name ?? 'User avatar'} />
@@ -75,10 +83,10 @@ export default function UserMenu() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: '50%',
-                backgroundColor: '#2563eb',
+                backgroundColor: 'var(--bgColor-accent-emphasis, var(--color-accent-emphasis))',
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#fff',
+                color: 'var(--fgColor-onEmphasis, var(--color-fg-on-emphasis))',
               }}
               aria-hidden="true"
             >
