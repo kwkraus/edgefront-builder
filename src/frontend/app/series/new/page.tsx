@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeftIcon } from '@primer/octicons-react'
+import { Button, FormControl, TextInput, Spinner } from '@primer/react'
 import { ErrorBanner } from '@/components/error-banner'
 import { createSeries } from '@/lib/api/series'
 
@@ -47,9 +48,10 @@ export default function NewSeriesPage() {
       <div className="flex items-center gap-2">
         <Link
           href="/series"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
+          style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
         >
-          <ChevronLeft className="size-4" aria-hidden="true" />
+          <ChevronLeftIcon size={16} aria-hidden="true" />
           Back to Series
         </Link>
       </div>
@@ -59,49 +61,36 @@ export default function NewSeriesPage() {
       {error && <ErrorBanner message={error} onRetry={submitForm} />}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium mb-1.5">
-            Title <span className="text-destructive" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
+        <FormControl required>
+          <FormControl.Label>Title</FormControl.Label>
+          <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => setTouched(true)}
-            aria-invalid={titleError ? 'true' : undefined}
-            aria-describedby={titleError ? 'title-error' : undefined}
+            validationStatus={titleError ? 'error' : undefined}
             placeholder="e.g. Q1 Webinar Series"
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+            block
             autoFocus
           />
           {titleError && (
-            <p id="title-error" role="alert" className="mt-1 text-xs text-destructive">
+            <FormControl.Validation variant="error">
               {titleError}
-            </p>
+            </FormControl.Validation>
           )}
-        </div>
+        </FormControl>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
+          <Button
             type="submit"
+            variant="primary"
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            leadingVisual={loading ? () => <Spinner size="small" /> : undefined}
           >
-            {loading && (
-              <span
-                className="size-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"
-                aria-hidden="true"
-              />
-            )}
             {loading ? 'Creating…' : 'Create'}
-          </button>
-          <Link
-            href="/series"
-            className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
-          >
+          </Button>
+          <Button as={Link} href="/series" variant="default">
             Cancel
-          </Link>
+          </Button>
         </div>
       </form>
     </div>

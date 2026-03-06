@@ -14,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased font-sans">
+    <html lang="en" suppressHydrationWarning>
+      <body data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
         <Providers>
           <AppHeader />
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>

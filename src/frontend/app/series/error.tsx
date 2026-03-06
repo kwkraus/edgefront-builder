@@ -10,6 +10,10 @@ interface SeriesErrorProps {
   reset: () => void
 }
 
+const mutedTextStyle: React.CSSProperties = {
+  color: 'var(--fgColor-muted, var(--color-fg-muted))',
+}
+
 export default function SeriesError({ error, reset }: SeriesErrorProps) {
   const router = useRouter()
 
@@ -21,7 +25,7 @@ export default function SeriesError({ error, reset }: SeriesErrorProps) {
 
   if (error.message === 'UNAUTHORIZED') {
     return (
-      <div className="py-8 text-sm text-muted-foreground">Redirecting to sign in…</div>
+      <div className="py-8 text-sm" style={mutedTextStyle}>Redirecting to sign in…</div>
     )
   }
 

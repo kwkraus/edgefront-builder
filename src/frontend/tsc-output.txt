@@ -1,0 +1,16 @@
+components/ui/avatar.tsx(4,43): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/badge.tsx(2,40): error TS2307: Cannot find module 'class-variance-authority' or its corresponding type declarations.
+components/ui/badge.tsx(3,22): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/button.tsx(2,40): error TS2307: Cannot find module 'class-variance-authority' or its corresponding type declarations.
+components/ui/button.tsx(3,22): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/calendar.tsx(8,8): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+components/ui/command.tsx(4,45): error TS2307: Cannot find module 'cmdk' or its corresponding type declarations.
+components/ui/command.tsx(5,28): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+components/ui/dialog.tsx(4,23): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+components/ui/dialog.tsx(5,43): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/dropdown-menu.tsx(4,57): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+components/ui/dropdown-menu.tsx(5,55): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/label.tsx(4,41): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/popover.tsx(4,45): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/separator.tsx(4,49): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.
+components/ui/tooltip.tsx(4,45): error TS2307: Cannot find module 'radix-ui' or its corresponding type declarations.

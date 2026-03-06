@@ -2,16 +2,10 @@
 
 import * as React from 'react'
 import { format, setHours, setMinutes } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Label } from '@/components/ui/label'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { CalendarIcon } from '@primer/octicons-react'
+import { AnchoredOverlay, Button, Text } from '@primer/react'
+import { DayPicker } from 'react-day-picker'
+import 'react-day-picker/style.css'
 
 interface DateTimePickerProps {
   label: string
@@ -60,59 +54,81 @@ export function DateTimePicker({
 
   return (
     <div className="flex flex-col gap-2" data-disabled={disabled || undefined}>
-      <Label id={labelId}>{label}</Label>
+      <Text id={labelId} size="small" weight="semibold">
+        {label}
+      </Text>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <AnchoredOverlay
+        open={open}
+        onOpen={() => setOpen(true)}
+        onClose={() => setOpen(false)}
+        renderAnchor={(anchorProps) => (
           <Button
-            variant="outline"
+            {...anchorProps}
+            leadingVisual={CalendarIcon}
+            variant="default"
             disabled={disabled}
             aria-labelledby={labelId}
-            className={cn(
-              'w-full justify-start text-left font-normal',
-              !value && 'text-muted-foreground',
-            )}
+            block
+            style={{
+              justifyContent: 'flex-start',
+              fontWeight: 'normal',
+              color: value
+                ? 'var(--fgColor-default)'
+                : 'var(--fgColor-muted)',
+            }}
           >
-            <CalendarIcon className="size-4 text-muted-foreground" />
             {value
               ? format(value, "MMM d, yyyy 'at' h:mm a")
               : 'Select date and time'}
           </Button>
-        </PopoverTrigger>
+        )}
+      >
+        <div
+          className="p-3"
+          style={
+            {
+              '--rdp-accent-color': 'var(--bgColor-accent-emphasis)',
+              '--rdp-accent-background-color': 'var(--bgColor-accent-muted)',
+              '--rdp-today-color': 'var(--fgColor-accent)',
+            } as React.CSSProperties
+          }
+        >
+          <DayPicker
+            mode="single"
+            selected={value ?? undefined}
+            onSelect={handleDateSelect}
+            showOutsideDays
+            autoFocus
+          />
+        </div>
 
-        <PopoverContent className="w-auto p-0" align="start">
-          <div className="p-3">
-            <Calendar
-              mode="single"
-              selected={value ?? undefined}
-              onSelect={handleDateSelect}
-              autoFocus
-            />
-          </div>
-
-          <div className="border-t px-3 py-3">
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor={`${labelId}-time`}
-                className="text-sm font-medium"
-              >
-                Time
-              </label>
-              <input
-                id={`${labelId}-time`}
-                type="time"
-                value={timeValue}
-                onChange={handleTimeChange}
-                disabled={disabled}
-                className={cn(
-                  'h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none',
-                  'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                )}
-              />
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+        <div
+          className="flex items-center gap-2 px-3 py-3"
+          style={{ borderTop: '1px solid var(--borderColor-default)' }}
+        >
+          <label
+            htmlFor={`${labelId}-time`}
+            className="text-sm font-semibold"
+          >
+            Time
+          </label>
+          <input
+            id={`${labelId}-time`}
+            type="time"
+            value={timeValue}
+            onChange={handleTimeChange}
+            disabled={disabled}
+            className="h-8 rounded-md px-3 py-1 text-sm outline-none focus-visible:outline-[var(--borderColor-accent-emphasis)] focus-visible:-outline-offset-1"
+            style={{
+              border: '1px solid var(--borderColor-default)',
+              backgroundColor: 'var(--bgColor-default)',
+              color: 'var(--fgColor-default)',
+              fontFamily: 'var(--fontStack-system)',
+            }}
+          />
+        </div>
+      </AnchoredOverlay>
     </div>
   )
 }
