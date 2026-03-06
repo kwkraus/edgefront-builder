@@ -527,7 +527,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                             style={{ color: 'var(--fgColor-attention)' }}
                           />
                         )}
-                        {s.status === 'Published' && s.joinWebUrl && (
+                        {s.joinWebUrl ? (
                           <IconButton
                             as="a"
                             href={s.joinWebUrl}
@@ -539,14 +539,16 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                             size="small"
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           />
+                        ) : (
+                          <IconButton
+                            icon={LinkExternalIcon}
+                            aria-label="No event link available"
+                            variant="invisible"
+                            size="small"
+                            disabled
+                            style={{ opacity: 0.3 }}
+                          />
                         )}
-                        <IconButton
-                          icon={PencilIcon}
-                          aria-label={`Edit ${s.title}`}
-                          variant="invisible"
-                          size="small"
-                          onClick={() => router.push(`/sessions/${s.sessionId}`)}
-                        />
                         <IconButton
                           icon={TrashIcon}
                           aria-label={`Delete ${s.title}`}

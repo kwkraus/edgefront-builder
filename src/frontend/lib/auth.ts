@@ -9,7 +9,12 @@ export const authOptions: AuthOptions = {
       tenantId: process.env.AZURE_AD_TENANT_ID!,
       authorization: {
         params: {
-          scope: `openid profile email offline_access https://graph.microsoft.com/User.Read${process.env.AZURE_AD_CLIENT_ID ? ` api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user` : ''}`,
+          scope: `openid profile email offline_access https://graph.microsoft.com/User.Read api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user`,
+        },
+      },
+      token: {
+        params: {
+          scope: `openid profile email offline_access api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user`,
         },
       },
     }),
