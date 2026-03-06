@@ -34,6 +34,8 @@ export interface SessionListItem {
   totalRegistrations: number
   totalAttendees: number
   lastSyncAt: string | null
+  presenterCount: number
+  coordinatorCount: number
 }
 
 export interface SessionResponse {

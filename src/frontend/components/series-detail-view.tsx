@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, AlertIcon, SyncIcon, LinkExternalIcon } from '@primer/octicons-react'
+import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, CheckCircleFillIcon, DotFillIcon, PeopleIcon, OrganizationIcon } from '@primer/octicons-react'
 import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
@@ -22,18 +22,41 @@ function formatDateTime(iso: string | null | undefined) {
   })
 }
 
-function formatRelativeTime(iso: string | null | undefined) {
-  if (!iso) return null
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d ago`
+function formatDelivery(startsAt: string | null | undefined, endsAt: string | null | undefined) {
+  if (!startsAt) return { date: '—', time: '', duration: '', tzShort: '', tzTooltip: '' }
+  const start = new Date(startsAt)
+  const date = start.toLocaleDateString(undefined, { dateStyle: 'medium' })
+
+  const time = start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+
+  const tzShort = start.toLocaleTimeString(undefined, { timeZoneName: 'short' })
+    .split(' ').pop() ?? ''
+  const tzLong = start.toLocaleTimeString(undefined, { timeZoneName: 'long' })
+    .replace(/^[\d:]+\s*(AM|PM)?\s*/i, '')
+  const offMins = -start.getTimezoneOffset()
+  const sign = offMins >= 0 ? '+' : '-'
+  const h = Math.floor(Math.abs(offMins) / 60)
+  const m = Math.abs(offMins) % 60
+  const offset = `GMT ${sign}${h}${m > 0 ? `:${String(m).padStart(2, '0')}` : ''}`
+  const tzTooltip = `${tzLong} (${offset})`
+
+  let duration = ''
+  if (endsAt) {
+    const end = new Date(endsAt)
+    const diffMins = Math.round((end.getTime() - start.getTime()) / 60000)
+    if (diffMins > 0) {
+      const hrs = Math.floor(diffMins / 60)
+      const mins = diffMins % 60
+      if (hrs > 0) duration += `${hrs} hr${hrs > 1 ? 's' : ''}`
+      if (mins > 0) duration += `${hrs > 0 ? ' ' : ''}${mins} min`
+    }
+  }
+
+  return { date, time, duration, tzShort, tzTooltip }
 }
 
 interface Props {
@@ -415,12 +438,10 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     borderBottom: '1px solid var(--borderColor-default)',
                   }}
                 >
+                  <th className="w-8 px-2 py-3"><span className="sr-only">Status</span></th>
                   <th className="px-4 py-3 text-left font-medium">Title</th>
-                  <th className="px-4 py-3 text-left font-medium">Starts</th>
-                  <th className="px-4 py-3 text-left font-medium">Ends</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Last Synced</th>
-                  <th className="px-4 py-3 text-left font-medium">Drift</th>
+                  <th className="px-4 py-3 text-left font-medium">Delivery</th>
+                  <th className="px-4 py-3 text-left font-medium">People</th>
                   <th className="px-4 py-3 text-right font-medium">Reg.</th>
                   <th className="px-4 py-3 text-right font-medium">Att.</th>
                   <th className="px-4 py-3 text-right font-medium w-20">Actions</th>
@@ -442,37 +463,50 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       e.currentTarget.style.backgroundColor = ''
                     }}
                   >
+                    <td className="w-8 px-2 py-3 text-center">
+                      {s.status === 'Published' ? (
+                        <span title="Published" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
+                          <CheckCircleFillIcon size={16} />
+                        </span>
+                      ) : (
+                        <span title="Draft" style={{ color: 'var(--fgColor-muted)' }}>
+                          <DotFillIcon size={16} />
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-medium">
                       {s.title}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
-                      {formatDateTime(s.startsAt)}
+                      {(() => {
+                        const d = formatDelivery(s.startsAt, s.endsAt)
+                        return (
+                          <div className="leading-tight">
+                            <div style={{ fontWeight: 600, color: 'var(--fgColor-default)' }}>{d.date}</div>
+                            {d.time && (
+                              <div className="text-xs" style={{ color: 'var(--fgColor-muted)' }}>
+                                {d.time}
+                                {d.duration && <> • {d.duration}</>}
+                                {d.tzShort && (
+                                  <> • <span title={d.tzTooltip} style={{ cursor: 'help', textDecoration: 'underline dotted' }}>{d.tzShort}</span></>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
-                      {formatDateTime(s.endsAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={s.status} />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: 'var(--fgColor-muted)' }}>
-                      {s.lastSyncAt
-                        ? <span title={formatDateTime(s.lastSyncAt)}>{formatRelativeTime(s.lastSyncAt)}</span>
-                        : s.status === 'Published' ? <span style={{ color: 'var(--fgColor-attention)' }}>Never</span> : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {s.driftStatus === 'DriftDetected' && (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{
-                            color: 'var(--fgColor-attention)',
-                            backgroundColor: 'var(--bgColor-attention-muted)',
-                            border: '1px solid var(--borderColor-attention-muted)',
-                          }}
-                        >
-                          <AlertIcon size={12} />
-                          Drift
+                      <span className="inline-flex items-center gap-3 text-xs">
+                        <span className="inline-flex items-center gap-1" title="Presenters">
+                          <PeopleIcon size={14} />
+                          {s.presenterCount}
                         </span>
-                      )}
+                        <span className="inline-flex items-center gap-1" title="Coordinators">
+                          <OrganizationIcon size={14} />
+                          {s.coordinatorCount}
+                        </span>
+                      </span>
                     </td>
                     <td className="px-4 py-3 tabular-nums text-right">{s.totalRegistrations}</td>
                     <td className="px-4 py-3 tabular-nums text-right">{s.totalAttendees}</td>

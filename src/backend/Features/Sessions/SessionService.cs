@@ -34,6 +34,18 @@ public class SessionService
             .Where(m => sessionIds.Contains(m.SessionId))
             .ToDictionaryAsync(m => m.SessionId);
 
+        var presenterCounts = await _db.Set<SessionPresenter>()
+            .Where(p => sessionIds.Contains(p.SessionId))
+            .GroupBy(p => p.SessionId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var coordinatorCounts = await _db.Set<SessionCoordinator>()
+            .Where(c => sessionIds.Contains(c.SessionId))
+            .GroupBy(c => c.SessionId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
         return sessions.Select(s =>
         {
             var m = metrics.TryGetValue(s.SessionId, out var sm) ? sm : null;
@@ -49,7 +61,9 @@ public class SessionService
                 s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
-                s.LastSyncAt);
+                s.LastSyncAt,
+                presenterCounts.TryGetValue(s.SessionId, out var pc) ? pc : 0,
+                coordinatorCounts.TryGetValue(s.SessionId, out var cc) ? cc : 0);
         });
     }
 

@@ -12,4 +12,6 @@ public record SessionListItemDto(
     string DriftStatus,
     int TotalRegistrations,
     int TotalAttendees,
-    DateTime? LastSyncAt);
+    DateTime? LastSyncAt,
+    int PresenterCount,
+    int CoordinatorCount);

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useSession } from 'next-auth/react'
 import { SearchIcon } from '@primer/octicons-react'
-import { ActionList, AnchoredOverlay, Spinner, Text, TextInput, Token } from '@primer/react'
+import { ActionList, Spinner, Text, TextInput, Token } from '@primer/react'
 import { searchPeople } from '@/lib/api/sessions'
 import type { PersonInput, PersonSearchResult } from '@/lib/api/types'
 
@@ -23,11 +23,12 @@ export function PeoplePicker({
   hideLabel = false,
 }: PeoplePickerProps) {
   const { data: session } = useSession()
-  const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState('')
   const [results, setResults] = React.useState<PersonSearchResult[]>([])
   const [loading, setLoading] = React.useState(false)
+  const [focused, setFocused] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
 
   const selectedIds = React.useMemo(
     () => new Set(value.map((p) => p.entraUserId)),
@@ -60,9 +61,19 @@ export function PeoplePicker({
     return () => clearTimeout(timer)
   }, [query, session])
 
-  const filteredResults = results.filter((r) => !selectedIds.has(r.entraUserId))
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setFocused(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-  const showDropdown = open && query.length >= 2
+  const filteredResults = results.filter((r) => !selectedIds.has(r.entraUserId))
+  const showDropdown = focused && query.length >= 2
 
   function handleSelect(person: PersonSearchResult) {
     onChange([
@@ -75,7 +86,6 @@ export function PeoplePicker({
     ])
     setQuery('')
     setResults([])
-    setOpen(false)
     inputRef.current?.focus()
   }
 
@@ -100,74 +110,78 @@ export function PeoplePicker({
         {label}
       </Text>
 
-      <AnchoredOverlay
-        open={showDropdown}
-        onOpen={() => {
-          if (query.length >= 2) setOpen(true)
-        }}
-        onClose={() => setOpen(false)}
-        focusTrapSettings={{ disabled: true }}
-        focusZoneSettings={{ disabled: true }}
-        renderAnchor={(anchorProps) => (
-          <div {...anchorProps}>
-            <TextInput
-              ref={inputRef}
-              leadingVisual={SearchIcon}
-              placeholder={`Search ${label.toLowerCase()}…`}
-              value={query}
-              disabled={disabled}
-              role="combobox"
-              aria-expanded={showDropdown}
-              aria-controls={`${labelId}-listbox`}
-              aria-labelledby={labelId}
-              aria-autocomplete="list"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setQuery(e.target.value)
-                if (e.target.value.length >= 2) {
-                  setOpen(true)
-                }
-              }}
-              onFocus={() => {
-                if (query.length >= 2) setOpen(true)
-              }}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Escape') {
-                  setOpen(false)
-                }
-              }}
-              block
-            />
+      <div ref={containerRef} style={{ position: 'relative' }}>
+        <TextInput
+          ref={inputRef}
+          leadingVisual={SearchIcon}
+          placeholder={`Search ${label.toLowerCase()}…`}
+          value={query}
+          disabled={disabled}
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls={`${labelId}-listbox`}
+          aria-labelledby={labelId}
+          aria-autocomplete="list"
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setQuery(e.target.value)
+          }}
+          onFocus={() => setFocused(true)}
+          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Escape') {
+              setFocused(false)
+              inputRef.current?.blur()
+            }
+          }}
+          block
+        />
+
+        {showDropdown && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              zIndex: 100,
+              marginTop: '4px',
+              backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))',
+              border: '1px solid var(--borderColor-default, var(--color-border-default))',
+              borderRadius: 'var(--borderRadius-medium, 6px)',
+              boxShadow: 'var(--shadow-floating-small, var(--color-shadow-medium))',
+              maxHeight: '240px',
+              overflowY: 'auto',
+            }}
+          >
+            <ActionList id={`${labelId}-listbox`} role="listbox">
+              {loading && (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--fgColor-muted)', fontSize: '14px' }}>
+                  <Spinner size="small" />
+                </div>
+              )}
+
+              {!loading && filteredResults.length === 0 && (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--fgColor-muted)', fontSize: '14px' }}>
+                  No results found
+                </div>
+              )}
+
+              {!loading &&
+                filteredResults.map((person) => (
+                  <ActionList.Item
+                    key={person.entraUserId}
+                    onSelect={() => handleSelect(person)}
+                    role="option"
+                  >
+                    {person.displayName}
+                    <ActionList.Description variant="block">
+                      {person.email}
+                    </ActionList.Description>
+                  </ActionList.Item>
+                ))}
+            </ActionList>
           </div>
         )}
-      >
-        <ActionList id={`${labelId}-listbox`} role="listbox">
-          {loading && (
-            <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--fgColor-muted)', fontSize: '14px' }}>
-              <Spinner size="small" />
-            </div>
-          )}
-
-          {!loading && showDropdown && filteredResults.length === 0 && (
-            <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--fgColor-muted)', fontSize: '14px' }}>
-              No results found
-            </div>
-          )}
-
-          {!loading &&
-            filteredResults.map((person) => (
-              <ActionList.Item
-                key={person.entraUserId}
-                onSelect={() => handleSelect(person)}
-                role="option"
-              >
-                {person.displayName}
-                <ActionList.Description variant="block">
-                  {person.email}
-                </ActionList.Description>
-              </ActionList.Item>
-            ))}
-        </ActionList>
-      </AnchoredOverlay>
+      </div>
 
       {value.length > 0 && (
         <div
