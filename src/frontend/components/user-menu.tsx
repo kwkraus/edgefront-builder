@@ -18,10 +18,13 @@ export default function UserMenu() {
   const [anchorFocused, setAnchorFocused] = useState(false)
 
   useEffect(() => {
-    if (!session?.user) return
+    if (!session?.user || !session?.accessToken) return
     let revoked = false
 
-    fetch('/api/me/photo')
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5000'
+    fetch(`${baseUrl}/api/v1/me/photo`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    })
       .then((res) => {
         if (!res.ok) return null
         return res.blob()
@@ -40,7 +43,7 @@ export default function UserMenu() {
         return null
       })
     }
-  }, [session?.user])
+  }, [session?.user, session?.accessToken])
 
   if (!session?.user) return null
 

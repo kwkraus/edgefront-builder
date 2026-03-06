@@ -1,4 +1,5 @@
 using EdgeFront.Builder.Domain;
+using EdgeFront.Builder.Features.Me;
 using EdgeFront.Builder.Features.Metrics;
 using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Series;
@@ -123,6 +124,7 @@ app.MapSeriesEndpoints();
 app.MapSessionEndpoints();
 app.MapPeopleEndpoints();
 app.MapMetricsEndpoints();
+app.MapMeEndpoints();
 
 app.Run();
 

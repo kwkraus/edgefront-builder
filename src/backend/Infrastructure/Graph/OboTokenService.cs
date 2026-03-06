@@ -18,13 +18,15 @@ public class OboTokenService : IOboTokenService
     {
         // VirtualEvent.ReadWrite: webinar CRUD + registrations
         // OnlineMeetingArtifact.Read.All: attendance reports
+        // User.Read: profile photo access
         // TODO-SPEC: SPEC-200 lists only VirtualEvent.ReadWrite but Graph requires
         //   OnlineMeetingArtifact.Read.All for attendance report access.
         var token = await _tokenAcquisition.GetAccessTokenForUserAsync(
             new[]
             {
                 "https://graph.microsoft.com/VirtualEvent.ReadWrite",
-                "https://graph.microsoft.com/OnlineMeetingArtifact.Read.All"
+                "https://graph.microsoft.com/OnlineMeetingArtifact.Read.All",
+                "https://graph.microsoft.com/User.Read"
             });
         return token;
     }
