@@ -14,3 +14,9 @@
 @import "@primer/primitives/dist/css/functional/themes/light.css";
 @import "@primer/primitives/dist/css/functional/themes/dark.css";
 @import "@primer/primitives/dist/css/functional/themes/dark-dimmed.css";
+
+/* Apply Primer theme tokens to the page background and text */
+html {
+  background-color: var(--bgColor-default, var(--color-canvas-default, #ffffff));
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+}
