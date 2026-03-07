@@ -4,34 +4,113 @@ import { getServerSession } from '@/lib/auth'
 import { getSeries } from '@/lib/api/series'
 import { ApiError } from '@/lib/api/client'
 import { StatusBadge } from '@/components/status-badge'
-import { AlertTriangle } from 'lucide-react'
+import { AlertIcon } from '@primer/octicons-react'
 import type { SeriesListItem } from '@/lib/api/types'
+
+/* ------------------------------------------------------------------ */
+/*  Primer CSS custom-property style objects                          */
+/*  Follows the same fallback pattern used in metrics-panel.tsx       */
+/* ------------------------------------------------------------------ */
+
+const tableWrapperStyle: React.CSSProperties = {
+  borderWidth: 'var(--borderWidth-thin, 1px)',
+  borderStyle: 'solid',
+  borderColor: 'var(--borderColor-default, var(--color-border-default))',
+  borderRadius: 'var(--borderRadius-medium, 6px)',
+  overflow: 'hidden',
+}
+
+const headerRowStyle: React.CSSProperties = {
+  borderBottom: 'var(--borderWidth-thin, 1px) solid var(--borderColor-default, var(--color-border-default))',
+  backgroundColor: 'var(--bgColor-muted, var(--color-canvas-subtle))',
+  color: 'var(--fgColor-muted, var(--color-fg-muted))',
+  fontSize: 'var(--text-caption-size, 0.75rem)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+const bodyRowStyle: React.CSSProperties = {
+  borderBottom: 'var(--borderWidth-thin, 1px) solid var(--borderColor-default, var(--color-border-default))',
+  transition: 'background-color 0.1s ease',
+}
+
+const cellStyle: React.CSSProperties = {
+  padding: 'var(--base-size-12, 12px) var(--base-size-16, 16px)',
+}
+
+const cellRightStyle: React.CSSProperties = {
+  ...cellStyle,
+  textAlign: 'right',
+  fontVariantNumeric: 'tabular-nums',
+}
+
+const cellCenterStyle: React.CSSProperties = {
+  ...cellStyle,
+  textAlign: 'center',
+}
+
+const titleLinkStyle: React.CSSProperties = {
+  color: 'var(--fgColor-default, var(--color-fg-default))',
+  fontWeight: 'var(--base-text-weight-medium, 500)',
+  textDecoration: 'none',
+  borderRadius: 'var(--borderRadius-small, 3px)',
+}
+
+const reconcileTagStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--base-size-4, 4px)',
+  borderWidth: 'var(--borderWidth-thin, 1px)',
+  borderStyle: 'solid',
+  borderColor: 'var(--borderColor-attention-emphasis, var(--color-attention-emphasis))',
+  backgroundColor: 'var(--bgColor-attention-muted, var(--color-attention-subtle))',
+  color: 'var(--fgColor-attention, var(--color-attention-fg))',
+  borderRadius: 'var(--borderRadius-full, 9999px)',
+  padding: '2px var(--base-size-8, 8px)',
+  fontSize: 'var(--text-caption-size, 0.75rem)',
+  fontWeight: 'var(--base-text-weight-medium, 500)',
+}
+
+const emptyStateStyle: React.CSSProperties = {
+  borderWidth: 'var(--borderWidth-thin, 1px)',
+  borderStyle: 'solid',
+  borderColor: 'var(--borderColor-default, var(--color-border-default))',
+  borderRadius: 'var(--borderRadius-medium, 6px)',
+  padding: 'var(--base-size-64, 64px) var(--base-size-32, 32px)',
+  textAlign: 'center',
+  color: 'var(--fgColor-muted, var(--color-fg-muted))',
+}
+
+/* ------------------------------------------------------------------ */
+/*  Components                                                        */
+/* ------------------------------------------------------------------ */
 
 function SeriesTableRow({ item }: { item: SeriesListItem }) {
   return (
-    <tr className="group border-b last:border-b-0 hover:bg-muted/40 transition-colors">
-      <td className="px-4 py-3">
+    <tr className="group last:[border-bottom:none] hover:bg-[var(--bgColor-muted,var(--color-canvas-subtle))]" style={bodyRowStyle}>
+      <td style={cellStyle}>
         <Link
           href={`/series/${item.seriesId}`}
-          className="font-medium text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          style={titleLinkStyle}
+          className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-outlineColor,var(--color-accent-fg))]"
         >
           {item.title}
         </Link>
       </td>
-      <td className="px-4 py-3">
+      <td style={cellStyle}>
         <StatusBadge status={item.status === 'Published' && item.draftSessionCount > 0 ? 'Partially Published' : item.status} />
       </td>
-      <td className="px-4 py-3 tabular-nums text-right">{item.sessionCount}</td>
-      <td className="px-4 py-3 tabular-nums text-right">{item.totalRegistrations}</td>
-      <td className="px-4 py-3 tabular-nums text-right">{item.totalAttendees}</td>
-      <td className="px-4 py-3 tabular-nums text-right">{item.uniqueAccountsInfluenced}</td>
-      <td className="px-4 py-3 text-center">
+      <td style={cellRightStyle}>{item.sessionCount}</td>
+      <td style={cellRightStyle}>{item.totalRegistrations}</td>
+      <td style={cellRightStyle}>{item.totalAttendees}</td>
+      <td style={cellRightStyle}>{item.uniqueAccountsInfluenced}</td>
+      <td style={cellCenterStyle}>
         {item.hasReconcileIssues && (
           <span
-            className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+            style={reconcileTagStyle}
             title="One or more sessions have reconcile issues"
           >
-            <AlertTriangle className="size-3" aria-hidden="true" />
+            <AlertIcon size={12} aria-hidden="true" />
             Issues
           </span>
         )}
@@ -59,24 +138,26 @@ export default async function SeriesListContent() {
 
   if (series.length === 0) {
     return (
-      <div className="rounded-lg border bg-card px-8 py-16 text-center text-muted-foreground">
-        <p className="text-base">No series yet. Create your first series.</p>
+      <div style={emptyStateStyle}>
+        <p style={{ fontSize: 'var(--text-body-size-medium, 0.875rem)' }}>
+          No series yet. Create your first series.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <table className="w-full text-sm">
+    <div style={tableWrapperStyle}>
+      <table className="w-full" style={{ fontSize: 'var(--text-body-size-medium, 0.875rem)' }}>
         <thead>
-          <tr className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="px-4 py-3 text-left font-medium">Title</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium">Sessions</th>
-            <th className="px-4 py-3 text-right font-medium">Registrations</th>
-            <th className="px-4 py-3 text-right font-medium">Attendees</th>
-            <th className="px-4 py-3 text-right font-medium">Accts Influenced</th>
-            <th className="px-4 py-3 text-center font-medium">Reconcile</th>
+          <tr style={headerRowStyle}>
+            <th style={{ ...cellStyle, textAlign: 'left', fontWeight: 'var(--base-text-weight-medium, 500)' }}>Title</th>
+            <th style={{ ...cellStyle, textAlign: 'left', fontWeight: 'var(--base-text-weight-medium, 500)' }}>Status</th>
+            <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Sessions</th>
+            <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Registrations</th>
+            <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Attendees</th>
+            <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Accts Influenced</th>
+            <th style={{ ...cellCenterStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Reconcile</th>
           </tr>
         </thead>
         <tbody>

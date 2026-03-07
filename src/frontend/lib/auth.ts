@@ -9,7 +9,12 @@ export const authOptions: AuthOptions = {
       tenantId: process.env.AZURE_AD_TENANT_ID!,
       authorization: {
         params: {
-          scope: `openid profile email offline_access${process.env.AZURE_AD_CLIENT_ID ? ` api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user` : ''}`,
+          scope: `openid profile email offline_access api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user`,
+        },
+      },
+      token: {
+        params: {
+          scope: `openid profile email offline_access api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user`,
         },
       },
     }),
@@ -18,30 +23,20 @@ export const authOptions: AuthOptions = {
     async jwt({ token, account }) {
       if (account?.access_token) {
         token.accessToken = account.access_token
-
-        // Fetch Entra ID profile photo from Microsoft Graph
-        try {
-          const photoResponse = await fetch(
-            'https://graph.microsoft.com/v1.0/me/photo/$value',
-            { headers: { Authorization: `Bearer ${account.access_token}` } }
-          )
-          if (photoResponse.ok) {
-            const arrayBuffer = await photoResponse.arrayBuffer()
-            const base64 = Buffer.from(arrayBuffer).toString('base64')
-            const contentType = photoResponse.headers.get('content-type') || 'image/jpeg'
-            token.picture = `data:${contentType};base64,${base64}`
-          }
-        } catch {
-          // No profile photo available — avatar will use initials fallback
+        // Store refresh token for Graph API photo proxy route
+        if (account.refresh_token) {
+          token.refreshToken = account.refresh_token
         }
+      }
+      // Strip any stale base64 profile photo that was embedded in old JWTs
+      // to prevent oversized cookies (HTTP 431).
+      if (typeof token.picture === 'string' && token.picture.startsWith('data:')) {
+        delete token.picture
       }
       return token
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken
-      if (token.picture && session.user) {
-        session.user.image = token.picture
-      }
       return session
     },
   },

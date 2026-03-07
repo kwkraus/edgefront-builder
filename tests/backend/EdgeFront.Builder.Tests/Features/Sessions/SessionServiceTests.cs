@@ -162,6 +162,97 @@ public class SessionServiceTests : IDisposable
         result.Should().AllSatisfy(s => s.Status.Should().Be("Draft"));
     }
 
+    [Fact]
+    public async Task GetBySeriesAsync_ReturnsZeroPresenterAndCoordinatorCounts_WhenNoneAdded()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        _db.Sessions.Add(BuildSession(series.SeriesId));
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = (await _sut.GetBySeriesAsync(series.SeriesId, OwnerUserId)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].PresenterCount.Should().Be(0);
+        result[0].CoordinatorCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetBySeriesAsync_ReturnsCorrectPresenterCount()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+
+        _db.Set<SessionPresenter>().AddRange(
+            new SessionPresenter { SessionPresenterId = Guid.NewGuid(), SessionId = session.SessionId, EntraUserId = "p1", DisplayName = "Presenter 1", Email = "p1@test.com", CreatedAt = DateTime.UtcNow },
+            new SessionPresenter { SessionPresenterId = Guid.NewGuid(), SessionId = session.SessionId, EntraUserId = "p2", DisplayName = "Presenter 2", Email = "p2@test.com", CreatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = (await _sut.GetBySeriesAsync(series.SeriesId, OwnerUserId)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].PresenterCount.Should().Be(2);
+        result[0].CoordinatorCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetBySeriesAsync_ReturnsCorrectCoordinatorCount()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+
+        _db.Set<SessionCoordinator>().Add(
+            new SessionCoordinator { SessionCoordinatorId = Guid.NewGuid(), SessionId = session.SessionId, EntraUserId = "c1", DisplayName = "Coordinator 1", Email = "c1@test.com", CreatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = (await _sut.GetBySeriesAsync(series.SeriesId, OwnerUserId)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].PresenterCount.Should().Be(0);
+        result[0].CoordinatorCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetBySeriesAsync_PresenterAndCoordinatorCounts_AreIsolatedPerSession()
+    {
+        // Arrange: two sessions in the same series; each has different role counts
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session1 = BuildSession(series.SeriesId);
+        var session2 = BuildSession(series.SeriesId);
+        _db.Sessions.AddRange(session1, session2);
+
+        _db.Set<SessionPresenter>().Add(
+            new SessionPresenter { SessionPresenterId = Guid.NewGuid(), SessionId = session1.SessionId, EntraUserId = "p1", DisplayName = "Presenter", Email = "p@test.com", CreatedAt = DateTime.UtcNow });
+        _db.Set<SessionCoordinator>().AddRange(
+            new SessionCoordinator { SessionCoordinatorId = Guid.NewGuid(), SessionId = session2.SessionId, EntraUserId = "c1", DisplayName = "Coord 1", Email = "c1@test.com", CreatedAt = DateTime.UtcNow },
+            new SessionCoordinator { SessionCoordinatorId = Guid.NewGuid(), SessionId = session2.SessionId, EntraUserId = "c2", DisplayName = "Coord 2", Email = "c2@test.com", CreatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = (await _sut.GetBySeriesAsync(series.SeriesId, OwnerUserId))
+            .ToDictionary(s => s.SessionId);
+
+        // Assert
+        result[session1.SessionId].PresenterCount.Should().Be(1);
+        result[session1.SessionId].CoordinatorCount.Should().Be(0);
+        result[session2.SessionId].PresenterCount.Should().Be(0);
+        result[session2.SessionId].CoordinatorCount.Should().Be(2);
+    }
+
     // ---------- GetByIdAsync ----------
 
     [Fact]

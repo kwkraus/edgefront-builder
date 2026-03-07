@@ -4,10 +4,19 @@ import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeftIcon } from '@primer/octicons-react'
+import { Button, FormControl, TextInput, Spinner } from '@primer/react'
 import { ErrorBanner } from '@/components/error-banner'
 import { DateTimePicker } from '@/components/date-time-picker'
 import { createSession } from '@/lib/api/sessions'
+
+const cardStyle: React.CSSProperties = {
+  borderWidth: 'var(--borderWidth-thin, 1px)',
+  borderStyle: 'solid',
+  borderColor: 'var(--borderColor-default, var(--color-border-default))',
+  borderRadius: 'var(--borderRadius-medium, 6px)',
+  padding: 'var(--base-size-24, 24px)',
+}
 
 export default function NewSessionPage() {
   const params = useParams()
@@ -58,9 +67,10 @@ export default function NewSessionPage() {
       <div className="flex items-center gap-2">
         <Link
           href={`/series/${seriesId}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1 text-sm"
+          style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
         >
-          <ChevronLeft className="size-4" aria-hidden="true" />
+          <ChevronLeftIcon size={16} />
           Back to Series
         </Link>
       </div>
@@ -70,39 +80,43 @@ export default function NewSessionPage() {
       {error && <ErrorBanner message={error} />}
 
       {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" aria-live="polite" aria-busy="true">
-          <div className="flex items-center gap-3 rounded-lg bg-background px-6 py-4 shadow-lg">
-            <span className="size-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" aria-hidden="true" />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'var(--overlay-backdrop, rgba(0,0,0,0.3))' }}
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div
+            className="flex items-center gap-3 px-6 py-4 shadow-lg"
+            style={{
+              backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))',
+              borderRadius: 'var(--borderRadius-medium, 6px)',
+            }}
+          >
+            <Spinner size="small" />
             <span className="text-sm font-medium">Creating session…</span>
           </div>
         </div>
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium mb-1.5">
-            Title <span className="text-destructive" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
+        <FormControl required>
+          <FormControl.Label>Title</FormControl.Label>
+          <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => setTouched(true)}
-            aria-invalid={titleError ? 'true' : undefined}
-            aria-describedby={titleError ? 'title-error' : undefined}
             placeholder="e.g. Intro to EdgeFront"
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
+            block
             autoFocus
+            validationStatus={titleError ? 'error' : undefined}
           />
           {titleError && (
-            <p id="title-error" role="alert" className="mt-1 text-xs text-destructive">
-              {titleError}
-            </p>
+            <FormControl.Validation variant="error">{titleError}</FormControl.Validation>
           )}
-        </div>
+        </FormControl>
 
-        <div className="rounded-lg border bg-card p-6 space-y-4">
+        <div className="space-y-4" style={cardStyle}>
           <h2 className="text-base font-semibold">Schedule</h2>
           <DateTimePicker
             label="Start Time"
@@ -118,27 +132,18 @@ export default function NewSessionPage() {
               disabled={loading}
             />
             {endsAtError && (
-              <p id="endsAt-error" role="alert" className="mt-1 text-xs text-destructive">
-                {endsAtError}
-              </p>
+              <FormControl.Validation variant="error">{endsAtError}</FormControl.Validation>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" disabled={loading}>
             {loading ? 'Saving…' : 'Save'}
-          </button>
-          <Link
-            href={`/series/${seriesId}`}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-muted transition-colors"
-          >
+          </Button>
+          <Button as={Link} href={`/series/${seriesId}`} variant="default">
             Cancel
-          </Link>
+          </Button>
         </div>
       </form>
     </div>

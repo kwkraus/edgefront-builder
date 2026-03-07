@@ -1,0 +1,44 @@
+'use client'
+
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+
+type ColorMode = 'light' | 'dark'
+const STORAGE_KEY = 'color-mode'
+
+interface ColorModeContextValue {
+  mode: ColorMode
+  toggle: () => void
+}
+
+const ColorModeContext = createContext<ColorModeContextValue>({
+  mode: 'light',
+  toggle: () => {},
+})
+
+export function useColorMode() {
+  return useContext(ColorModeContext)
+}
+
+export default function ColorModeProvider({ children }: { children: React.ReactNode }) {
+  const [mode, setMode] = useState<ColorMode>(() => {
+    if (typeof window === 'undefined') return 'light'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'dark' || stored === 'light') return stored
+    return (document.documentElement.getAttribute('data-color-mode') as ColorMode) ?? 'light'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-mode', mode)
+    localStorage.setItem(STORAGE_KEY, mode)
+  }, [mode])
+
+  const toggle = useCallback(() => {
+    setMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
+
+  return (
+    <ColorModeContext value={{ mode, toggle }}>
+      {children}
+    </ColorModeContext>
+  )
+}
