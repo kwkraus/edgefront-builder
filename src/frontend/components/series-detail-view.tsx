@@ -1,18 +1,41 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, CheckCircleFillIcon, DotFillIcon, PeopleIcon, OrganizationIcon } from '@primer/octicons-react'
-import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token } from '@primer/react'
+import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, CheckCircleFillIcon, DotFillIcon, PeopleIcon, OrganizationIcon, AlertFillIcon, XIcon } from '@primer/octicons-react'
+import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token, Tooltip } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { MetricsPanel } from '@/components/metrics-panel'
-import { updateSeries, deleteSeries, publishSeries, syncSeries } from '@/lib/api/series'
+import { updateSeries, deleteSeries, publishSeries } from '@/lib/api/series'
+import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { deleteSession, publishSession } from '@/lib/api/sessions'
 import type { SeriesResponse, SessionListItem, SeriesMetricsResponse } from '@/lib/api/types'
+
+function buildPeopleTooltip(s: SessionListItem): string {
+  const lines: string[] = []
+
+  if (s.ownerDisplayName) {
+    lines.push(`Organizer: ${s.ownerDisplayName}`)
+  }
+
+  if (s.presenters && s.presenters.length > 0) {
+    lines.push(`Presenters: ${s.presenters.map(p => p.displayName).join(', ')}`)
+  } else {
+    lines.push('Presenters: None')
+  }
+
+  if (s.coordinators && s.coordinators.length > 0) {
+    lines.push(`Co-organizers: ${s.coordinators.map(c => c.displayName).join(', ')}`)
+  } else {
+    lines.push('Co-organizers: None')
+  }
+
+  return lines.join('\n')
+}
 
 function formatDateTime(iso: string | null | undefined) {
   if (!iso) return '—'
@@ -71,46 +94,16 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   const token = authSession?.accessToken ?? ''
   const busy = sessionStatus === 'loading'
 
-  // ── Auto-sync published sessions (stale after 15 min) ────────────────────
-  const [syncing, setSyncing] = useState(false)
-  const hasSynced = useRef(false)
-  const STALE_MS = 15 * 60 * 1000 // 15 minutes
-
-  function isSyncStale(sessionList: SessionListItem[]): boolean {
-    const published = sessionList.filter(s => s.status === 'Published')
-    if (published.length === 0) return false
-    // Stale if any published session has never synced or oldest sync > 15 min
-    return published.some(s => {
-      if (!s.lastSyncAt) return true
-      return Date.now() - new Date(s.lastSyncAt).getTime() > STALE_MS
-    })
-  }
-
-  const doSync = useCallback(async () => {
-    if (!token || series.status !== 'Published') return
-    const hasPublished = sessions.some(s => s.status === 'Published')
-    if (!hasPublished) return
-    setSyncing(true)
-    try {
-      await syncSeries(series.seriesId, token)
-      router.refresh()
-    } catch {
-      // Sync failure is non-blocking — user still sees cached data
-    } finally {
-      setSyncing(false)
-    }
-  }, [token, series.seriesId, series.status, sessions, router])
-
-  const doAutoSync = useCallback(async () => {
-    if (hasSynced.current) return
-    if (!isSyncStale(sessions)) { hasSynced.current = true; return }
-    hasSynced.current = true
-    await doSync()
-  }, [sessions, doSync])
+  // ── Auto-sync published sessions via shared hook ─────────────────────────
+  const { isSyncing, getSyncState, syncAll, autoSyncIfStale, cancelAll } = useTeamsSync({
+    accessToken: token,
+    onSyncComplete: () => router.refresh(),
+  })
 
   useEffect(() => {
-    doAutoSync()
-  }, [doAutoSync])
+    if (sessionStatus !== 'authenticated' || !token) return
+    autoSyncIfStale(sessions)
+  }, [sessions, autoSyncIfStale, sessionStatus, token])
 
   // ── Edit Series ──────────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false)
@@ -379,24 +372,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                 {series.draftSessionCount} unpublished
               </span>
             )}
-            {syncing && (
-              <span
-                className="inline-flex items-center gap-1.5 text-xs"
-                style={{ color: 'var(--fgColor-muted)' }}
-              >
-                <Spinner size="small" />
-                Syncing from Teams…
-              </span>
-            )}
-            {!syncing && series.status === 'Published' && sessions.some(s => s.status === 'Published') && (
-              <IconButton
-                icon={SyncIcon}
-                aria-label="Refresh from Teams"
-                variant="invisible"
-                size="small"
-                onClick={doSync}
-              />
-            )}
+            {/* Sync button moved to table Status column header */}
           </div>
           <Button
             as={Link}
@@ -438,7 +414,31 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     borderBottom: '1px solid var(--borderColor-default)',
                   }}
                 >
-                  <th className="w-8 px-2 py-3"><span className="sr-only">Status</span></th>
+                  <th className="w-8 px-2 py-3">
+                    <div className="flex items-center justify-center">
+                    {isSyncing ? (
+                      <IconButton
+                        icon={XIcon}
+                        aria-label="Cancel sync"
+                        variant="invisible"
+                        size="small"
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); cancelAll() }}
+                      />
+                    ) : (
+                      series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
+                        <IconButton
+                          icon={SyncIcon}
+                          aria-label="Refresh from Teams"
+                          variant="invisible"
+                          size="small"
+                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); syncAll(sessions) }}
+                        />
+                      ) : (
+                        <span className="sr-only">Status</span>
+                      )
+                    )}
+                    </div>
+                  </th>
                   <th className="px-4 py-3 text-left font-medium">Title</th>
                   <th className="px-4 py-3 text-left font-medium">Delivery</th>
                   <th className="px-4 py-3 text-left font-medium">People</th>
@@ -463,16 +463,39 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       e.currentTarget.style.backgroundColor = ''
                     }}
                   >
-                    <td className="w-8 px-2 py-3 text-center">
-                      {s.status === 'Published' ? (
-                        <span title="Published" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
-                          <CheckCircleFillIcon size={16} />
-                        </span>
-                      ) : (
-                        <span title="Draft" style={{ color: 'var(--fgColor-muted)' }}>
-                          <DotFillIcon size={16} />
-                        </span>
-                      )}
+                    <td className="w-8 px-2 py-3">
+                      <div className="flex items-center justify-center">
+                      {(() => {
+                        const syncState = getSyncState(s.sessionId)
+                        if (syncState === 'syncing') {
+                          return (
+                            <span title="Syncing with Teams…" className="inline-flex items-center justify-center">
+                              <span className="sync-pulse" />
+                            </span>
+                          )
+                        }
+                        if (syncState === 'error') {
+                          return (
+                            <span title="Sync failed" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-danger, #d1242f)' }}>
+                              <AlertFillIcon size={16} />
+                            </span>
+                          )
+                        }
+                        // Default: show publication status
+                        if (s.status === 'Published') {
+                          return (
+                            <span title="Published" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
+                              <CheckCircleFillIcon size={16} />
+                            </span>
+                          )
+                        }
+                        return (
+                          <span title="Draft" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-muted)' }}>
+                            <DotFillIcon size={16} />
+                          </span>
+                        )
+                      })()}
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {s.title}
@@ -497,16 +520,22 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       })()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
-                      <span className="inline-flex items-center gap-3 text-xs">
-                        <span className="inline-flex items-center gap-1" title="Presenters">
-                          <PeopleIcon size={14} />
-                          {s.presenterCount}
-                        </span>
-                        <span className="inline-flex items-center gap-1" title="Coordinators">
-                          <OrganizationIcon size={14} />
-                          {s.coordinatorCount}
-                        </span>
-                      </span>
+                      <Tooltip
+                        text={buildPeopleTooltip(s)}
+                        direction="s"
+                        type="description"
+                      >
+                        <button type="button" className="inline-flex items-center gap-3 text-xs" style={{ cursor: 'default', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit' }}>
+                          <span className="inline-flex items-center gap-1">
+                            <PeopleIcon size={14} />
+                            {s.presenterCount}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <OrganizationIcon size={14} />
+                            {s.coordinatorCount}
+                          </span>
+                        </button>
+                      </Tooltip>
                     </td>
                     <td className="px-4 py-3 tabular-nums text-right">{s.totalRegistrations}</td>
                     <td className="px-4 py-3 tabular-nums text-right">{s.totalAttendees}</td>

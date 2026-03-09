@@ -14,4 +14,14 @@ public static class HttpContextExtensions
     public static string? GetUserOid(this HttpContext context) =>
         context.User.FindFirst(OidClaimType)?.Value
         ?? context.User.FindFirst(OidAltClaimType)?.Value;
+
+    /// <summary>
+    /// Returns the current user's display name from the JWT claims.
+    /// Falls back to preferred_username or empty string.
+    /// </summary>
+    public static string GetUserDisplayName(this HttpContext context) =>
+        context.User.FindFirst("name")?.Value
+        ?? context.User.FindFirst(ClaimTypes.Name)?.Value
+        ?? context.User.FindFirst("preferred_username")?.Value
+        ?? string.Empty;
 }

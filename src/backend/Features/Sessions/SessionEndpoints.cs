@@ -17,7 +17,8 @@ public static class SessionEndpoints
                 if (userId is null)
                     return Results.Unauthorized();
 
-                var result = await service.GetBySeriesAsync(id, userId);
+                var displayName = ctx.GetUserDisplayName();
+                var result = await service.GetBySeriesAsync(id, userId, displayName);
                 return Results.Ok(result);
             })
             .RequireAuthorization();
@@ -128,7 +129,7 @@ public static class SessionEndpoints
 
             var oboToken = await TryGetOboTokenAsync(ctx, oboService);
 
-            var (session, errorCode) = await service.PublishAsync(id, userId, oboToken, graphClient, logger, config);
+            var (session, errorCode, errorMessage) = await service.PublishAsync(id, userId, oboToken, graphClient, logger, config);
             if (session is null)
             {
                 if (errorCode == "session_not_found")
@@ -140,9 +141,16 @@ public static class SessionEndpoints
                             ? "Session is already published."
                             : "Series must be published before publishing individual sessions.",
                         ctx.TraceIdentifier));
+                if (errorCode == "SESSION_DATES_IN_PAST")
+                    return Results.BadRequest(new ErrorEnvelope(
+                        errorCode,
+                        errorMessage ?? "Cannot publish a session with dates in the past.",
+                        ctx.TraceIdentifier));
 
                 return Results.UnprocessableEntity(new ErrorEnvelope(
-                    errorCode ?? "SESSION_PUBLISH_FAILED", "Session publish failed.", ctx.TraceIdentifier));
+                    errorCode ?? "SESSION_PUBLISH_FAILED",
+                    errorMessage ?? "Session publish failed.",
+                    ctx.TraceIdentifier));
             }
 
             return Results.Ok(session);

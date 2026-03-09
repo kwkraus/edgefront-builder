@@ -3,9 +3,10 @@
 /* react-day-picker default styles */
 @import "react-day-picker/style.css";
 
-/* Primer Primitives — sizing, typography, and color themes */
+/* Primer Primitives — sizing, typography, motion, and color themes */
 @import "@primer/primitives/dist/css/base/size/size.css";
 @import "@primer/primitives/dist/css/base/typography/typography.css";
+@import "@primer/primitives/dist/css/base/motion/motion.css";
 @import "@primer/primitives/dist/css/functional/size/border.css";
 @import "@primer/primitives/dist/css/functional/size/breakpoints.css";
 @import "@primer/primitives/dist/css/functional/size/size.css";
@@ -19,4 +20,21 @@
 html {
   background-color: var(--bgColor-default, var(--color-canvas-default, #ffffff));
   color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+}
+
+/* Pulsing indicator for sync operations */
+@layer base {
+  @keyframes pulse-sync {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(0.7); }
+  }
+}
+
+@utility sync-pulse {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--fgColor-accent, #0969da);
+  animation: pulse-sync 1.4s ease-in-out infinite;
 }
