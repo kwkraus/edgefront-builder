@@ -289,22 +289,7 @@ public class SyncService
             return;
         }
 
-        // Resolve emails via user info lookup (best-effort per user)
-        var userInfoTasks = teamsPresenters.Select(async p =>
-        {
-            try
-            {
-                var info = await _graphClient.GetUserInfoAsync(p.EntraUserId, oboToken, ct);
-                return (p.EntraUserId, DisplayName: info?.DisplayName ?? p.DisplayName, Email: info?.Email ?? string.Empty);
-            }
-            catch
-            {
-                return (p.EntraUserId, p.DisplayName, Email: string.Empty);
-            }
-        });
-        var resolved = (await Task.WhenAll(userInfoTasks)).ToDictionary(x => x.EntraUserId, StringComparer.OrdinalIgnoreCase);
-
-        // Full-replace local presenter rows
+        // Full-replace local presenter rows using identity data from the webinar API
         var existing = await _db.SessionPresenters
             .Where(p => p.SessionId == session.SessionId)
             .ToListAsync(ct);
@@ -313,14 +298,13 @@ public class SyncService
         var now = DateTime.UtcNow;
         foreach (var tp in teamsPresenters)
         {
-            resolved.TryGetValue(tp.EntraUserId, out var info);
             _db.SessionPresenters.Add(new SessionPresenter
             {
                 SessionPresenterId = Guid.NewGuid(),
                 SessionId = session.SessionId,
                 EntraUserId = tp.EntraUserId,
-                DisplayName = info.DisplayName ?? tp.DisplayName,
-                Email = info.Email ?? string.Empty,
+                DisplayName = tp.DisplayName,
+                Email = string.Empty,
                 CreatedAt = now
             });
         }
@@ -346,22 +330,7 @@ public class SyncService
             return;
         }
 
-        // Resolve emails via user info lookup (best-effort per user)
-        var userInfoTasks = teamsCoOrganizers.Select(async c =>
-        {
-            try
-            {
-                var info = await _graphClient.GetUserInfoAsync(c.EntraUserId, oboToken, ct);
-                return (c.EntraUserId, DisplayName: info?.DisplayName ?? c.DisplayName, Email: info?.Email ?? string.Empty);
-            }
-            catch
-            {
-                return (c.EntraUserId, c.DisplayName, Email: string.Empty);
-            }
-        });
-        var resolved = (await Task.WhenAll(userInfoTasks)).ToDictionary(x => x.EntraUserId, StringComparer.OrdinalIgnoreCase);
-
-        // Full-replace local coordinator rows
+        // Full-replace local coordinator rows using identity data from the webinar API
         var existing = await _db.SessionCoordinators
             .Where(c => c.SessionId == session.SessionId)
             .ToListAsync(ct);
@@ -370,14 +339,13 @@ public class SyncService
         var now = DateTime.UtcNow;
         foreach (var co in teamsCoOrganizers)
         {
-            resolved.TryGetValue(co.EntraUserId, out var info);
             _db.SessionCoordinators.Add(new SessionCoordinator
             {
                 SessionCoordinatorId = Guid.NewGuid(),
                 SessionId = session.SessionId,
                 EntraUserId = co.EntraUserId,
-                DisplayName = info.DisplayName ?? co.DisplayName,
-                Email = info.Email ?? string.Empty,
+                DisplayName = co.DisplayName,
+                Email = string.Empty,
                 CreatedAt = now
             });
         }

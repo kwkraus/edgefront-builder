@@ -93,8 +93,7 @@ public class TeamsGraphClient : ITeamsGraphClient
                 ? err.Error.InnerError.AdditionalData["code"]?.ToString()
                 : null;
             throw new InvalidOperationException(
-                $"Graph CreateWebinar failed: Code={code}, Message={message}, InnerCode={innerCode}, " +
-                $"Start={startsAt:O}, End={endsAt:O}, Title={title}", err);
+                $"Graph CreateWebinar failed: Code={code}, Message={message}, InnerCode={innerCode}", err);
         }
     }
 
@@ -445,8 +444,9 @@ public class TeamsGraphClient : ITeamsGraphClient
                 user.DisplayName ?? string.Empty,
                 user.Mail ?? user.UserPrincipalName ?? string.Empty);
         }
-        catch (ODataError err) when (err.ResponseStatusCode == 404)
+        catch (ODataError err) when (err.ResponseStatusCode == 404 || err.ResponseStatusCode == 403)
         {
+            // 404 = user not found; 403 = insufficient directory read permissions (OBO token may lack User.ReadBasic.All)
             return null;
         }
     }

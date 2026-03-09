@@ -35,11 +35,15 @@ public class SessionService
             .ToDictionaryAsync(m => m.SessionId);
 
         var presentersBySession = await _db.Set<SessionPresenter>()
+            .AsNoTracking()
             .Where(p => sessionIds.Contains(p.SessionId))
+            .Select(p => new { p.SessionId, p.DisplayName, p.Email })
             .ToListAsync();
 
         var coordinatorsBySession = await _db.Set<SessionCoordinator>()
+            .AsNoTracking()
             .Where(c => sessionIds.Contains(c.SessionId))
+            .Select(c => new { c.SessionId, c.DisplayName, c.Email })
             .ToListAsync();
 
         var presenterLookup = presentersBySession
@@ -321,7 +325,7 @@ public class SessionService
             logger.LogError(ex, "Session publish failed. SessionId={SessionId}", sessionId);
             var rollbackOk = await RollbackWebinarAsync(graphClient, oboToken, createdWebinarId, logger);
             var errorCode = rollbackOk ? "SESSION_PUBLISH_FAILED" : "SESSION_PUBLISH_PARTIAL_FAILURE";
-            return (null, errorCode, ex.Message);
+            return (null, errorCode, null);
         }
     }
 

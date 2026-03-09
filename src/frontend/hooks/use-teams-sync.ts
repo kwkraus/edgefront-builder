@@ -57,18 +57,36 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
       const timeoutCtrl = new AbortController()
       const timer = setTimeout(() => timeoutCtrl.abort(), timeoutMs)
 
-      // Combine the per-session timeout with the shared cancel signal
-      const combinedSignal = signal
-        ? AbortSignal.any([signal, timeoutCtrl.signal])
-        : timeoutCtrl.signal
+      // Combine the per-session timeout with the shared cancel signal.
+      // AbortSignal.any is not universally available; fall back to a manual forwarder.
+      let combinedSignal: AbortSignal
+      if (signal) {
+        if (typeof AbortSignal.any === 'function') {
+          combinedSignal = AbortSignal.any([signal, timeoutCtrl.signal])
+        } else {
+          const combined = new AbortController()
+          const forward = () => {
+            combined.abort()
+            // Clean up whichever listener did not fire
+            signal.removeEventListener('abort', forward)
+            timeoutCtrl.signal.removeEventListener('abort', forward)
+          }
+          signal.addEventListener('abort', forward, { once: true })
+          timeoutCtrl.signal.addEventListener('abort', forward, { once: true })
+          combinedSignal = combined.signal
+        }
+      } else {
+        combinedSignal = timeoutCtrl.signal
+      }
 
       try {
         await syncSession(sessionId, accessToken, combinedSignal)
         updateState(sessionId, 'done')
       } catch {
-        // Aborted by cancellation or timeout
-        if (combinedSignal.aborted) {
-          updateState(sessionId, 'error')
+        // Treat user-initiated cancellation as idle (not an error).
+        // Only mark error for non-abort failures (e.g. network/server errors).
+        if (signal?.aborted) {
+          updateState(sessionId, 'idle')
         } else {
           updateState(sessionId, 'error')
         }

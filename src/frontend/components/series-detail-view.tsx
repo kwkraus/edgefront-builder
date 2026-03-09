@@ -422,7 +422,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                         aria-label="Cancel sync"
                         variant="invisible"
                         size="small"
-                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); cancelAll() }}
+                        onClick={(e) => { e.stopPropagation(); cancelAll() }}
                       />
                     ) : (
                       series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
@@ -431,7 +431,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                           aria-label="Refresh from Teams"
                           variant="invisible"
                           size="small"
-                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); syncAll(sessions) }}
+                          onClick={(e) => { e.stopPropagation(); syncAll(sessions) }}
                         />
                       ) : (
                         <span className="sr-only">Status</span>
