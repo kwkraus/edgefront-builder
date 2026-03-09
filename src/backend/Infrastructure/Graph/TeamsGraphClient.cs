@@ -63,6 +63,7 @@ public class TeamsGraphClient : ITeamsGraphClient
             var body = new VirtualEventWebinar
             {
                 DisplayName = title,
+                Audience = MeetingAudience.Organization,
                 StartDateTime = new DateTimeTimeZone
                 {
                     DateTime = startsAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"),
@@ -83,6 +84,16 @@ public class TeamsGraphClient : ITeamsGraphClient
         catch (ODataError err) when (IsLicenseError(err))
         {
             throw new TeamsLicenseException($"Teams license check failed: {err.Error?.Code}");
+        }
+        catch (ODataError err)
+        {
+            var code = err.Error?.Code ?? "unknown";
+            var message = err.Error?.Message ?? err.Message;
+            var innerCode = err.Error?.InnerError?.AdditionalData?.ContainsKey("code") == true
+                ? err.Error.InnerError.AdditionalData["code"]?.ToString()
+                : null;
+            throw new InvalidOperationException(
+                $"Graph CreateWebinar failed: Code={code}, Message={message}, InnerCode={innerCode}", err);
         }
     }
 
@@ -334,9 +345,13 @@ public class TeamsGraphClient : ITeamsGraphClient
             .Select(p =>
             {
                 var entraUserId = string.Empty;
+                var displayName = string.Empty;
                 if (p.Identity is Microsoft.Graph.Models.CommunicationsUserIdentity userIdentity)
+                {
                     entraUserId = userIdentity.Id ?? string.Empty;
-                return new TeamsPresenterInfo(p.Id!, entraUserId);
+                    displayName = userIdentity.DisplayName ?? string.Empty;
+                }
+                return new TeamsPresenterInfo(p.Id!, entraUserId, displayName);
             });
     }
 
@@ -384,6 +399,56 @@ public class TeamsGraphClient : ITeamsGraphClient
 
         await client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
             .PatchAsync(body, cancellationToken: ct);
+    }
+
+    public async Task<IEnumerable<TeamsCoOrganizerInfo>> GetWebinarCoOrganizersAsync(
+        string teamsWebinarId, string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        try
+        {
+            var result = await WithTransientRetryAsync(
+                () => client.Solutions.VirtualEvents.Webinars[teamsWebinarId]
+                    .GetAsync(cancellationToken: ct), ct);
+
+            if (result?.CoOrganizers is null) return [];
+
+            return result.CoOrganizers
+                .Where(c => c.Id is not null && !string.IsNullOrEmpty(c.Id))
+                .Select(c => new TeamsCoOrganizerInfo(
+                    c.Id!,
+                    c.DisplayName ?? string.Empty));
+        }
+        catch (ODataError err) when (err.ResponseStatusCode == 404)
+        {
+            return [];
+        }
+    }
+
+    public async Task<TeamsUserInfo?> GetUserInfoAsync(
+        string entraUserId, string oboToken, CancellationToken ct = default)
+    {
+        var client = BuildOboClient(oboToken);
+        try
+        {
+            var user = await client.Users[entraUserId]
+                .GetAsync(r =>
+                {
+                    r.QueryParameters.Select = ["id", "displayName", "mail", "userPrincipalName"];
+                }, cancellationToken: ct);
+
+            if (user is null) return null;
+
+            return new TeamsUserInfo(
+                user.Id ?? entraUserId,
+                user.DisplayName ?? string.Empty,
+                user.Mail ?? user.UserPrincipalName ?? string.Empty);
+        }
+        catch (ODataError err) when (err.ResponseStatusCode == 404 || err.ResponseStatusCode == 403)
+        {
+            // 404 = user not found; 403 = insufficient directory read permissions (OBO token may lack User.ReadBasic.All)
+            return null;
+        }
     }
 
     /// <summary>Escapes single quotes in OData filter strings.</summary>

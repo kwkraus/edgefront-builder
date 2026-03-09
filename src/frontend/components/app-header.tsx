@@ -1,6 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Header, IconButton } from '@primer/react'
 import { SunIcon, MoonIcon } from '@primer/octicons-react'
@@ -9,7 +10,11 @@ import { useColorMode } from '@/components/color-mode-provider'
 
 export default function AppHeader() {
   const { status } = useSession()
+  const pathname = usePathname()
   const { mode, toggle } = useColorMode()
+
+  // Hide the header on the login page — it has its own branding
+  if (pathname === '/login') return null
 
   return (
     <Header style={{ position: 'sticky', top: 0, zIndex: 30, width: '100%' }}>

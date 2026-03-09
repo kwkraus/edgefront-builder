@@ -67,6 +67,19 @@ public class SyncService
             await SyncRegistrationsAsync(session, oboToken, ct);
             await SyncAttendanceAsync(session, oboToken, ct);
 
+            // Best-effort: sync presenters and coordinators from Teams
+            try
+            {
+                await SyncPresentersAsync(session, oboToken, ct);
+                await SyncCoordinatorsAsync(session, oboToken, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Presenter/coordinator sync failed for SessionId={SessionId}. Registration/attendance data is still saved.",
+                    sessionId);
+            }
+
             session.ReconcileStatus = ReconcileStatus.Synced;
             session.LastSyncAt = DateTime.UtcNow;
             session.LastError = null;
@@ -253,6 +266,89 @@ public class SyncService
 
         if (toDelete.Count > 0)
             _db.NormalizedAttendances.RemoveRange(toDelete);
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task SyncPresentersAsync(Session session, string oboToken, CancellationToken ct)
+    {
+        var teamsPresenters = (await _graphClient.GetWebinarPresentersAsync(
+            session.TeamsWebinarId!, oboToken, ct))
+            .Where(p => !string.IsNullOrEmpty(p.EntraUserId))
+            .ToList();
+
+        if (teamsPresenters.Count == 0)
+        {
+            // No presenters in Teams — clear local rows
+            var toRemove = await _db.SessionPresenters
+                .Where(p => p.SessionId == session.SessionId)
+                .ToListAsync(ct);
+            if (toRemove.Count > 0)
+                _db.SessionPresenters.RemoveRange(toRemove);
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        // Full-replace local presenter rows using identity data from the webinar API
+        var existing = await _db.SessionPresenters
+            .Where(p => p.SessionId == session.SessionId)
+            .ToListAsync(ct);
+        _db.SessionPresenters.RemoveRange(existing);
+
+        var now = DateTime.UtcNow;
+        foreach (var tp in teamsPresenters)
+        {
+            _db.SessionPresenters.Add(new SessionPresenter
+            {
+                SessionPresenterId = Guid.NewGuid(),
+                SessionId = session.SessionId,
+                EntraUserId = tp.EntraUserId,
+                DisplayName = tp.DisplayName,
+                Email = string.Empty,
+                CreatedAt = now
+            });
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task SyncCoordinatorsAsync(Session session, string oboToken, CancellationToken ct)
+    {
+        var teamsCoOrganizers = (await _graphClient.GetWebinarCoOrganizersAsync(
+            session.TeamsWebinarId!, oboToken, ct))
+            .Where(c => !string.IsNullOrEmpty(c.EntraUserId))
+            .ToList();
+
+        if (teamsCoOrganizers.Count == 0)
+        {
+            var toRemove = await _db.SessionCoordinators
+                .Where(c => c.SessionId == session.SessionId)
+                .ToListAsync(ct);
+            if (toRemove.Count > 0)
+                _db.SessionCoordinators.RemoveRange(toRemove);
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        // Full-replace local coordinator rows using identity data from the webinar API
+        var existing = await _db.SessionCoordinators
+            .Where(c => c.SessionId == session.SessionId)
+            .ToListAsync(ct);
+        _db.SessionCoordinators.RemoveRange(existing);
+
+        var now = DateTime.UtcNow;
+        foreach (var co in teamsCoOrganizers)
+        {
+            _db.SessionCoordinators.Add(new SessionCoordinator
+            {
+                SessionCoordinatorId = Guid.NewGuid(),
+                SessionId = session.SessionId,
+                EntraUserId = co.EntraUserId,
+                DisplayName = co.DisplayName,
+                Email = string.Empty,
+                CreatedAt = now
+            });
+        }
 
         await _db.SaveChangesAsync(ct);
     }

@@ -56,10 +56,11 @@ export async function deleteSession(id: string, accessToken: string): Promise<vo
 export async function syncSession(
   id: string,
   accessToken: string,
+  signal?: AbortSignal,
 ): Promise<{ synced: boolean }> {
   return apiFetch<{ synced: boolean }>(
     `/sessions/${id}/sync`,
-    { method: 'POST' },
+    { method: 'POST', signal },
     accessToken,
   )
 }

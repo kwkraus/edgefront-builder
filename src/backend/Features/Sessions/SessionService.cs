@@ -21,7 +21,7 @@ public class SessionService
         _logger = logger is not null ? logger : NullLogger.Instance;
     }
 
-    public async Task<IEnumerable<SessionListItemDto>> GetBySeriesAsync(Guid seriesId, string ownerUserId)
+    public async Task<IEnumerable<SessionListItemDto>> GetBySeriesAsync(Guid seriesId, string ownerUserId, string ownerDisplayName = "")
     {
         var sessions = await _db.Sessions
             .Where(s => s.SeriesId == seriesId && s.OwnerUserId == ownerUserId)
@@ -34,21 +34,32 @@ public class SessionService
             .Where(m => sessionIds.Contains(m.SessionId))
             .ToDictionaryAsync(m => m.SessionId);
 
-        var presenterCounts = await _db.Set<SessionPresenter>()
+        var presentersBySession = await _db.Set<SessionPresenter>()
+            .AsNoTracking()
             .Where(p => sessionIds.Contains(p.SessionId))
-            .GroupBy(p => p.SessionId)
-            .Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
+            .Select(p => new { p.SessionId, p.DisplayName, p.Email })
+            .ToListAsync();
 
-        var coordinatorCounts = await _db.Set<SessionCoordinator>()
+        var coordinatorsBySession = await _db.Set<SessionCoordinator>()
+            .AsNoTracking()
             .Where(c => sessionIds.Contains(c.SessionId))
+            .Select(c => new { c.SessionId, c.DisplayName, c.Email })
+            .ToListAsync();
+
+        var presenterLookup = presentersBySession
+            .GroupBy(p => p.SessionId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var coordinatorLookup = coordinatorsBySession
             .GroupBy(c => c.SessionId)
-            .Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         return sessions.Select(s =>
         {
             var m = metrics.TryGetValue(s.SessionId, out var sm) ? sm : null;
+            var presenters = presenterLookup.TryGetValue(s.SessionId, out var pl) ? pl : [];
+            var coordinators = coordinatorLookup.TryGetValue(s.SessionId, out var cl) ? cl : [];
+
             return new SessionListItemDto(
                 s.SessionId,
                 s.Title,
@@ -62,8 +73,11 @@ public class SessionService
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
                 s.LastSyncAt,
-                presenterCounts.TryGetValue(s.SessionId, out var pc) ? pc : 0,
-                coordinatorCounts.TryGetValue(s.SessionId, out var cc) ? cc : 0);
+                presenters.Count,
+                coordinators.Count,
+                ownerDisplayName,
+                presenters.Select(p => new PersonSummary(p.DisplayName, p.Email)).ToList(),
+                coordinators.Select(c => new PersonSummary(c.DisplayName, c.Email)).ToList());
         });
     }
 
@@ -202,7 +216,7 @@ public class SessionService
     /// Publish a single Draft session within an already-Published series.
     /// Creates a Teams webinar, publishes it, and transitions the session to Published.
     /// </summary>
-    public async Task<(SessionResponseDto? session, string? errorCode)> PublishAsync(
+    public async Task<(SessionResponseDto? session, string? errorCode, string? errorMessage)> PublishAsync(
         Guid sessionId, string ownerUserId,
         string? oboToken = null, ITeamsGraphClient? graphClient = null, ILogger? logger = null,
         IConfiguration? config = null)
@@ -212,18 +226,18 @@ public class SessionService
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
         if (session is null)
-            return (null, "session_not_found");
+            return (null, "session_not_found", null);
 
         if (session.Status == SessionStatus.Published)
-            return (null, "SESSION_ALREADY_PUBLISHED");
+            return (null, "SESSION_ALREADY_PUBLISHED", null);
 
         // Verify the parent series is Published
         var series = await _db.Series
             .FirstOrDefaultAsync(s => s.SeriesId == session.SeriesId && s.OwnerUserId == ownerUserId);
         if (series is null)
-            return (null, "series_not_found");
+            return (null, "series_not_found", null);
         if (series.Status != SeriesStatus.Published)
-            return (null, "SERIES_NOT_PUBLISHED");
+            return (null, "SERIES_NOT_PUBLISHED", null);
 
         // Stub path: no graph client → flip status without Teams interaction
         if (graphClient is null || string.IsNullOrEmpty(oboToken))
@@ -234,7 +248,17 @@ public class SessionService
             await _db.SaveChangesAsync();
 
             var (p, c) = await GetRolesAsync(sessionId);
-            return (ToResponseDto(session, p, c), null);
+            return (ToResponseDto(session, p, c), null, null);
+        }
+
+        // Guard: Teams cannot create a webinar whose start time is in the past
+        if (session.StartsAt < DateTime.UtcNow)
+        {
+            logger.LogWarning(
+                "Cannot publish session with past start date. SessionId={SessionId}, StartsAt={StartsAt}",
+                sessionId, session.StartsAt);
+            return (null, "SESSION_DATES_IN_PAST",
+                "Cannot create a Teams webinar for a session that has already started. Update the session dates to a future time, then retry.");
         }
 
         // Create and publish the Teams webinar
@@ -288,19 +312,20 @@ public class SessionService
                 }
             }
 
-            return (ToResponseDto(session, p, c), null);
+            return (ToResponseDto(session, p, c), null, null);
         }
         catch (TeamsLicenseException lex)
         {
             logger.LogWarning(lex, "Teams license required during session publish. SessionId={SessionId}", sessionId);
             await RollbackWebinarAsync(graphClient, oboToken, createdWebinarId, logger);
-            return (null, "TEAMS_LICENSE_REQUIRED");
+            return (null, "TEAMS_LICENSE_REQUIRED", null);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Session publish failed. SessionId={SessionId}", sessionId);
             var rollbackOk = await RollbackWebinarAsync(graphClient, oboToken, createdWebinarId, logger);
-            return (null, rollbackOk ? "SESSION_PUBLISH_FAILED" : "SESSION_PUBLISH_PARTIAL_FAILURE");
+            var errorCode = rollbackOk ? "SESSION_PUBLISH_FAILED" : "SESSION_PUBLISH_PARTIAL_FAILURE";
+            return (null, errorCode, null);
         }
     }
 

@@ -46,7 +46,7 @@ public class SessionPublishTests : IDisposable
                 session.Title, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
             .ReturnsAsync(new CreateWebinarResult("webinar-session-1", "https://teams.microsoft.com/l/meetup-join/session-1"));
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
 
         errorCode.Should().BeNull();
@@ -75,7 +75,7 @@ public class SessionPublishTests : IDisposable
         session.TeamsWebinarId = "existing-webinar";
         await _db.SaveChangesAsync();
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, Mock.Of<ITeamsGraphClient>(), NullLogger.Instance);
 
         result.Should().BeNull();
@@ -102,7 +102,7 @@ public class SessionPublishTests : IDisposable
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, Mock.Of<ITeamsGraphClient>(), NullLogger.Instance);
 
         result.Should().BeNull();
@@ -114,7 +114,7 @@ public class SessionPublishTests : IDisposable
     [Fact]
     public async Task PublishAsync_SessionNotFound_ReturnsError()
     {
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             Guid.NewGuid(), OwnerUserId, OboToken, Mock.Of<ITeamsGraphClient>(), NullLogger.Instance);
 
         result.Should().BeNull();
@@ -133,7 +133,7 @@ public class SessionPublishTests : IDisposable
                 It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), OboToken, default))
             .ThrowsAsync(new TeamsLicenseException());
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
 
         result.Should().BeNull();
@@ -159,7 +159,7 @@ public class SessionPublishTests : IDisposable
         graphMock.Setup(g => g.DeleteWebinarAsync("webinar-to-rollback", OboToken, default))
             .Returns(Task.CompletedTask);
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId, OboToken, graphMock.Object, NullLogger.Instance);
 
         result.Should().BeNull();
@@ -179,7 +179,7 @@ public class SessionPublishTests : IDisposable
     {
         var (_, session) = await SeedPublishedSeriesWithDraftSessionAsync();
 
-        var (result, errorCode) = await _sut.PublishAsync(
+        var (result, errorCode, _) = await _sut.PublishAsync(
             session.SessionId, OwnerUserId);
 
         errorCode.Should().BeNull();
@@ -189,6 +189,24 @@ public class SessionPublishTests : IDisposable
 
         var dbSession = await _db.Sessions.FindAsync(session.SessionId);
         dbSession!.Status.Should().Be(SessionStatus.Published);
+    }
+
+    // ─── Past dates ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task PublishAsync_SessionDatesInPast_ReturnsError()
+    {
+        var (series, session) = await SeedPublishedSeriesWithDraftSessionAsync();
+        session.StartsAt = DateTime.UtcNow.AddHours(-2);
+        session.EndsAt = DateTime.UtcNow.AddHours(-1);
+        await _db.SaveChangesAsync();
+
+        var (result, errorCode, errorMessage) = await _sut.PublishAsync(
+            session.SessionId, OwnerUserId, OboToken, Mock.Of<ITeamsGraphClient>(), NullLogger.Instance);
+
+        result.Should().BeNull();
+        errorCode.Should().Be("SESSION_DATES_IN_PAST");
+        errorMessage.Should().Contain("already started");
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────

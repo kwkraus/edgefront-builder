@@ -36,11 +36,11 @@ import { getSessionById } from '@/lib/api/sessions'
 import {
   updateSession,
   deleteSession,
-  syncSession,
   publishSession,
   setSessionPresenters,
   setSessionCoordinators,
 } from '@/lib/api/sessions'
+import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { getSessionMetrics } from '@/lib/api/metrics'
 import type { SessionResponse, SessionMetricsResponse, PersonInput } from '@/lib/api/types'
 
@@ -111,51 +111,17 @@ export default function SessionDetailPage() {
     loadData()
   }, [loadData])
 
-  // ── Auto-sync published sessions from Teams (stale after 15 min) ─────────
-  const [syncing, setSyncing] = useState(false)
-  const [syncDone, setSyncDone] = useState(false)
-  const STALE_MS = 15 * 60 * 1000 // 15 minutes
-
-  function isSyncStale(lastSyncAt: string | null | undefined): boolean {
-    if (!lastSyncAt) return true
-    return Date.now() - new Date(lastSyncAt).getTime() > STALE_MS
-  }
-
-  const doManualSync = useCallback(async () => {
-    if (!session || session.status !== 'Published' || !session.teamsWebinarId || !token) return
-    setSyncing(true)
-    try {
-      await syncSession(session.sessionId, token)
-      setSyncDone(true)
-      loadData()
-    } catch {
-      // Non-blocking — user still sees cached data
-    } finally {
-      setSyncing(false)
-    }
-  }, [session, token, loadData])
+  // ── Auto-sync published sessions from Teams ──────────────────────────────
+  const { isSyncing: syncing, syncOne, autoSyncIfStale } = useTeamsSync({
+    accessToken: token,
+    onSyncComplete: loadData,
+  })
 
   useEffect(() => {
-    if (!session || session.status !== 'Published' || !session.teamsWebinarId || !token || syncDone) return
-    if (!isSyncStale(session.lastSyncAt)) { setSyncDone(true); return }
-    let cancelled = false
-    async function doSync() {
-      setSyncing(true)
-      try {
-        await syncSession(session!.sessionId, token)
-        if (!cancelled) {
-          setSyncDone(true)
-          loadData()
-        }
-      } catch {
-        // Non-blocking — user still sees cached data
-      } finally {
-        if (!cancelled) setSyncing(false)
-      }
+    if (session) {
+      autoSyncIfStale([session])
     }
-    doSync()
-    return () => { cancelled = true }
-  }, [session, token, syncDone, loadData])
+  }, [session, autoSyncIfStale])
 
   // ── Form state ───────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
@@ -404,7 +370,7 @@ export default function SessionDetailPage() {
             )}
             {syncing && (
               <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}>
-                <Spinner size="small" />
+                <span className="sync-pulse" />
                 Syncing…
               </span>
             )}
@@ -417,7 +383,7 @@ export default function SessionDetailPage() {
                     aria-label="Refresh from Teams"
                     variant="invisible"
                     size="small"
-                    onClick={doManualSync}
+                    onClick={() => syncOne(session.sessionId)}
                   />
                 )}
               </span>
@@ -431,7 +397,7 @@ export default function SessionDetailPage() {
                     aria-label="Refresh from Teams"
                     variant="invisible"
                     size="small"
-                    onClick={doManualSync}
+                    onClick={() => syncOne(session.sessionId)}
                   />
                 )}
               </span>

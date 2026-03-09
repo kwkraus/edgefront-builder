@@ -14,4 +14,7 @@ public record SessionListItemDto(
     int TotalAttendees,
     DateTime? LastSyncAt,
     int PresenterCount,
-    int CoordinatorCount);
+    int CoordinatorCount,
+    string OwnerDisplayName,
+    List<PersonSummary> Presenters,
+    List<PersonSummary> Coordinators);

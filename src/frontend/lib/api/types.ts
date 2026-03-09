@@ -36,6 +36,14 @@ export interface SessionListItem {
   lastSyncAt: string | null
   presenterCount: number
   coordinatorCount: number
+  ownerDisplayName: string
+  presenters: PersonSummary[]
+  coordinators: PersonSummary[]
+}
+
+export interface PersonSummary {
+  displayName: string
+  email: string
 }
 
 export interface SessionResponse {

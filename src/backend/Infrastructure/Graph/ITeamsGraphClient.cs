@@ -21,7 +21,11 @@ public interface ITeamsGraphClient
 
     // Presenter/co-organizer management (delegated — VirtualEvent.ReadWrite)
     Task<IEnumerable<TeamsPresenterInfo>> GetWebinarPresentersAsync(string teamsWebinarId, string oboToken, CancellationToken ct = default);
+    Task<IEnumerable<TeamsCoOrganizerInfo>> GetWebinarCoOrganizersAsync(string teamsWebinarId, string oboToken, CancellationToken ct = default);
     Task AddWebinarPresenterAsync(string teamsWebinarId, string entraUserId, string tenantId, string oboToken, CancellationToken ct = default);
     Task RemoveWebinarPresenterAsync(string teamsWebinarId, string presenterId, string oboToken, CancellationToken ct = default);
     Task SetWebinarCoOrganizersAsync(string teamsWebinarId, IEnumerable<string> entraUserIds, string oboToken, CancellationToken ct = default);
+
+    // User info lookup (delegated — User.ReadBasic.All)
+    Task<TeamsUserInfo?> GetUserInfoAsync(string entraUserId, string oboToken, CancellationToken ct = default);
 }
