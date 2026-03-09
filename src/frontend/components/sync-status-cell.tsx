@@ -19,11 +19,15 @@ interface SyncStatusCellProps {
 
 export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncStatusCellProps) {
   const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
 
-  // Reset hover when sync starts — the pulse animation replaces the
+  // Reset hover/focus when sync starts — the pulse animation replaces the
   // hoverable element so onMouseLeave never fires naturally.
   useEffect(() => {
-    if (syncState === 'syncing') setHovered(false)
+    if (syncState === 'syncing') {
+      setHovered(false)
+      setFocused(false)
+    }
   }, [syncState])
 
   function handleClick(e: React.MouseEvent) {
@@ -49,16 +53,19 @@ export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncSta
     )
   }
 
-  // Published sessions (idle, done, or error): hover reveals sync icon
+  // Published sessions (idle, done, or error): hover or focus reveals sync icon
   const isError = syncState === 'error'
+  const showSyncButton = hovered || focused
 
-  if (hovered) {
-    return (
-      <span
-        className="inline-flex items-center justify-center"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
+  return (
+    <span
+      className="inline-flex items-center justify-center"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+    >
+      {showSyncButton ? (
         <Tooltip
           text={isError ? 'Sync failed — click to retry' : 'Sync from Teams'}
           direction="e"
@@ -74,23 +81,12 @@ export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncSta
             style={{ color: 'var(--fgColor-accent, #0969da)' }}
           />
         </Tooltip>
-      </span>
-    )
-  }
-
-  // Default: show status icon
-  return (
-    <span
-      className="inline-flex items-center justify-center"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {isError ? (
+      ) : isError ? (
         <span title="Sync failed" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-danger, #d1242f)' }}>
           <AlertFillIcon size={16} />
         </span>
       ) : (
-        <span title="Published — hover to sync" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
+        <span title="Published — hover or focus to sync" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
           <CheckCircleFillIcon size={16} />
         </span>
       )}
