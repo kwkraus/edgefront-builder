@@ -425,22 +425,28 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                   <th className="w-8 px-2 py-3">
                     <div className="flex items-center justify-center">
                     {isSyncing ? (
-                      <IconButton
-                        icon={XIcon}
-                        aria-label="Cancel Sync"
-                        variant="invisible"
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); cancelAll() }}
-                      />
-                    ) : (
-                      series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
+                      <Tooltip text="Cancel Sync" direction="e" type="description">
                         <IconButton
-                          icon={SyncIcon}
-                          aria-label="Sync All"
+                          icon={XIcon}
+                          aria-label="Cancel Sync"
                           variant="invisible"
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); syncAll(sessions) }}
+                          unsafeDisableTooltip
+                          onClick={(e) => { e.stopPropagation(); cancelAll() }}
                         />
+                      </Tooltip>
+                    ) : (
+                      series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
+                        <Tooltip text="Sync All" direction="e" type="description">
+                          <IconButton
+                            icon={SyncIcon}
+                            aria-label="Sync All"
+                            variant="invisible"
+                            size="small"
+                            unsafeDisableTooltip
+                            onClick={(e) => { e.stopPropagation(); syncAll(sessions) }}
+                          />
+                        </Tooltip>
                       ) : (
                         <span className="sr-only">Status</span>
                       )
