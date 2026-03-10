@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import clsx from 'clsx'
 import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon } from '@primer/octicons-react'
 import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token, Tooltip } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
@@ -455,11 +456,20 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s, idx) => (
+                {sessions.map((s, idx) => {
+                  const rowSync = getSyncState(s.sessionId)
+                  const dataCellClass = clsx({
+                    'sync-cell-syncing': rowSync === 'syncing',
+                    'sync-cell-reveal': rowSync === 'done',
+                  })
+                  return (
                   <tr
                     key={s.sessionId}
                     onClick={() => router.push(`/sessions/${s.sessionId}`)}
-                    className="cursor-pointer transition-colors"
+                    className={clsx('cursor-pointer transition-colors', {
+                      'sync-row-syncing': rowSync === 'syncing',
+                      'sync-row-done': rowSync === 'done',
+                    })}
                     style={{
                       borderBottom: idx < sessions.length - 1 ? '1px solid var(--borderColor-default)' : undefined,
                     }}
@@ -480,10 +490,10 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       />
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium">
+                    <td className={clsx('px-4 py-3 font-medium', dataCellClass)}>
                       {s.title}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
+                    <td className={clsx('px-4 py-3 whitespace-nowrap', dataCellClass)} style={{ color: 'var(--fgColor-muted)' }}>
                       {(() => {
                         const d = formatDelivery(s.startsAt, s.endsAt)
                         return (
@@ -502,7 +512,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                         )
                       })()}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
+                    <td className={clsx('px-4 py-3 whitespace-nowrap', dataCellClass)} style={{ color: 'var(--fgColor-muted)' }}>
                       <Tooltip
                         text={buildPeopleTooltip(s)}
                         direction="s"
@@ -520,8 +530,8 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                         </button>
                       </Tooltip>
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-right">{s.totalRegistrations}</td>
-                    <td className="px-4 py-3 tabular-nums text-right">{s.totalAttendees}</td>
+                    <td className={clsx('px-4 py-3 tabular-nums text-right', dataCellClass)}>{s.totalRegistrations}</td>
+                    <td className={clsx('px-4 py-3 tabular-nums text-right', dataCellClass)}>{s.totalAttendees}</td>
                     <td
                       className="px-4 py-3 text-right"
                       onClick={(e) => e.stopPropagation()}
@@ -571,7 +581,8 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

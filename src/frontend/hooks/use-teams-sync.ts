@@ -35,6 +35,7 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
   const [syncStates, setSyncStates] = useState<Map<string, SyncState>>(new Map())
   const abortRef = useRef<AbortController | null>(null)
   const hasSynced = useRef(false)
+  const clearTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const isSyncing = Array.from(syncStates.values()).some((s) => s === 'syncing')
 
@@ -49,6 +50,21 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
       next.set(sessionId, state)
       return next
     })
+
+    // Auto-clear 'done' state after animation completes
+    if (state === 'done') {
+      const existing = clearTimers.current.get(sessionId)
+      if (existing) clearTimeout(existing)
+      const timer = setTimeout(() => {
+        clearTimers.current.delete(sessionId)
+        setSyncStates((prev) => {
+          const next = new Map(prev)
+          if (next.get(sessionId) === 'done') next.set(sessionId, 'idle')
+          return next
+        })
+      }, 900)
+      clearTimers.current.set(sessionId, timer)
+    }
   }, [])
 
   const syncOne = useCallback(
@@ -147,8 +163,11 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
 
   // Cleanup on unmount
   useEffect(() => {
+    const timers = clearTimers.current
     return () => {
       abortRef.current?.abort()
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
     }
   }, [])
 

@@ -38,3 +38,49 @@ html {
   background-color: var(--fgColor-accent, #0969da);
   animation: pulse-sync 1.4s ease-in-out infinite;
 }
+
+/* ── Sync row animations ─────────────────────────────────────────────────── */
+
+/* Row-level: background highlight that plays once after sync completes */
+@layer base {
+  @keyframes sync-row-highlight {
+    0%   { background-color: var(--bgColor-accent-muted, rgba(9, 105, 218, 0.08)); }
+    100% { background-color: transparent; }
+  }
+
+  /* Data-cell content reveal after sync completes */
+  @keyframes sync-cell-reveal {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+}
+
+/* Applied to <tr> while syncing — muted background wash */
+@utility sync-row-syncing {
+  background-color: var(--bgColor-muted, #f6f8fa);
+  transition: background-color 0.2s ease-out;
+}
+
+/* Applied to <tr> after sync completes — brief accent flash */
+@utility sync-row-done {
+  animation: sync-row-highlight 0.8s ease-out forwards;
+}
+
+/* Applied to data <td> cells while syncing — reduced opacity */
+@utility sync-cell-syncing {
+  opacity: 0.35;
+  transition: opacity 0.2s ease-out;
+}
+
+/* Applied to data <td> cells after sync — content fades in */
+@utility sync-cell-reveal {
+  animation: sync-cell-reveal 0.6s ease-out forwards;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .sync-row-syncing { transition: none; }
+  .sync-row-done { animation: none; }
+  .sync-cell-syncing { transition: none; }
+  .sync-cell-reveal { animation: none; }
+}
