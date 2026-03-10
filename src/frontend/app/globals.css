@@ -53,28 +53,28 @@ html {
     0%   { opacity: 0; }
     100% { opacity: 1; }
   }
-}
 
-/* Applied to <tr> while syncing — muted background wash */
-@utility sync-row-syncing {
-  background-color: var(--bgColor-muted, #f6f8fa);
-  transition: background-color 0.2s ease-out;
-}
+  /* Applied to <tr> while syncing — muted background wash */
+  .sync-row-syncing {
+    background-color: var(--bgColor-muted, #f6f8fa);
+    transition: background-color 0.2s ease-out;
+  }
 
-/* Applied to <tr> after sync completes — brief accent flash */
-@utility sync-row-done {
-  animation: sync-row-highlight 0.8s ease-out forwards;
-}
+  /* Applied to <tr> after sync completes — brief accent flash */
+  .sync-row-done {
+    animation: sync-row-highlight 0.8s ease-out forwards;
+  }
 
-/* Applied to data <td> cells while syncing — reduced opacity */
-@utility sync-cell-syncing {
-  opacity: 0.35;
-  transition: opacity 0.2s ease-out;
-}
+  /* Applied to data <td> cells while syncing — reduced opacity */
+  .sync-cell-syncing {
+    opacity: 0.35;
+    transition: opacity 0.2s ease-out;
+  }
 
-/* Applied to data <td> cells after sync — content fades in */
-@utility sync-cell-reveal {
-  animation: sync-cell-reveal 0.6s ease-out forwards;
+  /* Applied to data <td> cells after sync — content fades in */
+  .sync-cell-reveal {
+    animation: sync-cell-reveal 0.6s ease-out forwards;
+  }
 }
 
 /* Respect reduced-motion preferences */

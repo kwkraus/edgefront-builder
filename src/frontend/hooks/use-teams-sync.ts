@@ -22,11 +22,6 @@ interface UseTeamsSyncOptions {
 const STALE_MS = 15 * 60 * 1000 // 15 minutes
 const DEFAULT_TIMEOUT_MS = 30_000
 
-// Must remain greater than the longest CSS sync animation:
-//   sync-row-done  → 0.8 s  (sync-row-highlight keyframe in globals.css)
-//   sync-cell-reveal → 0.6 s
-const SYNC_DONE_CLEAR_MS = 900
-
 function isSyncStale(lastSyncAt: string | null | undefined): boolean {
   if (!lastSyncAt) return true
   return Date.now() - new Date(lastSyncAt).getTime() > STALE_MS
@@ -67,7 +62,7 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
           if (next.get(sessionId) === 'done') next.set(sessionId, 'idle')
           return next
         })
-      }, SYNC_DONE_CLEAR_MS)
+      }, 900)
       clearTimers.current.set(sessionId, timer)
     }
   }, [])
