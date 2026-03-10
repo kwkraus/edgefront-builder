@@ -1,6 +1,6 @@
 ---
 name: data-schema-migration
-description: 'Design and implement EF Core database schema, migrations, and constraint validation per SPEC-120.'
+description: 'Design and implement EF Core database schema, migrations, and constraint validation.'
 argument-hint: 'Describe the table, column, constraint, or migration change needed.'
 ---
 
@@ -10,16 +10,16 @@ argument-hint: 'Describe the table, column, constraint, or migration change need
 - Creating or modifying EF Core entity configurations
 - Adding or updating database migrations
 - Implementing unique constraints, indexes, or FK cascades
-- Validating schema alignment with SPEC-120
+- Validating schema alignment with project domain model
 
 ## Quick Checklist
-1. Verify all columns match SPEC-120 type definitions.
-2. Verify all unique constraints and FK cascades per SPEC-120.
-3. Verify all indexes per SPEC-120.
+1. Verify all columns match schema reference type definitions.
+2. Verify all unique constraints and FK cascades per schema reference below.
+3. Verify all indexes per schema reference below.
 4. Generate migration via `dotnet ef migrations add`.
 5. Validate migration applies cleanly.
 
-## Schema Reference (SPEC-120)
+## Schema Reference
 ### Series
 - seriesId (UUID, PK), ownerUserId (string), title (string), status (string: Draft|Published), createdAt (datetime2 UTC), updatedAt (datetime2 UTC)
 - Unique: (ownerUserId, title)
@@ -55,13 +55,13 @@ argument-hint: 'Describe the table, column, constraint, or migration change need
 - NormalizedAttendance(sessionId, emailDomain)
 
 ## Decision Points
-- If a column type in code doesn't match SPEC-120: fix the code, not the spec.
-- If a new column is needed that isn't in SPEC-120: add `TODO-SPEC` and request spec update.
+- If a column type in code doesn't match the schema reference below, ask the user which is correct.
+- If a new column is needed that isn't in the schema reference, ask the user for the column definition.
 - If migration conflicts arise: resolve by rebasing, not by editing existing migrations.
 
 ## Completion Checks
-- All entity configurations match SPEC-120 column definitions exactly.
+- All entity configurations match schema reference column definitions exactly.
 - All unique constraints are enforced and validated via integration tests.
-- All indexes are created per SPEC-120.
+- All indexes are created per schema reference.
 - Migration applies cleanly to empty database.
 - JSON value converters work correctly for warm account lists.

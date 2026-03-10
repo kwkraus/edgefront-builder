@@ -1,7 +1,7 @@
 ---
 name: graph-teams-integration
 description: 'Design and implement Microsoft Graph Virtual Events integration with delegated-only OBO token flow, webinar lifecycle, and user-initiated data sync.'
-argument-hint: 'Describe the Graph operation, token flow context, and target SPEC section.'
+argument-hint: 'Describe the Graph operation and token flow context.'
 ---
 
 # Graph Teams Integration
@@ -27,7 +27,7 @@ argument-hint: 'Describe the Graph operation, token flow context, and target SPE
    - Drift detection → OBO flow (delegated)
 2. Implement token acquisition:
    - OBO: Extract user JWT from request → call `ITokenAcquisition.GetAccessTokenForUserAsync` with Graph scopes
-   - **No client credentials** — all operations require an authenticated user per SPEC-200
+   - **No client credentials** — all operations require an authenticated user
 3. Implement the Graph API call with retry and error classification:
    - 401/403: Token or permission issue — log and surface clearly
    - 404: Resource not found — handle gracefully for drift/delete
@@ -36,7 +36,7 @@ argument-hint: 'Describe the Graph operation, token flow context, and target SPE
 4. Map Graph response to domain model (e.g., webinar ID → teamsWebinarId).
 5. Log all Graph operations with correlation ID, operation name, and result.
 
-## Publish Flow (SPEC-200)
+## Publish Flow
 1. For each session in series:
    a. Create webinar via OBO → store teamsWebinarId
    b. Publish webinar via OBO → POST .../publish
@@ -45,7 +45,7 @@ argument-hint: 'Describe the Graph operation, token flow context, and target SPE
    b. If rollback fails: log failures, surface partial-failure state
    c. Return failure to caller
 
-## Data Sync Flow (SPEC-200)
+## Data Sync Flow
 1. User opens session/series page → triggers sync.
 2. Fetch registrations via OBO: `GET /solutions/virtualEvents/webinars/{id}/registrations`.
 3. Fetch attendance via OBO: sessions → attendanceReports → attendanceRecords.

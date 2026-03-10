@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { ChevronLeftIcon } from '@primer/octicons-react'
 import { Button, FormControl, TextInput, Spinner } from '@primer/react'
 import { ErrorBanner } from '@/components/error-banner'
-import { DateTimePicker } from '@/components/date-time-picker'
+import { SessionSchedulePicker } from '@/components/session-schedule-picker'
 import { createSession } from '@/lib/api/sessions'
 
 const cardStyle: React.CSSProperties = {
@@ -118,23 +118,16 @@ export default function NewSessionPage() {
 
         <div className="space-y-4" style={cardStyle}>
           <h2 className="text-base font-semibold">Schedule</h2>
-          <DateTimePicker
-            label="Start Time"
-            value={startsAtDate}
-            onChange={setStartsAtDate}
+          <SessionSchedulePicker
+            startsAt={startsAtDate}
+            endsAt={endsAtDate}
+            onStartsAtChange={setStartsAtDate}
+            onEndsAtChange={setEndsAtDate}
             disabled={loading}
           />
-          <div>
-            <DateTimePicker
-              label="End Time"
-              value={endsAtDate}
-              onChange={setEndsAtDate}
-              disabled={loading}
-            />
-            {endsAtError && (
-              <FormControl.Validation variant="error">{endsAtError}</FormControl.Validation>
-            )}
-          </div>
+          {endsAtError && (
+            <FormControl.Validation variant="error">{endsAtError}</FormControl.Validation>
+          )}
         </div>
 
         <div className="flex items-center gap-3 pt-2">

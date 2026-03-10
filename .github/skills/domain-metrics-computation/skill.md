@@ -1,6 +1,6 @@
 ---
 name: domain-metrics-computation
-description: 'Implement domain normalization (eTLD+1), identity rules, W1/W2 warm logic, influence counting, and internal domain exclusion per SPEC-010 and SPEC-300.'
+description: 'Implement domain normalization (eTLD+1), identity rules, W1/W2 warm logic, influence counting, and internal domain exclusion.'
 argument-hint: 'Describe the domain rule, metric computation, or normalization behavior to implement or test.'
 ---
 
@@ -17,10 +17,10 @@ argument-hint: 'Describe the domain rule, metric computation, or normalization b
 ## Quick Checklist
 1. Apply normalization: trim + lowercase email, eTLD+1 for domain.
 2. Filter internal domains before computing influence and warm.
-3. Follow SPEC-300 computation pseudocode exactly.
+3. Follow computation pseudocode below exactly.
 4. Verify warm precedence: W2 > W1, one entry per domain.
 
-## Domain Normalization (SPEC-010)
+## Domain Normalization
 1. Email: trim whitespace + lowercase. Identity key = normalized email.
 2. Domain: extract registrable domain using public-suffix-aware eTLD+1 parsing.
    - `kt.kpmg.com` → `kpmg.com`
@@ -29,7 +29,7 @@ argument-hint: 'Describe the domain rule, metric computation, or normalization b
 3. Internal domain list: loaded from environment/config, validated at startup.
 4. Normalization applied before persistence — store only normalized values.
 
-## SessionMetrics Computation (SPEC-300 §3.1)
+## SessionMetrics Computation
 All counts exclude internal domains for influence/warm, include for totals:
 1. `totalRegistrations` = COUNT(NormalizedRegistration) — all domains
 2. `totalAttendees` = COUNT(NormalizedAttendance) — all domains
@@ -37,7 +37,7 @@ All counts exclude internal domains for influence/warm, include for totals:
 4. `uniqueAttendeeAccountDomains` = COUNT(DISTINCT emailDomain) from attendance — external only
 5. `warmAccountsTriggered` (W1): for each external emailDomain in attendance, if COUNT(DISTINCT email) >= 2 → include. Lexicographic sort.
 
-## SeriesMetrics Computation (SPEC-300 §3.2)
+## SeriesMetrics Computation
 1. `totalRegistrations` = SUM(SessionMetrics.totalRegistrations)
 2. `totalAttendees` = SUM(SessionMetrics.totalAttendees)
 3. `uniqueRegistrantAccountDomains` = COUNT(DISTINCT emailDomain) across all sessions — external only
@@ -48,7 +48,7 @@ All counts exclude internal domains for influence/warm, include for totals:
    - Precedence: W2 > W1 — store one entry per domain
    - Lexicographic sort by accountDomain
 
-## Transaction Boundaries (SPEC-300 §5)
+## Transaction Boundaries
 - Normalized upserts + metrics recompute must be atomic (single DB transaction).
 - Concurrency: use database-level strategy to prevent race conditions on same session.
 - If any step fails: rollback entire transaction; caller handles retry.
@@ -59,7 +59,7 @@ All counts exclude internal domains for influence/warm, include for totals:
 - W1 does not trigger on duplicate records of same email (must be distinct emails).
 - If eTLD+1 library is unavailable, use a well-known public suffix list; do not fall back to last-2-label.
 
-## Mandatory Unit Tests (SPEC-300 §7)
+## Mandatory Unit Tests
 - Same email differing by case → one Person
 - Subdomain stripped correctly via eTLD+1
 - Different TLDs = different accounts
@@ -76,5 +76,5 @@ All counts exclude internal domains for influence/warm, include for totals:
 ## Completion Checks
 - All normalization uses eTLD+1 (no last-2-label heuristic).
 - Internal domain filter applied before influence/warm computation.
-- All SPEC-300 §7 unit tests pass.
+- All mandatory unit tests pass.
 - Metrics recompute is atomic with normalized data writes.
