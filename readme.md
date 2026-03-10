@@ -22,11 +22,11 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ### Sign In
 
-![Login](docs/screenshots/login.png)
+![Login](https://github.com/user-attachments/assets/15967283-a2e8-4e0e-9cdf-6df3af6cce36)
 
 ### Series List
 
-![Series List](docs/screenshots/series-list.png)
+![Series List](https://github.com/user-attachments/assets/0f1a8ab1-d55d-442e-b58e-15bbc798a5a8)
 
 ### Create a Series
 
@@ -34,7 +34,7 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ### Series Detail with Metrics
 
-![Series Detail](docs/screenshots/series-detail.png)
+![Series Detail](https://github.com/user-attachments/assets/fe6cff97-8e49-4729-a527-a65fdc3d07ac)
 
 ### Publish Series to Teams
 
