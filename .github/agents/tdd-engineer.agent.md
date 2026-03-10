@@ -15,10 +15,9 @@ You are the TDD specialist for this repository.
 - Backend (`src/backend`): keep endpoint coverage focused on behavior and contract outcomes.
 - Discover and use existing test/build scripts from manifests before introducing any new tooling.
 
-## Spec Authority
-- Spec acceptance tests (SPEC-010 §3, SPEC-300 §7/§8) define mandatory test cases.
-- Read the relevant spec's Definition of Done before designing test coverage.
-- If a required test scenario is ambiguous, add `TODO-SPEC` and stop.
+## Guardrails (Requirements)
+- Domain computation logic (normalization, metrics, warm rules) has mandatory unit test cases defined in the `domain-metrics-computation` skill.
+- If a required test scenario is ambiguous, ask the user for clarification — do not invent behavior.
 
 ## Guardrails
 - Do not skip tests when behavior changes.

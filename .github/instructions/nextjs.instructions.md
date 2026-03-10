@@ -8,14 +8,14 @@ applyTo: "src/frontend/**"
 These instructions apply to the frontend project under `src/frontend`.
 
 ## Instruction Consistency
-- After making frontend changes, review this file and update it if guidance is no longer accurate.
-- Keep the instruction set aligned with the current architecture and dependencies.
+- After making frontend changes, review this file and any agents/skills that reference the frontend stack to ensure they still match the code.
+- See the "Instruction Ecosystem Congruency" section in `copilot-instructions.md` for the full checklist.
 
-## Spec Authority
-- All implementation must reference and conform to the authoritative specs in `docs/specs/`.
-- SPEC-100 defines screens, field lists, UX contracts, loading/error states, and auth flow.
-- SPEC-110 defines API endpoints and response DTOs the frontend consumes.
-- If a required UX rule is missing in a spec, add `TODO-SPEC` comment and stop.
+## Agent Routing
+- Testing (TDD, test strategy) → `tdd-engineer` agent
+- UX design and composition → `ui-ux-nextjs` agent
+- Accessibility checks → use `frontend-accessibility-and-ux-acceptance` skill via `ui-ux-nextjs`
+- If requirements are unclear or missing, ask the user for clarification before inventing behavior.
 
 ## Architecture
 - Use the App Router (`app/`) with React Server Components by default.
@@ -29,19 +29,21 @@ These instructions apply to the frontend project under `src/frontend`.
 - `app/sessions/` for session detail, edit flows.
 - `components/` for reusable UI; keep them pure and prop-driven.
 - `lib/` for data access, API clients, and helpers.
-- `lib/api/` for typed API client helpers consuming SPEC-110 DTOs.
+- `lib/api/` for typed API client helpers consuming backend API DTOs.
 - `public/` for static assets.
 - E2E tests live in `src/frontend/e2e/`.
 
 ## Core Dependencies
 - Next.js 16 with React 19.
 - TypeScript is required for all new files.
-- Tailwind CSS is available; prefer utility-first styling.
+- Tailwind CSS v4 is available; prefer utility-first styling.
+- Primer React v38 (@primer/react) with @primer/octicons-react for UI components.
 - ESLint must remain clean; use `npm run lint`.
-- MSAL.js or next-auth for Entra ID authentication.
+- next-auth for Entra ID authentication.
+- Playwright for E2E testing (configured in `playwright.config.ts`).
 
 ## Authentication
-- Login via Entra ID redirect per SPEC-100.
+- Login via Entra ID redirect.
 - Unauthenticated access → redirect to Entra login.
 - Token refresh handled silently; on failure → redirect to login.
 - Logout clears session and redirects to login.
@@ -55,18 +57,6 @@ These instructions apply to the frontend project under `src/frontend`.
 - Metrics are read-only from API (no compute-on-read).
 - No pagination in V1 — list endpoints return all results.
 
-## Screens and UX Contracts (per SPEC-100)
-- Series List: title, status, session count, metrics summary.
-- Series Detail: header with SeriesMetrics, sessions table with per-session metrics/status and "Last Synced" column.
-- Session Create/Edit (Draft): title, startsAt, endsAt fields; save locally only.
-- Session Edit (Published): "Save & Publish to Teams" atomic action.
-- Publish Series: confirmation dialog, progress indicator, failure with retry.
-- Drift: badges and comparison values per SPEC-100 display rules.
-- Data Sync: auto-sync on page load for published sessions; "Syncing from Teams…" indicator; "Last Synced" timestamps.
-- Delete: confirmation dialogs for both session and series deletion.
-- Teams licensing error: "webinar license required" message, no retry.
-- Empty states: defined per screen in SPEC-100.
-
 ## UI and UX
 - Favor accessible, semantic HTML.
 - Use loading and error boundaries for routes.
@@ -75,15 +65,9 @@ These instructions apply to the frontend project under `src/frontend`.
 - Inline error banners with retry for failed API calls.
 - No optimistic updates in V1 (wait for server confirmation).
 
-## Test-Driven Development (TDD)
-- Write tests first: red -> green -> refactor.
-- Use React Testing Library and Jest or Vitest as configured.
-- Test user-visible behavior, not implementation details.
-- Add integration tests for critical flows: publish, atomic edit, delete.
-
 ## Best Practices
 - Keep components small and focused.
-- Avoid `any`; use accurate types and shared interfaces matching SPEC-110 DTOs.
+- Avoid `any`; use accurate types and shared interfaces matching backend API DTOs.
 - Use `async` server actions where appropriate.
 - Prefer composition over prop drilling.
 

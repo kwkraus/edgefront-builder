@@ -58,10 +58,10 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Primer React v38 |
 | Backend | ASP.NET Core Minimal API, .NET 10, EF Core |
 | Database | Azure SQL |
-| Auth | Microsoft Entra ID (MSAL / next-auth, single-tenant) |
+| Auth | Microsoft Entra ID (next-auth, single-tenant) |
 | Graph integration | Microsoft Graph v1 — delegated `VirtualEvent.ReadWrite` via OBO flow |
 | Hosting | Azure App Service |
 
@@ -70,7 +70,7 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 ## Project Structure
 
 ```text
-docs/           # Specs, setup guides, screenshots
+docs/           # Setup guides, screenshots
 src/
   backend/      # ASP.NET Core Minimal API
   frontend/     # Next.js App Router app
