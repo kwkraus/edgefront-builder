@@ -474,10 +474,14 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       borderBottom: idx < sessions.length - 1 ? '1px solid var(--borderColor-default)' : undefined,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--bgColor-muted)'
+                      if (rowSync === 'idle' || rowSync === 'error') {
+                        e.currentTarget.style.backgroundColor = 'var(--bgColor-muted)'
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = ''
+                      if (rowSync === 'idle' || rowSync === 'error') {
+                        e.currentTarget.style.backgroundColor = ''
+                      }
                     }}
                   >
                     <td className="w-8 px-2 py-3">
