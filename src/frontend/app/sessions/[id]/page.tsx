@@ -30,7 +30,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PeoplePicker } from '@/components/people-picker'
-import { DateTimePicker } from '@/components/date-time-picker'
+import { SessionSchedulePicker } from '@/components/session-schedule-picker'
 
 import { getSessionById } from '@/lib/api/sessions'
 import {
@@ -470,26 +470,18 @@ export default function SessionDetailPage() {
           <section className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
             <h2 className="text-base font-semibold">Schedule</h2>
 
-            <DateTimePicker
-              label="Start Time"
-              value={startsAtDate}
-              onChange={(d) => setStartsAtDate(d)}
+            <SessionSchedulePicker
+              startsAt={startsAtDate}
+              endsAt={endsAtDate}
+              onStartsAtChange={setStartsAtDate}
+              onEndsAtChange={setEndsAtDate}
               disabled={saveLoading}
             />
-
-            <div>
-              <DateTimePicker
-                label="End Time"
-                value={endsAtDate}
-                onChange={(d) => setEndsAtDate(d)}
-                disabled={saveLoading}
-              />
-              {endsAtError && (
-                <p role="alert" className="mt-1 text-xs" style={{ color: 'var(--fgColor-danger, var(--color-danger-fg))' }}>
-                  {endsAtError}
-                </p>
-              )}
-            </div>
+            {endsAtError && (
+              <p role="alert" className="mt-1 text-xs" style={{ color: 'var(--fgColor-danger, var(--color-danger-fg))' }}>
+                {endsAtError}
+              </p>
+            )}
           </section>
 
           {/* ── Right column: Presenters & Coordinators ────────────────────── */}
