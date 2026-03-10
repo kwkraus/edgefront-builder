@@ -1,6 +1,6 @@
 ---
 name: delegated-data-sync-pipeline
-description: 'Implement the delegated data sync pipeline: fetch from Graph, normalize, deduplicate, upsert, and trigger metrics recompute per SPEC-200/300.'
+description: 'Implement the delegated data sync pipeline: fetch from Graph, normalize, deduplicate, upsert, and trigger metrics recompute.'
 argument-hint: 'Describe the sync step, normalization behavior, or idempotency concern to implement.'
 ---
 
@@ -16,11 +16,11 @@ argument-hint: 'Describe the sync step, normalization behavior, or idempotency c
 1. User opens session/series detail page → triggers sync via OBO token.
 2. Fetch registrations and attendance from Graph API (delegated).
 3. Normalize + upsert into NormalizedRegistration or NormalizedAttendance.
-4. Trigger atomic metrics recompute per SPEC-300.
+4. Trigger atomic metrics recompute.
 5. Update `LastSyncAt` timestamp on session.
 6. Verify idempotency — repeated syncs must not inflate metrics.
 
-## Session Sync Flow (SPEC-200)
+## Session Sync Flow
 1. Receive sync request with user's OBO token.
 2. Fetch registrations from Graph: `GET /solutions/virtualEvents/webinars/{id}/registrations`.
 3. Fetch attendance from Graph via sessions → attendanceReports → attendanceRecords.
@@ -31,7 +31,7 @@ argument-hint: 'Describe the sync step, normalization behavior, or idempotency c
 8. Update `LastSyncAt` timestamp on session.
 9. Commit atomically.
 
-## Series Sync Flow (SPEC-200)
+## Series Sync Flow
 1. Iterate all published sessions in the series.
 2. Sync each session individually.
 3. Individual session failures are logged but do not block other sessions.
@@ -52,7 +52,7 @@ argument-hint: 'Describe the sync step, normalization behavior, or idempotency c
 - If Graph data fetch fails: surface error, do not partially commit.
 - If concurrent syncs arrive for same session: DB transaction isolation prevents race conditions.
 
-## Mandatory Integration Tests (SPEC-200, SPEC-300 §8)
+## Mandatory Integration Tests
 - Sync → normalized upsert → metrics updated
 - Repeated sync does not inflate metrics
 - Concurrent syncs for same session → no inconsistent metrics
