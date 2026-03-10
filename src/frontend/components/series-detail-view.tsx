@@ -427,7 +427,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     {isSyncing ? (
                       <IconButton
                         icon={XIcon}
-                        aria-label="Cancel sync"
+                        aria-label="Cancel Sync"
                         variant="invisible"
                         size="small"
                         onClick={(e) => { e.stopPropagation(); cancelAll() }}
@@ -436,7 +436,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
                         <IconButton
                           icon={SyncIcon}
-                          aria-label="Refresh from Teams"
+                          aria-label="Sync All"
                           variant="invisible"
                           size="small"
                           onClick={(e) => { e.stopPropagation(); syncAll(sessions) }}
