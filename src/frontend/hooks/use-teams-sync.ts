@@ -22,6 +22,11 @@ interface UseTeamsSyncOptions {
 const STALE_MS = 15 * 60 * 1000 // 15 minutes
 const DEFAULT_TIMEOUT_MS = 30_000
 
+// Must remain greater than the longest CSS sync animation:
+//   sync-row-done  → 0.8 s  (sync-row-highlight keyframe in globals.css)
+//   sync-cell-reveal → 0.6 s
+const SYNC_DONE_CLEAR_MS = 900
+
 function isSyncStale(lastSyncAt: string | null | undefined): boolean {
   if (!lastSyncAt) return true
   return Date.now() - new Date(lastSyncAt).getTime() > STALE_MS
@@ -35,6 +40,7 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
   const [syncStates, setSyncStates] = useState<Map<string, SyncState>>(new Map())
   const abortRef = useRef<AbortController | null>(null)
   const hasSynced = useRef(false)
+  const clearTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const isSyncing = Array.from(syncStates.values()).some((s) => s === 'syncing')
 
@@ -49,6 +55,21 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
       next.set(sessionId, state)
       return next
     })
+
+    // Auto-clear 'done' state after animation completes
+    if (state === 'done') {
+      const existing = clearTimers.current.get(sessionId)
+      if (existing) clearTimeout(existing)
+      const timer = setTimeout(() => {
+        clearTimers.current.delete(sessionId)
+        setSyncStates((prev) => {
+          const next = new Map(prev)
+          if (next.get(sessionId) === 'done') next.set(sessionId, 'idle')
+          return next
+        })
+      }, SYNC_DONE_CLEAR_MS)
+      clearTimers.current.set(sessionId, timer)
+    }
   }, [])
 
   const syncOne = useCallback(
@@ -147,8 +168,11 @@ export function useTeamsSync({ accessToken, onSyncComplete, timeoutMs = DEFAULT_
 
   // Cleanup on unmount
   useEffect(() => {
+    const timers = clearTimers.current
     return () => {
       abortRef.current?.abort()
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
     }
   }, [])
 
