@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { ClockIcon } from '@primer/octicons-react'
 import { ActionList, ActionMenu, Text } from '@primer/react'
-import type { TimeSlot, EndTimeSlot } from '@/lib/time-utils'
+import { nearestSlotIndex, type TimeSlot, type EndTimeSlot } from '@/lib/time-utils'
 
 type Slot = TimeSlot | EndTimeSlot
 
@@ -40,7 +40,7 @@ export function TimePicker({
     ? slots.find((s) => s.value === selectedValue)
     : null
 
-  // Scroll to the selected or nearest slot when the menu opens
+  // Scroll to the selected slot (if any), otherwise scroll to the nearest slot
   function handleOpenChange(open: boolean) {
     if (open) {
       requestAnimationFrame(() => {
@@ -49,6 +49,14 @@ export function TimePicker({
         const active = container.querySelector('[data-active="true"]')
         if (active) {
           active.scrollIntoView({ block: 'center' })
+        } else if (slots.length > 0) {
+          // No selection: scroll to the nearest slot to current time
+          const now = new Date()
+          const idx = nearestSlotIndex(now.getHours(), now.getMinutes(), slots)
+          const items = container.querySelectorAll('[role="option"]')
+          if (idx >= 0 && idx < items.length) {
+            items[idx]?.scrollIntoView({ block: 'center' })
+          }
         }
       })
     }
@@ -73,7 +81,7 @@ export function TimePicker({
               : 'var(--fgColor-muted)',
           }}
         >
-          {selectedSlot ? selectedSlot.label : placeholder}
+          {selectedSlot ? displayLabel(selectedSlot) : placeholder}
         </ActionMenu.Button>
         <ActionMenu.Overlay
           width="auto"

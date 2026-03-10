@@ -27,23 +27,26 @@ function getInitialMode(): ColorMode {
 }
 
 export default function ColorModeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ColorMode>(getInitialMode)
-  const [isInitialized] = useState(typeof window !== 'undefined')
+  // Always initialize to 'light' to match SSR output and avoid hydration mismatches.
+  // The stored preference is applied client-side in a useEffect after mount.
+  const [mode, setMode] = useState<ColorMode>('light')
 
   useEffect(() => {
-    if (!isInitialized) return
+    setMode(getInitialMode())
+  }, [])
 
+  useEffect(() => {
     document.documentElement.setAttribute('data-color-mode', mode)
     localStorage.setItem(STORAGE_KEY, mode)
-  }, [isInitialized, mode])
+  }, [mode])
 
   const toggle = useCallback(() => {
     setMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
   }, [])
 
   return (
-    <ColorModeContext value={{ mode, toggle }}>
+    <ColorModeContext.Provider value={{ mode, toggle }}>
       {children}
-    </ColorModeContext>
+    </ColorModeContext.Provider>
   )
 }

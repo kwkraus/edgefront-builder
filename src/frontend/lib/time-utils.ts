@@ -24,6 +24,9 @@ function format12Hour(hours: number, minutes: number): string {
 }
 
 export function generateTimeSlots(intervalMinutes: number = 30): TimeSlot[] {
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes <= 0) {
+    throw new Error(`intervalMinutes must be a positive integer, got ${intervalMinutes}`)
+  }
   const slots: TimeSlot[] = []
   for (let totalMins = 0; totalMins < 24 * 60; totalMins += intervalMinutes) {
     const hours = Math.floor(totalMins / 60)
@@ -41,11 +44,11 @@ export function generateTimeSlots(intervalMinutes: number = 30): TimeSlot[] {
 export function formatDuration(totalMinutes: number): string {
   if (totalMinutes <= 0) return '0 mins'
   if (totalMinutes < 60) return `${totalMinutes} mins`
-  const hrs = totalMinutes / 60
-  if (Number.isInteger(hrs)) {
-    return hrs === 1 ? '1 hr' : `${hrs} hrs`
-  }
-  return `${hrs} hrs`
+  const hrs = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+  const hrLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`
+  if (mins === 0) return hrLabel
+  return `${hrLabel} ${mins} mins`
 }
 
 export function getEndTimeSlots(

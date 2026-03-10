@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CheckCircleFillIcon,
   DotFillIcon,
@@ -21,12 +21,11 @@ export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncSta
   const [hovered, setHovered] = useState(false)
 
   // Reset hover when sync starts — the pulse replaces this entire subtree.
-  // This is the React-recommended pattern for adjusting state when a prop changes.
-  const [prevSyncState, setPrevSyncState] = useState(syncState)
-  if (prevSyncState !== syncState) {
-    setPrevSyncState(syncState)
-    if (syncState === 'syncing') setHovered(false)
-  }
+  useEffect(() => {
+    if (syncState === 'syncing') {
+      setHovered(false)
+    }
+  }, [syncState])
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation()

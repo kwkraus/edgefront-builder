@@ -13,6 +13,7 @@ import {
 
 const ALL_SLOTS = generateTimeSlots(30)
 const DEFAULT_DURATION_MINUTES = 60
+const MINUTES_PER_DAY = 24 * 60
 
 interface SessionSchedulePickerProps {
   startsAt: Date | null
@@ -65,11 +66,15 @@ export function SessionSchedulePicker({
     if (endTime) {
       onEndsAtChange(setMinutes(setHours(base, endTime.hours), endTime.minutes))
     } else if (startTime) {
-      // Auto-set end time to 1 hr after start
+      // Auto-set end time to 1 hr after start; leave null if that would overflow the day
       const endMins = startTime.hours * 60 + startTime.minutes + DEFAULT_DURATION_MINUTES
-      const eh = Math.min(Math.floor(endMins / 60), 23)
-      const em = endMins % 60
-      onEndsAtChange(setMinutes(setHours(base, eh), em))
+      if (endMins < MINUTES_PER_DAY) {
+        const eh = Math.floor(endMins / 60)
+        const em = endMins % 60
+        onEndsAtChange(setMinutes(setHours(base, eh), em))
+      } else {
+        onEndsAtChange(null)
+      }
     }
   }
 
@@ -88,13 +93,13 @@ export function SessionSchedulePicker({
     }
 
     const endMins = time.hours * 60 + time.minutes + durationMins
-    if (endMins < 24 * 60) {
+    if (endMins < MINUTES_PER_DAY) {
       const eh = Math.floor(endMins / 60)
       const em = endMins % 60
       onEndsAtChange(setMinutes(setHours(base, eh), em))
     } else {
-      // Clamp to 11:30 PM
-      onEndsAtChange(setMinutes(setHours(base, 23), 30))
+      // Overflow past midnight — let the user pick the end time
+      onEndsAtChange(null)
     }
   }
 
