@@ -19,19 +19,16 @@ export function useColorMode() {
   return useContext(ColorModeContext)
 }
 
+function getInitialMode(): ColorMode {
+  if (typeof window === 'undefined') return 'light'
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored === 'dark' || stored === 'light') return stored
+  return (document.documentElement.getAttribute('data-color-mode') as ColorMode) ?? 'light'
+}
+
 export default function ColorModeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ColorMode>('light')
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    const initialMode = stored === 'dark' || stored === 'light'
-      ? stored
-      : ((document.documentElement.getAttribute('data-color-mode') as ColorMode) ?? 'light')
-
-    setMode(initialMode)
-    setIsInitialized(true)
-  }, [])
+  const [mode, setMode] = useState<ColorMode>(getInitialMode)
+  const [isInitialized] = useState(typeof window !== 'undefined')
 
   useEffect(() => {
     if (!isInitialized) return
