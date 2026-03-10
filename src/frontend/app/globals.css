@@ -39,13 +39,12 @@ html {
   animation: pulse-sync 1.4s ease-in-out infinite;
 }
 
-@utility sync-icon-reveal {
-  animation: sync-fade-in 0.15s ease-out;
-}
-
+/* Hover-to-sync: both icons always in DOM, CSS swaps visibility.
+   No React state for hover = no re-render timing bugs. */
 @layer base {
-  @keyframes sync-fade-in {
-    from { opacity: 0; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1); }
-  }
+  .sync-hover-action { opacity: 0; pointer-events: none; }
+  .sync-hover-cell:hover .sync-hover-default { opacity: 0; }
+  .sync-hover-cell:hover .sync-hover-action { opacity: 1; pointer-events: auto; }
+  .sync-hover-cell:focus-within .sync-hover-default { opacity: 0; }
+  .sync-hover-cell:focus-within .sync-hover-action { opacity: 1; pointer-events: auto; }
 }

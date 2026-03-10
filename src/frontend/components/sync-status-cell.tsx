@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   CheckCircleFillIcon,
   DotFillIcon,
@@ -18,15 +18,18 @@ interface SyncStatusCellProps {
 }
 
 export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncStatusCellProps) {
-  const [hovered, setHovered] = useState(false)
-  const [focused, setFocused] = useState(false)
+  const containerRef = useRef<HTMLSpanElement>(null)
 
-  // Reset hover/focus when sync starts — the pulse animation replaces the
-  // hoverable element so onMouseLeave never fires naturally.
+  // When sync starts the pulse replaces the hover target, so clear any
+  // lingering :hover via a tiny unmount/remount isn't needed — CSS :hover
+  // handles this naturally because the container stays in the DOM.
+  // However, the IconButton may retain focus; blur it on sync start.
   useEffect(() => {
     if (syncState === 'syncing') {
-      setHovered(false)
-      setFocused(false)
+      const active = document.activeElement
+      if (active instanceof HTMLElement && containerRef.current?.contains(active)) {
+        active.blur()
+      }
     }
   }, [syncState])
 
@@ -53,19 +56,18 @@ export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncSta
     )
   }
 
-  // Published sessions (idle, done, or error): hover or focus reveals sync icon
+  // Published sessions: both icons always in DOM, CSS :hover swaps visibility.
+  // This avoids React re-render timing issues with fast mouse movement.
   const isError = syncState === 'error'
-  const showSyncButton = hovered || focused
 
   return (
-    <span
-      className="inline-flex items-center justify-center"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-    >
-      {showSyncButton ? (
+    <span ref={containerRef} className="sync-hover-cell inline-flex items-center justify-center relative">
+      {/* Default icon — visible when not hovered */}
+      <span className="sync-hover-default inline-flex items-center justify-center" style={{ color: isError ? 'var(--fgColor-danger, #d1242f)' : 'var(--fgColor-success, #1a7f37)' }}>
+        {isError ? <AlertFillIcon size={16} /> : <CheckCircleFillIcon size={16} />}
+      </span>
+      {/* Sync button — visible on hover/focus-within */}
+      <span className="sync-hover-action absolute inset-0 inline-flex items-center justify-center">
         <Tooltip
           text={isError ? 'Sync failed — click to retry' : 'Sync from Teams'}
           direction="e"
@@ -73,23 +75,15 @@ export function SyncStatusCell({ sessionId, status, syncState, onSync }: SyncSta
         >
           <IconButton
             icon={SyncIcon}
-            aria-label={isError ? `Retry sync for session` : `Sync session from Teams`}
+            aria-label={isError ? 'Retry sync for session' : 'Sync session from Teams'}
             variant="invisible"
             size="small"
             onClick={handleClick}
-            className="sync-icon-reveal"
+            tabIndex={-1}
             style={{ color: 'var(--fgColor-accent, #0969da)' }}
           />
         </Tooltip>
-      ) : isError ? (
-        <span title="Sync failed" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-danger, #d1242f)' }}>
-          <AlertFillIcon size={16} />
-        </span>
-      ) : (
-        <span title="Published — hover or focus to sync" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
-          <CheckCircleFillIcon size={16} />
-        </span>
-      )}
+      </span>
     </span>
   )
 }
