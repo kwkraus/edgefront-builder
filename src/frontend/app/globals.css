@@ -38,3 +38,13 @@ html {
   background-color: var(--fgColor-accent, #0969da);
   animation: pulse-sync 1.4s ease-in-out infinite;
 }
+
+/* Hover-to-sync: both icons always in DOM, CSS swaps visibility.
+   No React state for hover = no re-render timing bugs. */
+@layer base {
+  .sync-hover-action { opacity: 0; pointer-events: none; }
+  .sync-hover-cell:hover .sync-hover-default { opacity: 0; }
+  .sync-hover-cell:hover .sync-hover-action { opacity: 1; pointer-events: auto; }
+  .sync-hover-cell:focus-within .sync-hover-default { opacity: 0; }
+  .sync-hover-cell:focus-within .sync-hover-action { opacity: 1; pointer-events: auto; }
+}

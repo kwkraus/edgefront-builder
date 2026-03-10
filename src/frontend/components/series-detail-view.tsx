@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, CheckCircleFillIcon, DotFillIcon, PeopleIcon, OrganizationIcon, AlertFillIcon, XIcon } from '@primer/octicons-react'
+import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon } from '@primer/octicons-react'
 import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token, Tooltip } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { MetricsPanel } from '@/components/metrics-panel'
+import { SyncStatusCell } from '@/components/sync-status-cell'
 import { updateSeries, deleteSeries, publishSeries } from '@/lib/api/series'
 import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { deleteSession, publishSession } from '@/lib/api/sessions'
@@ -95,7 +96,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   const busy = sessionStatus === 'loading'
 
   // ── Auto-sync published sessions via shared hook ─────────────────────────
-  const { isSyncing, getSyncState, syncAll, autoSyncIfStale, cancelAll } = useTeamsSync({
+  const { isSyncing, getSyncState, syncOne, syncAll, autoSyncIfStale, cancelAll } = useTeamsSync({
     accessToken: token,
     onSyncComplete: () => router.refresh(),
   })
@@ -104,6 +105,12 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     if (sessionStatus !== 'authenticated' || !token) return
     autoSyncIfStale(sessions)
   }, [sessions, autoSyncIfStale, sessionStatus, token])
+
+  // ── Individual session sync ────────────────────────────────────────────
+  async function handleSyncSession(sessionId: string) {
+    await syncOne(sessionId)
+    router.refresh()
+  }
 
   // ── Edit Series ──────────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false)
@@ -465,36 +472,12 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                   >
                     <td className="w-8 px-2 py-3">
                       <div className="flex items-center justify-center">
-                      {(() => {
-                        const syncState = getSyncState(s.sessionId)
-                        if (syncState === 'syncing') {
-                          return (
-                            <span title="Syncing with Teams…" className="inline-flex items-center justify-center">
-                              <span className="sync-pulse" />
-                            </span>
-                          )
-                        }
-                        if (syncState === 'error') {
-                          return (
-                            <span title="Sync failed" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-danger, #d1242f)' }}>
-                              <AlertFillIcon size={16} />
-                            </span>
-                          )
-                        }
-                        // Default: show publication status
-                        if (s.status === 'Published') {
-                          return (
-                            <span title="Published" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-success, #1a7f37)' }}>
-                              <CheckCircleFillIcon size={16} />
-                            </span>
-                          )
-                        }
-                        return (
-                          <span title="Draft" className="inline-flex items-center justify-center" style={{ color: 'var(--fgColor-muted)' }}>
-                            <DotFillIcon size={16} />
-                          </span>
-                        )
-                      })()}
+                      <SyncStatusCell
+                        sessionId={s.sessionId}
+                        status={s.status}
+                        syncState={getSyncState(s.sessionId)}
+                        onSync={handleSyncSession}
+                      />
                       </div>
                     </td>
                     <td className="px-4 py-3 font-medium">
