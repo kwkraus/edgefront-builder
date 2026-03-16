@@ -12,9 +12,10 @@ These instructions apply to the frontend project under `src/frontend`.
 - See the "Instruction Ecosystem Congruency" section in `copilot-instructions.md` for the full checklist.
 
 ## Agent Routing
-- Testing (TDD, test strategy) → `tdd-engineer` agent
+- Testing (TDD, test strategy) → `edgefront-tdd-engineer` agent
 - UX design and composition → `ui-ux-nextjs` agent
 - Accessibility checks → use `frontend-accessibility-and-ux-acceptance` skill via `ui-ux-nextjs`
+- Do not use generic plugin TDD agents for frontend work unless the user explicitly asks for them by name.
 - If requirements are unclear or missing, ask the user for clarification before inventing behavior.
 
 ## Architecture
