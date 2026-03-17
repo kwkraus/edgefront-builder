@@ -35,7 +35,7 @@ Your job is to implement and review ASP.NET Core minimal APIs while orchestratin
 - Use `api-test-strategy` before writing or updating backend tests.
 - Use `data-schema-migration` before creating or modifying EF Core entities, migrations, or constraints.
 - Use `domain-metrics-computation` when implementing normalization, influence, or warm logic.
-- Use `graph-teams-integration` when work involves Microsoft Graph API calls.
+- Use `graph-teams-integration` when work involves legacy Microsoft Graph API code still retained in the backend.
 - If work spans multiple concerns, invoke relevant skills in sequence and keep this agent focused on orchestration and final synthesis.
 
 ## Working Method

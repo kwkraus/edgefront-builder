@@ -146,9 +146,44 @@ public class MetricsRecomputeTests : IDisposable
         var m = await _db.SessionMetrics.FindAsync(session.SessionId);
         m!.TotalRegistrations.Should().Be(0);
         m.TotalAttendees.Should().Be(0);
+        m.TotalQaQuestions.Should().Be(0);
+        m.AnsweredQaQuestions.Should().Be(0);
         m.UniqueRegistrantAccountDomains.Should().Be(0);
         m.UniqueAttendeeAccountDomains.Should().Be(0);
         m.WarmAccountsTriggered.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SessionMetrics_QaCounts_AreComputedFromImportedQaRows()
+    {
+        var (_, session) = await SeedSeriesAndSessionAsync();
+
+        _db.NormalizedQaEntries.AddRange(
+            new NormalizedQaEntry
+            {
+                QaEntryId = Guid.NewGuid(),
+                SessionId = session.SessionId,
+                OwnerUserId = OwnerUserId,
+                QuestionText = "What is next?",
+                IsAnswered = true,
+                AskedAt = DateTime.UtcNow
+            },
+            new NormalizedQaEntry
+            {
+                QaEntryId = Guid.NewGuid(),
+                SessionId = session.SessionId,
+                OwnerUserId = OwnerUserId,
+                QuestionText = "Will slides be shared?",
+                IsAnswered = false,
+                AskedAt = DateTime.UtcNow
+            });
+        await _db.SaveChangesAsync();
+
+        await _sut.RecomputeSessionMetricsAsync(session.SessionId);
+
+        var m = await _db.SessionMetrics.FindAsync(session.SessionId);
+        m!.TotalQaQuestions.Should().Be(2);
+        m.AnsweredQaQuestions.Should().Be(1);
     }
 
     [Fact]
@@ -315,6 +350,49 @@ public class MetricsRecomputeTests : IDisposable
         var m = await _db.SeriesMetrics.FindAsync(series.SeriesId);
         m!.TotalRegistrations.Should().Be(2); // includes internal
         m.TotalAttendees.Should().Be(2);       // includes internal
+    }
+
+    [Fact]
+    public async Task SeriesMetrics_QaCounts_AggregateAcrossSessions()
+    {
+        var (series, session1) = await SeedSeriesAndSessionAsync();
+        var session2 = await SeedExtraSessionAsync(series.SeriesId);
+
+        _db.NormalizedQaEntries.AddRange(
+            new NormalizedQaEntry
+            {
+                QaEntryId = Guid.NewGuid(),
+                SessionId = session1.SessionId,
+                OwnerUserId = OwnerUserId,
+                QuestionText = "Q1",
+                IsAnswered = true,
+                AskedAt = DateTime.UtcNow
+            },
+            new NormalizedQaEntry
+            {
+                QaEntryId = Guid.NewGuid(),
+                SessionId = session2.SessionId,
+                OwnerUserId = OwnerUserId,
+                QuestionText = "Q2",
+                IsAnswered = false,
+                AskedAt = DateTime.UtcNow
+            },
+            new NormalizedQaEntry
+            {
+                QaEntryId = Guid.NewGuid(),
+                SessionId = session2.SessionId,
+                OwnerUserId = OwnerUserId,
+                QuestionText = "Q3",
+                IsAnswered = true,
+                AskedAt = DateTime.UtcNow
+            });
+        await _db.SaveChangesAsync();
+
+        await _sut.RecomputeSeriesMetricsAsync(series.SeriesId);
+
+        var m = await _db.SeriesMetrics.FindAsync(series.SeriesId);
+        m!.TotalQaQuestions.Should().Be(3);
+        m.AnsweredQaQuestions.Should().Be(2);
     }
 
     [Fact]

@@ -1,5 +1,7 @@
 # SPEC-000 — System Blueprint (Build Ready)
 
+> Historical note: this blueprint predates the local-only refactor. The current shipped architecture uses local CSV imports for registrations, attendance, and Q&A; Teams/Graph sections below should be treated as legacy design context unless explicitly reactivated.
+
 ## Purpose
 Defines V1 architecture baseline, stack, environments, CI/CD, and operational guardrails.
 

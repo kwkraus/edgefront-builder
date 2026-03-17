@@ -14,6 +14,8 @@ public class AppDbContext : DbContext
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<NormalizedRegistration> NormalizedRegistrations => Set<NormalizedRegistration>();
     public DbSet<NormalizedAttendance> NormalizedAttendances => Set<NormalizedAttendance>();
+    public DbSet<NormalizedQaEntry> NormalizedQaEntries => Set<NormalizedQaEntry>();
+    public DbSet<SessionImportSummary> SessionImportSummaries => Set<SessionImportSummary>();
     public DbSet<SessionMetrics> SessionMetrics => Set<SessionMetrics>();
     public DbSet<SeriesMetrics> SeriesMetrics => Set<SeriesMetrics>();
     public DbSet<SessionPresenter> SessionPresenters => Set<SessionPresenter>();
@@ -100,6 +102,34 @@ public class AppDbContext : DbContext
             e.Property(x => x.LastLeaveAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
             e.HasIndex(x => new { x.OwnerUserId, x.SessionId, x.Email }).IsUnique();
             e.HasIndex(x => new { x.SessionId, x.EmailDomain });
+            e.HasOne<Session>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // --- NormalizedQaEntry ---
+        modelBuilder.Entity<NormalizedQaEntry>(e =>
+        {
+            e.HasKey(x => x.QaEntryId);
+            e.Property(x => x.QaEntryId).ValueGeneratedNever();
+            e.Property(x => x.QuestionText).HasMaxLength(4000);
+            e.Property(x => x.AnswerText).HasMaxLength(4000);
+            e.Property(x => x.AskedByDisplayName).HasMaxLength(256);
+            e.Property(x => x.AskedByEmail).HasMaxLength(320);
+            e.Property(x => x.AskedAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
+            e.Property(x => x.AnsweredAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
+            e.HasIndex(x => x.SessionId);
+            e.HasIndex(x => new { x.OwnerUserId, x.SessionId });
+            e.HasOne<Session>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // --- SessionImportSummary ---
+        modelBuilder.Entity<SessionImportSummary>(e =>
+        {
+            e.HasKey(x => x.SessionImportSummaryId);
+            e.Property(x => x.SessionImportSummaryId).ValueGeneratedNever();
+            e.Property(x => x.ImportType).HasConversion<string>();
+            e.Property(x => x.FileName).HasMaxLength(260);
+            e.Property(x => x.ImportedAt).HasColumnType("datetime2").HasConversion(utcConverter);
+            e.HasIndex(x => new { x.SessionId, x.ImportType }).IsUnique();
             e.HasOne<Session>().WithMany().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -41,18 +41,3 @@ export async function updateSeries(
 export async function deleteSeries(id: string, accessToken: string): Promise<void> {
   return apiFetch<void>(`/series/${id}`, { method: 'DELETE' }, accessToken)
 }
-
-export async function publishSeries(id: string, accessToken: string): Promise<SeriesResponse> {
-  return apiFetch<SeriesResponse>(`/series/${id}/publish`, { method: 'POST' }, accessToken)
-}
-
-export async function syncSeries(
-  id: string,
-  accessToken: string,
-): Promise<{ synced: number; failed: number }> {
-  return apiFetch<{ synced: number; failed: number }>(
-    `/series/${id}/sync`,
-    { method: 'POST' },
-    accessToken,
-  )
-}

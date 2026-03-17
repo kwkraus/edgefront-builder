@@ -14,7 +14,7 @@ These instructions apply to the backend project under `src/backend`.
 ## Agent Routing
 - Testing (TDD, test strategy) → `tdd-engineer` agent
 - Logging and observability → `observability-sre` agent
-- Graph/Teams integration → `graph-teams-integration` agent
+- Legacy Graph/Teams integration code → `graph-teams-integration` agent
 - Schema and migrations → use `data-schema-migration` skill via `aspnet-api-expert`
 - API contract design → use `api-contract-design` skill via `aspnet-api-expert`
 - If requirements are unclear or missing, ask the user for clarification before inventing behavior.
@@ -30,7 +30,7 @@ These instructions apply to the backend project under `src/backend`.
 - `Features/<FeatureName>/` for endpoints, DTOs, handlers, validators.
 - `Domain/` for core entities, value objects, domain rules (identity, normalization, warm/influence logic).
 - `Infrastructure/` for data access, external integrations, providers.
-- `Infrastructure/Graph/` for TeamsGraphClient, OBO token service.
+- `Infrastructure/Graph/` retains dormant Teams/Microsoft Graph integration code that is no longer part of the active API surface.
 - `Metrics/` for recompute orchestrator.
 - `Common/` for shared primitives, errors, and result types.
 - Tests live in `tests/backend/` mirroring feature folders.
@@ -40,8 +40,8 @@ These instructions apply to the backend project under `src/backend`.
 - Use built-in DI, configuration, and logging.
 - Prefer `Microsoft.Extensions.*` abstractions over concrete libs.
 - EF Core with explicit migrations.
-- Microsoft.Identity.Web for Entra ID JWT validation and OBO token acquisition.
-- Microsoft.Graph SDK for Teams webinar operations.
+- Microsoft.Identity.Web for Entra ID JWT validation.
+- Microsoft.Graph SDK is retained for legacy integration code, not for the active local-only workflow.
 
 ## API Design
 - Base path: `/api/v1`.
@@ -51,10 +51,12 @@ These instructions apply to the backend project under `src/backend`.
 - Use DTOs for request/response; never expose domain entities directly.
 - Prefer async APIs and cancellation tokens for I/O.
 - No pagination in V1 — list endpoints return all results for authenticated user.
+- Active ingestion endpoints accept local CSV uploads for session imports; publish/sync endpoints are not part of the active surface.
 
-## Microsoft Graph Integration
-- Delegated-only permission model — all Graph operations use OBO flow.
-- For detailed Graph integration guidance, use the `graph-teams-integration` agent.
+## Local Imports and Legacy Integration
+- The active product flow is local-first: registrations, attendance, and Q&A are imported through session-scoped CSV uploads.
+- Treat Teams/Microsoft Graph services as legacy code unless the task explicitly targets them.
+- For legacy Graph integration guidance, use the `graph-teams-integration` agent.
 
 ## Data Schema
 - UUID primary keys generated client-side.
@@ -66,7 +68,7 @@ These instructions apply to the backend project under `src/backend`.
 - Keep secrets in user secrets or environment variables.
 - Avoid committing `appsettings.*.json` for local overrides.
 - Validate configuration with options binding and `ValidateOnStart`.
-- Required config: Entra client id/tenant id/secret, DB connection string, internal domain list.
+- Required config: Entra client id/tenant id/secret, DB connection string, internal domain list. Additional Graph scopes/settings are only needed for legacy integration work.
 
 ## Error Handling
 - Centralize error handling via middleware or minimal API filters.

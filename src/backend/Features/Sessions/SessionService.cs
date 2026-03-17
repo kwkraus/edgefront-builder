@@ -46,6 +46,11 @@ public class SessionService
             .Select(c => new { c.SessionId, c.DisplayName, c.Email })
             .ToListAsync();
 
+        var importSummariesBySession = await _db.SessionImportSummaries
+            .AsNoTracking()
+            .Where(s => sessionIds.Contains(s.SessionId))
+            .ToListAsync();
+
         var presenterLookup = presentersBySession
             .GroupBy(p => p.SessionId)
             .ToDictionary(g => g.Key, g => g.ToList());
@@ -53,6 +58,12 @@ public class SessionService
         var coordinatorLookup = coordinatorsBySession
             .GroupBy(c => c.SessionId)
             .ToDictionary(g => g.Key, g => g.ToList());
+
+        var importSummaryLookup = importSummariesBySession
+            .GroupBy(s => s.SessionId)
+            .ToDictionary(
+                g => g.Key,
+                g => ToImportSummariesDto(g.ToList()));
 
         return sessions.Select(s =>
         {
@@ -66,18 +77,16 @@ public class SessionService
                 s.StartsAt,
                 s.EndsAt,
                 s.Status.ToString(),
-                s.TeamsWebinarId,
-                s.JoinWebUrl,
-                s.ReconcileStatus.ToString(),
-                s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
-                s.LastSyncAt,
                 presenters.Count,
                 coordinators.Count,
                 ownerDisplayName,
                 presenters.Select(p => new PersonSummary(p.DisplayName, p.Email)).ToList(),
-                coordinators.Select(c => new PersonSummary(c.DisplayName, c.Email)).ToList());
+                coordinators.Select(c => new PersonSummary(c.DisplayName, c.Email)).ToList(),
+                importSummaryLookup.TryGetValue(s.SessionId, out var imports)
+                    ? imports
+                    : EmptyImports());
         });
     }
 
@@ -88,7 +97,8 @@ public class SessionService
         if (session is null) return null;
 
         var (presenters, coordinators) = await GetRolesAsync(sessionId);
-        return ToResponseDto(session, presenters, coordinators);
+        var importSummaries = await GetImportSummariesAsync(sessionId);
+        return ToResponseDto(session, presenters, coordinators, importSummaries);
     }
 
     public async Task<(SessionResponseDto? session, string? errorCode)> CreateAsync(
@@ -117,7 +127,7 @@ public class SessionService
 
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
-        return (ToResponseDto(session), null);
+        return (ToResponseDto(session, imports: EmptyImports()), null);
     }
 
     public async Task<(SessionResponseDto? session, string? errorCode)> UpdateAsync(
@@ -136,31 +146,11 @@ public class SessionService
         session.StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime();
         session.EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime();
 
-        // SPEC-200: if Published and graph client provided, sync the Teams webinar
-        if (session.Status == SessionStatus.Published
-            && session.TeamsWebinarId is not null
-            && graphClient is not null
-            && !string.IsNullOrEmpty(oboToken))
-        {
-            try
-            {
-                await graphClient.UpdateWebinarAsync(
-                    session.TeamsWebinarId,
-                    session.Title,
-                    new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                    new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
-                    oboToken);
-            }
-            catch (Exception)
-            {
-                return (null, "TEAMS_UPDATE_FAILED");
-            }
-        }
-
         await _db.SaveChangesAsync();
 
         var (presenters, coordinators) = await GetRolesAsync(sessionId);
-        return (ToResponseDto(session, presenters, coordinators), null);
+        var importSummaries = await GetImportSummariesAsync(sessionId);
+        return (ToResponseDto(session, presenters, coordinators, importSummaries), null);
     }
 
     public async Task<bool> DeleteAsync(
@@ -170,21 +160,6 @@ public class SessionService
         var session = await _db.Sessions
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
         if (session is null) return false;
-
-        // Best-effort delete Teams webinar if Published
-        if (session.Status == SessionStatus.Published
-            && session.TeamsWebinarId is not null
-            && graphClient is not null
-            && !string.IsNullOrEmpty(oboToken))
-        {
-            try { await graphClient.DeleteWebinarAsync(session.TeamsWebinarId, oboToken); }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Best-effort webinar delete failed for TeamsWebinarId={TeamsWebinarId}. SessionId={SessionId}",
-                    session.TeamsWebinarId, sessionId);
-            }
-        }
 
         var seriesId = session.SeriesId;
         _db.Sessions.Remove(session);
@@ -248,7 +223,8 @@ public class SessionService
             await _db.SaveChangesAsync();
 
             var (p, c) = await GetRolesAsync(sessionId);
-            return (ToResponseDto(session, p, c), null, null);
+            var importSummaries = await GetImportSummariesAsync(sessionId);
+            return (ToResponseDto(session, p, c, importSummaries), null, null);
         }
 
         // Guard: Teams cannot create a webinar whose start time is in the past
@@ -312,7 +288,8 @@ public class SessionService
                 }
             }
 
-            return (ToResponseDto(session, p, c), null, null);
+            var importSummaries = await GetImportSummariesAsync(sessionId);
+            return (ToResponseDto(session, p, c, importSummaries), null, null);
         }
         catch (TeamsLicenseException lex)
         {
@@ -510,6 +487,16 @@ public class SessionService
         return (presenters, coordinators);
     }
 
+    private async Task<SessionImportSummariesDto> GetImportSummariesAsync(Guid sessionId)
+    {
+        var summaries = await _db.SessionImportSummaries
+            .AsNoTracking()
+            .Where(x => x.SessionId == sessionId)
+            .ToListAsync();
+
+        return ToImportSummariesDto(summaries);
+    }
+
     private static async Task<bool> RollbackWebinarAsync(
         ITeamsGraphClient graphClient, string oboToken, string? webinarId, ILogger logger)
     {
@@ -530,11 +517,35 @@ public class SessionService
     private static SessionResponseDto ToResponseDto(
         Session s,
         List<SessionPresenterDto>? presenters = null,
-        List<SessionCoordinatorDto>? coordinators = null) =>
+        List<SessionCoordinatorDto>? coordinators = null,
+        SessionImportSummariesDto? imports = null) =>
         new(s.SessionId, s.SeriesId, s.Title, s.StartsAt, s.EndsAt,
-            s.Status.ToString(), s.TeamsWebinarId, s.JoinWebUrl,
-            s.ReconcileStatus.ToString(), s.DriftStatus.ToString(),
-            s.LastSyncAt, s.LastError,
+            s.Status.ToString(),
             presenters ?? new List<SessionPresenterDto>(),
-            coordinators ?? new List<SessionCoordinatorDto>());
+            coordinators ?? new List<SessionCoordinatorDto>(),
+            imports ?? EmptyImports());
+
+    private static SessionImportSummariesDto ToImportSummariesDto(List<SessionImportSummary> summaries)
+    {
+        SessionImportSummaryDto? Map(SessionImportType importType)
+        {
+            var summary = summaries.FirstOrDefault(x => x.ImportType == importType);
+            return summary is null
+                ? null
+                : new SessionImportSummaryDto(
+                    importType.ToString(),
+                    summary.FileName,
+                    summary.RowCount,
+                    summary.ImportedAt);
+        }
+
+        return new SessionImportSummariesDto(
+            Map(SessionImportType.Registrations),
+            Map(SessionImportType.Attendance),
+            Map(SessionImportType.Qa));
+    }
+
+    private static SessionImportSummariesDto EmptyImports()
+        => new(null, null, null);
 }
+

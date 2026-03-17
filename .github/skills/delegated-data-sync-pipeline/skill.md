@@ -6,6 +6,8 @@ argument-hint: 'Describe the sync step, normalization behavior, or idempotency c
 
 # Delegated Data Sync Pipeline
 
+> Legacy note: current product flows use local CSV imports. This skill applies only to the dormant delegated Graph sync pipeline that remains in the codebase for legacy maintenance work.
+
 ## When to Use
 - Building the fetch → normalize → upsert → recompute flow for registrations/attendance
 - Implementing user-initiated sync triggered on page load

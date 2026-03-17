@@ -1,6 +1,7 @@
 using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Sessions;
+using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
 using EdgeFront.Builder.Infrastructure.Graph;
 using FluentAssertions;
@@ -52,8 +53,9 @@ public class SessionPublishTests : IDisposable
         errorCode.Should().BeNull();
         result.Should().NotBeNull();
         result!.Status.Should().Be("Published");
-        result.TeamsWebinarId.Should().Be("webinar-session-1");
-        result.JoinWebUrl.Should().Be("https://teams.microsoft.com/l/meetup-join/session-1");
+        result.Presenters.Should().BeEmpty();
+        result.Coordinators.Should().BeEmpty();
+        result.Imports.Should().BeEquivalentTo(new SessionImportSummariesDto(null, null, null));
 
         var dbSession = await _db.Sessions.FindAsync(session.SessionId);
         dbSession!.Status.Should().Be(SessionStatus.Published);
@@ -185,7 +187,9 @@ public class SessionPublishTests : IDisposable
         errorCode.Should().BeNull();
         result.Should().NotBeNull();
         result!.Status.Should().Be("Published");
-        result.TeamsWebinarId.Should().BeNull();
+        result.Presenters.Should().BeEmpty();
+        result.Coordinators.Should().BeEmpty();
+        result.Imports.Should().BeEquivalentTo(new SessionImportSummariesDto(null, null, null));
 
         var dbSession = await _db.Sessions.FindAsync(session.SessionId);
         dbSession!.Status.Should().Be(SessionStatus.Published);

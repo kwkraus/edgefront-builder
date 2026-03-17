@@ -489,9 +489,12 @@ public class SessionServiceTests : IDisposable
         result!.SessionId.Should().Be(session.SessionId);
         result.SeriesId.Should().Be(series.SeriesId);
         result.Title.Should().Be("Test Session");
+        result.StartsAt.Should().Be(session.StartsAt);
+        result.EndsAt.Should().Be(session.EndsAt);
         result.Status.Should().Be("Draft");
-        result.DriftStatus.Should().Be("None");
-        result.ReconcileStatus.Should().Be("Synced");
+        result.Presenters.Should().BeEmpty();
+        result.Coordinators.Should().BeEmpty();
+        result.Imports.Should().BeEquivalentTo(new SessionImportSummariesDto(null, null, null));
     }
 
     // ---------- Helpers ----------

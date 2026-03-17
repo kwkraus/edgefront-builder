@@ -32,6 +32,8 @@ public class MetricsService
             m.SeriesId,
             m.TotalRegistrations,
             m.TotalAttendees,
+            m.TotalQaQuestions,
+            m.AnsweredQaQuestions,
             m.UniqueRegistrantAccountDomains,
             m.UniqueAccountsInfluenced,
             warmAccounts);
@@ -52,6 +54,8 @@ public class MetricsService
             m.SessionId,
             m.TotalRegistrations,
             m.TotalAttendees,
+            m.TotalQaQuestions,
+            m.AnsweredQaQuestions,
             m.UniqueRegistrantAccountDomains,
             m.UniqueAttendeeAccountDomains,
             m.WarmAccountsTriggered);

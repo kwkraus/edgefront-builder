@@ -32,14 +32,15 @@ export async function apiFetch<T>(
   accessToken?: string,
 ): Promise<T> {
   const baseUrl = getBaseUrl()
+  const headers = new Headers(options.headers)
+  const isFormDataBody = options.body instanceof FormData
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+  if (!isFormDataBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
   }
 
   if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
+    headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
   const res = await fetch(`${baseUrl}/api/v1${path}`, {

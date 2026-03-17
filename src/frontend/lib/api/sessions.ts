@@ -2,10 +2,7 @@ import { apiFetch } from './client'
 import type {
   SessionListItem,
   SessionResponse,
-  PersonSearchResult,
-  SessionPresenterDto,
-  SessionCoordinatorDto,
-  PersonInput,
+  SessionImportUploadResponse,
 } from './types'
 
 export async function getSessionsBySeries(
@@ -53,88 +50,45 @@ export async function deleteSession(id: string, accessToken: string): Promise<vo
   return apiFetch<void>(`/sessions/${id}`, { method: 'DELETE' }, accessToken)
 }
 
-export async function syncSession(
-  id: string,
-  accessToken: string,
-  signal?: AbortSignal,
-): Promise<{ synced: boolean }> {
-  return apiFetch<{ synced: boolean }>(
-    `/sessions/${id}/sync`,
-    { method: 'POST', signal },
-    accessToken,
-  )
-}
-
-export async function publishSession(
-  id: string,
-  accessToken: string,
-): Promise<SessionResponse> {
-  return apiFetch<SessionResponse>(
-    `/sessions/${id}/publish`,
-    { method: 'POST' },
-    accessToken,
-  )
-}
-
-// --- People search ---
-
-export async function searchPeople(
-  query: string,
-  accessToken: string,
-): Promise<PersonSearchResult[]> {
-  return apiFetch<PersonSearchResult[]>(
-    `/people/search?q=${encodeURIComponent(query)}`,
-    {},
-    accessToken,
-  )
-}
-
-// --- Presenters ---
-
-export async function getSessionPresenters(
+async function uploadSessionImport(
   sessionId: string,
+  importType: 'registrations' | 'attendance' | 'qa',
+  file: File,
   accessToken: string,
-): Promise<SessionPresenterDto[]> {
-  return apiFetch<SessionPresenterDto[]>(
-    `/sessions/${sessionId}/presenters`,
-    {},
+): Promise<SessionImportUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return apiFetch<SessionImportUploadResponse>(
+    `/sessions/${sessionId}/imports/${importType}`,
+    {
+      method: 'POST',
+      body: formData,
+    },
     accessToken,
   )
 }
 
-export async function setSessionPresenters(
+export async function uploadSessionRegistrationsCsv(
   sessionId: string,
-  people: PersonInput[],
+  file: File,
   accessToken: string,
-): Promise<SessionPresenterDto[]> {
-  return apiFetch<SessionPresenterDto[]>(
-    `/sessions/${sessionId}/presenters`,
-    { method: 'PUT', body: JSON.stringify({ people }) },
-    accessToken,
-  )
+): Promise<SessionImportUploadResponse> {
+  return uploadSessionImport(sessionId, 'registrations', file, accessToken)
 }
 
-// --- Coordinators ---
-
-export async function getSessionCoordinators(
+export async function uploadSessionAttendanceCsv(
   sessionId: string,
+  file: File,
   accessToken: string,
-): Promise<SessionCoordinatorDto[]> {
-  return apiFetch<SessionCoordinatorDto[]>(
-    `/sessions/${sessionId}/coordinators`,
-    {},
-    accessToken,
-  )
+): Promise<SessionImportUploadResponse> {
+  return uploadSessionImport(sessionId, 'attendance', file, accessToken)
 }
 
-export async function setSessionCoordinators(
+export async function uploadSessionQaCsv(
   sessionId: string,
-  people: PersonInput[],
+  file: File,
   accessToken: string,
-): Promise<SessionCoordinatorDto[]> {
-  return apiFetch<SessionCoordinatorDto[]>(
-    `/sessions/${sessionId}/coordinators`,
-    { method: 'PUT', body: JSON.stringify({ people }) },
-    accessToken,
-  )
+): Promise<SessionImportUploadResponse> {
+  return uploadSessionImport(sessionId, 'qa', file, accessToken)
 }

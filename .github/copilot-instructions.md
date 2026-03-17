@@ -3,7 +3,7 @@
 ## Development Workflow
 - Development uses **plan-mode interactive workflow** — requirements are discussed and implemented interactively.
 - If requirements are unclear or missing, ask the user for clarification before inventing behavior.
-- Use custom agents and skills for specialized domain guidance (testing, observability, Graph integration, etc.).
+- Use custom agents and skills for specialized domain guidance (testing, observability, legacy Graph integration cleanup, etc.).
 - Keep implementation scope focused on the current task.
 
 ## Code Style
@@ -16,10 +16,9 @@
 - `src/backend/` — ASP.NET Core minimal API (.NET 10, EF Core, Azure SQL)
 - Frontend authenticates users via Entra ID (next-auth).
 - Backend validates JWT access tokens on all user/business endpoints.
-- Data sync is user-initiated via delegated token on page load (no webhooks or background services).
-- Microsoft Graph uses delegated-only permission model:
-  - All Graph operations use OBO flow — user must be present
-  - No application permissions required
+- Active ingestion is local-only: users upload session-scoped CSV files for registrations, attendance, and Q&A.
+- Metrics are recomputed from imported local data; no background sync or webhooks are active.
+- Legacy Teams/Microsoft Graph code remains in the backend, but it is not part of the active product architecture unless a task explicitly reactivates or removes it.
 - Treat frontend and backend as separate components; avoid coupling unless a task explicitly introduces shared contracts.
 - Put project documentation and decisions in `docs/`.
 
@@ -42,7 +41,7 @@ After implementing code changes, verify that instruction files, agents, and skil
 2. **Project structure** — Do directory paths and file organization descriptions still match the actual layout?
 3. **Build and test commands** — Do referenced commands still exist in the relevant manifests?
 4. **Agent skill routing** — Do agent files reference skills that still exist and are named correctly?
-5. **Domain rules in skills** — If domain logic changed (schema, computation rules, Graph flows), are the corresponding skills updated?
+5. **Domain rules in skills** — If domain logic changed (schema, computation rules, local import flows, or legacy Graph flows), are the corresponding skills updated?
 6. **Instruction file pointers** — Do "Agent Routing" sections in instruction files still point to the correct agents?
 
 This check applies to all files in `.github/copilot-instructions.md`, `.github/instructions/`, `.github/agents/`, and `.github/skills/`.

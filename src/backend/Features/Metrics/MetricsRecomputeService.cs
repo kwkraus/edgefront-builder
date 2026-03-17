@@ -35,9 +35,14 @@ public class MetricsRecomputeService
     /// Atomically computes and upserts <see cref="SessionMetrics"/> for the given session.
     /// All reads and the upsert happen inside a single EF transaction.
     /// </summary>
-    public async Task RecomputeSessionMetricsAsync(Guid sessionId, CancellationToken ct = default)
+    public Task RecomputeSessionMetricsAsync(Guid sessionId, CancellationToken ct = default)
+        => RecomputeSessionMetricsAsync(sessionId, useTransaction: true, ct);
+
+    public async Task RecomputeSessionMetricsAsync(Guid sessionId, bool useTransaction, CancellationToken ct = default)
     {
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? tx = null;
+        if (useTransaction)
+            tx = await _db.Database.BeginTransactionAsync(ct);
 
         var registrations = await _db.NormalizedRegistrations
             .Where(r => r.SessionId == sessionId)
@@ -47,9 +52,15 @@ public class MetricsRecomputeService
             .Where(a => a.SessionId == sessionId)
             .ToListAsync(ct);
 
+        var qaEntries = await _db.NormalizedQaEntries
+            .Where(q => q.SessionId == sessionId)
+            .ToListAsync(ct);
+
         // totalRegistrations / totalAttendees include internal domains
         var totalRegistrations = registrations.Count;
         var totalAttendees = attendances.Count;
+        var totalQaQuestions = qaEntries.Count;
+        var answeredQaQuestions = qaEntries.Count(q => q.IsAnswered);
 
         // unique domains exclude internal
         var uniqueRegistrantDomains = registrations
@@ -76,6 +87,8 @@ public class MetricsRecomputeService
                 SessionId = sessionId,
                 TotalRegistrations = totalRegistrations,
                 TotalAttendees = totalAttendees,
+                TotalQaQuestions = totalQaQuestions,
+                AnsweredQaQuestions = answeredQaQuestions,
                 UniqueRegistrantAccountDomains = uniqueRegistrantDomains,
                 UniqueAttendeeAccountDomains = uniqueAttendeeDomains,
                 WarmAccountsTriggered = warmDomainsW1
@@ -85,13 +98,16 @@ public class MetricsRecomputeService
         {
             existing.TotalRegistrations = totalRegistrations;
             existing.TotalAttendees = totalAttendees;
+            existing.TotalQaQuestions = totalQaQuestions;
+            existing.AnsweredQaQuestions = answeredQaQuestions;
             existing.UniqueRegistrantAccountDomains = uniqueRegistrantDomains;
             existing.UniqueAttendeeAccountDomains = uniqueAttendeeDomains;
             existing.WarmAccountsTriggered = warmDomainsW1;
         }
 
         await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+        if (tx is not null)
+            await tx.CommitAsync(ct);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -101,9 +117,14 @@ public class MetricsRecomputeService
     /// <summary>
     /// Atomically computes and upserts <see cref="SeriesMetrics"/> for the given series.
     /// </summary>
-    public async Task RecomputeSeriesMetricsAsync(Guid seriesId, CancellationToken ct = default)
+    public Task RecomputeSeriesMetricsAsync(Guid seriesId, CancellationToken ct = default)
+        => RecomputeSeriesMetricsAsync(seriesId, useTransaction: true, ct);
+
+    public async Task RecomputeSeriesMetricsAsync(Guid seriesId, bool useTransaction, CancellationToken ct = default)
     {
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? tx = null;
+        if (useTransaction)
+            tx = await _db.Database.BeginTransactionAsync(ct);
 
         // Collect all sessions for this series
         var sessionIds = await _db.Sessions
@@ -119,9 +140,15 @@ public class MetricsRecomputeService
             .Where(a => sessionIds.Contains(a.SessionId))
             .ToListAsync(ct);
 
+        var qaEntries = await _db.NormalizedQaEntries
+            .Where(q => sessionIds.Contains(q.SessionId))
+            .ToListAsync(ct);
+
         // Include internal for raw counts
         var totalRegistrations = registrations.Count;
         var totalAttendees = attendances.Count;
+        var totalQaQuestions = qaEntries.Count;
+        var answeredQaQuestions = qaEntries.Count(q => q.IsAnswered);
 
         // Unique registrant domains (external only)
         var uniqueRegistrantDomains = registrations
@@ -170,6 +197,8 @@ public class MetricsRecomputeService
                 SeriesId = seriesId,
                 TotalRegistrations = totalRegistrations,
                 TotalAttendees = totalAttendees,
+                TotalQaQuestions = totalQaQuestions,
+                AnsweredQaQuestions = answeredQaQuestions,
                 UniqueRegistrantAccountDomains = uniqueRegistrantDomains,
                 UniqueAccountsInfluenced = uniqueAccountsInfluenced,
                 WarmAccounts = warmAccounts
@@ -179,12 +208,15 @@ public class MetricsRecomputeService
         {
             existing.TotalRegistrations = totalRegistrations;
             existing.TotalAttendees = totalAttendees;
+            existing.TotalQaQuestions = totalQaQuestions;
+            existing.AnsweredQaQuestions = answeredQaQuestions;
             existing.UniqueRegistrantAccountDomains = uniqueRegistrantDomains;
             existing.UniqueAccountsInfluenced = uniqueAccountsInfluenced;
             existing.WarmAccounts = warmAccounts;
         }
 
         await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+        if (tx is not null)
+            await tx.CommitAsync(ct);
     }
 }

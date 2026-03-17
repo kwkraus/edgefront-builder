@@ -1,5 +1,7 @@
 # EdgeFront Builder — Master Specification Index
 
+> Historical note: several specs in this directory describe the pre-refactor Teams/Graph architecture. The active product is now local-first with session-scoped CSV imports and locally computed analytics.
+
 **Project Status:** Architecture Locked for V1 Implementation
 
 This document is the authoritative index of all specifications.

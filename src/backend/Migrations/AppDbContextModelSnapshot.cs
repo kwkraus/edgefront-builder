@@ -67,6 +67,53 @@ namespace EdgeFront.Builder.Migrations
                     b.ToTable("NormalizedAttendances");
                 });
 
+            modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.NormalizedQaEntry", b =>
+                {
+                    b.Property<Guid>("QaEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AnswerText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AskedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AskedByDisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("AskedByEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<bool>("IsAnswered")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("QaEntryId");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("OwnerUserId", "SessionId");
+
+                    b.ToTable("NormalizedQaEntries");
+                });
+
             modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.NormalizedRegistration", b =>
                 {
                     b.Property<Guid>("RegistrationId")
@@ -138,7 +185,13 @@ namespace EdgeFront.Builder.Migrations
                     b.Property<Guid>("SeriesId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AnsweredQaQuestions")
+                        .HasColumnType("int");
+
                     b.Property<int>("TotalAttendees")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalQaQuestions")
                         .HasColumnType("int");
 
                     b.Property<int>("TotalRegistrations")
@@ -249,12 +302,49 @@ namespace EdgeFront.Builder.Migrations
                     b.ToTable("SessionCoordinators");
                 });
 
+            modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.SessionImportSummary", b =>
+                {
+                    b.Property<Guid>("SessionImportSummaryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("ImportType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ImportedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("SessionImportSummaryId");
+
+                    b.HasIndex("SessionId", "ImportType")
+                        .IsUnique();
+
+                    b.ToTable("SessionImportSummaries");
+                });
+
             modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.SessionMetrics", b =>
                 {
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AnsweredQaQuestions")
+                        .HasColumnType("int");
+
                     b.Property<int>("TotalAttendees")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalQaQuestions")
                         .HasColumnType("int");
 
                     b.Property<int>("TotalRegistrations")
@@ -317,6 +407,15 @@ namespace EdgeFront.Builder.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.NormalizedQaEntry", b =>
+                {
+                    b.HasOne("EdgeFront.Builder.Domain.Entities.Session", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.NormalizedRegistration", b =>
                 {
                     b.HasOne("EdgeFront.Builder.Domain.Entities.Session", null)
@@ -345,6 +444,15 @@ namespace EdgeFront.Builder.Migrations
                 });
 
             modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.SessionCoordinator", b =>
+                {
+                    b.HasOne("EdgeFront.Builder.Domain.Entities.Session", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EdgeFront.Builder.Domain.Entities.SessionImportSummary", b =>
                 {
                     b.HasOne("EdgeFront.Builder.Domain.Entities.Session", null)
                         .WithMany()

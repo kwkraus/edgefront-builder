@@ -5,7 +5,7 @@ import AppHeader from "@/components/app-header";
 
 export const metadata: Metadata = {
   title: "EdgeFront Builder",
-  description: "Manage webinar series and sessions with Teams integration",
+  description: "Manage local webinar series, session imports, and analytics",
 };
 
 export default function RootLayout({

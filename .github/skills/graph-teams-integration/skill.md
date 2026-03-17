@@ -6,6 +6,8 @@ argument-hint: 'Describe the Graph operation and token flow context.'
 
 # Graph Teams Integration
 
+> Legacy note: the active product is local-only and import-driven. Use this skill only when a task explicitly targets the dormant Microsoft Graph / Teams integration code still retained in the backend.
+
 ## When to Use
 - Implementing webinar create/update/delete via Graph API
 - Setting up OBO token exchange for delegated Graph calls

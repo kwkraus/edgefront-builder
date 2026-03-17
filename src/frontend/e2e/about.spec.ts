@@ -16,14 +16,14 @@ test.describe('About page', () => {
   test('displays The Application section', async ({ page }) => {
     await expect(page.getByRole('heading', { level: 2, name: 'The Application' })).toBeVisible();
     // Verify key descriptive text is present
-    await expect(page.getByText('webinar management platform')).toBeVisible();
+    await expect(page.getByText('local-first webinar analytics workspace')).toBeVisible();
   });
 
   test('displays all feature list items', async ({ page }) => {
-    await expect(page.getByText('Series management')).toBeVisible();
-    await expect(page.getByText('Teams webinar publishing')).toBeVisible();
-    await expect(page.getByText('Registration & attendance tracking')).toBeVisible();
-    await expect(page.getByText('Engagement metrics & analytics')).toBeVisible();
+    await expect(page.getByText('Local series and session management')).toBeVisible();
+    await expect(page.getByText('Session-scoped CSV imports')).toBeVisible();
+    await expect(page.getByText('Registration, attendance, and Q&A summaries')).toBeVisible();
+    await expect(page.getByText('Engagement metrics and account influence analytics')).toBeVisible();
   });
 
   test('displays Our Team section', async ({ page }) => {

@@ -1,11 +1,8 @@
 using EdgeFront.Builder.Domain;
-using EdgeFront.Builder.Features.Me;
 using EdgeFront.Builder.Features.Metrics;
-using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Series;
 using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Infrastructure.Data;
-using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -22,9 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Authentication & Authorization (Entra ID / Azure AD)
-builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration)
-    .EnableTokenAcquisitionToCallDownstreamApi()
-    .AddInMemoryTokenCaches();
+builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
 
 // Explicitly set valid audiences to handle both v1.0 (api://ClientId) and v2.0 (ClientId) token formats.
@@ -55,14 +50,8 @@ builder.Services.AddSingleton(sp =>
 // Feature services
 builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<SessionImportService>();
 builder.Services.AddScoped<MetricsService>();
-builder.Services.AddScoped<SyncService>();
-
-// Graph services (delegated-only — no app-credential GraphServiceClient)
-builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
-builder.Services.AddScoped<IOboTokenService, OboTokenService>();
-builder.Services.AddMemoryCache();
-builder.Services.AddScoped<DriftDetectionService>();
 builder.Services.AddScoped<WarmRuleEvaluator>();
 builder.Services.AddScoped<MetricsRecomputeService>();
 
@@ -122,9 +111,7 @@ app.MapGet("/api/time", () =>
 // Feature endpoints
 app.MapSeriesEndpoints();
 app.MapSessionEndpoints();
-app.MapPeopleEndpoints();
 app.MapMetricsEndpoints();
-app.MapMeEndpoints();
 
 app.Run();
 

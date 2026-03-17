@@ -27,13 +27,7 @@ function getInitialMode(): ColorMode {
 }
 
 export default function ColorModeProvider({ children }: { children: React.ReactNode }) {
-  // Always initialize to 'light' to match SSR output and avoid hydration mismatches.
-  // The stored preference is applied client-side in a useEffect after mount.
-  const [mode, setMode] = useState<ColorMode>('light')
-
-  useEffect(() => {
-    setMode(getInitialMode())
-  }, [])
+  const [mode, setMode] = useState<ColorMode>(() => getInitialMode())
 
   useEffect(() => {
     document.documentElement.setAttribute('data-color-mode', mode)
