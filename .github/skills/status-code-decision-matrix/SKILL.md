@@ -1,7 +1,7 @@
 ---
-name: status-code-decision-matrix
-description: 'Select correct HTTP status codes and payload behaviors for ASP.NET Core minimal APIs. Use for create/update/delete/read semantics, validation failures, conflicts, and not-found handling.'
-argument-hint: 'Describe operation type, expected outcomes, and known failure modes.'
+name: http-status-and-payload-semantics
+description: 'Choose HTTP status codes and response payload behavior for ASP.NET Core minimal APIs. Use for success and error branch semantics, problem details, conflicts, and compatibility exceptions.'
+argument-hint: 'Describe the operation type, expected success result, known failure modes, and any client-compatibility constraints.'
 ---
 
 # Status Code Decision Matrix

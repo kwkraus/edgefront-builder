@@ -1,7 +1,7 @@
 ---
-name: nextjs-ui-composition-patterns
-description: 'Compose Next.js App Router UI with thin routes, reusable components, and clear server/client boundaries.'
-argument-hint: 'Describe the UI change, route scope, and client behavior needs.'
+name: nextjs-route-and-component-composition
+description: 'Compose Next.js App Router features with thin routes, reusable components, and intentional server/client boundaries. Use for route refactors, shared UI extraction, or rendering-boundary decisions.'
+argument-hint: 'Describe the route or feature being changed, reusable UI opportunities, async behavior, and any client-only interaction needs.'
 ---
 
 # Next.js UI Composition Patterns

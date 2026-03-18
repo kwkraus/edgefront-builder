@@ -1,7 +1,7 @@
 ---
-name: github-actions-workflow-composition
-description: 'Design and modify GitHub Actions workflows with deterministic job boundaries, safe caching, and clear failure signals.'
-argument-hint: 'Describe desired workflow behavior, triggers, job boundaries, and failure visibility requirements.'
+name: github-actions-workflow-design
+description: 'Design GitHub Actions workflows with clear triggers, deterministic job boundaries, safe caching, and diagnosable failure output. Use for new workflows or structural CI/CD refactors.'
+argument-hint: 'Describe the workflow goal, triggers, components involved, job boundaries, and any caching or failure-visibility requirements.'
 ---
 
 # GitHub Actions Workflow Composition

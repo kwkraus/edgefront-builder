@@ -1,7 +1,7 @@
 ---
-name: incident-triage-and-diagnostics
-description: 'Run a focused triage workflow for reliability incidents, isolate likely fault domains, and define reproducible remediation steps.'
-argument-hint: 'Describe symptoms, timeframe, impacted flows, and available telemetry or logs.'
+name: reliability-incident-triage
+description: 'Triage reliability incidents by isolating likely fault domains and defining safe mitigation and recovery checks. Use during outages, regressions, failed deployments, or recurring degradation.'
+argument-hint: 'Describe the symptoms, timeframe, impacted flows, recent changes, and the logs or telemetry already available.'
 ---
 
 # Incident Triage and Diagnostics

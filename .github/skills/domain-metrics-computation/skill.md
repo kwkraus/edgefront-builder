@@ -1,7 +1,7 @@
 ---
-name: domain-metrics-computation
-description: 'Implement domain normalization (eTLD+1), identity rules, W1/W2 warm logic, influence counting, and internal domain exclusion.'
-argument-hint: 'Describe the domain rule, metric computation, or normalization behavior to implement or test.'
+name: domain-metrics-and-normalization
+description: 'Apply email and domain normalization plus session and series metric rules, including W1/W2 warm-account logic and internal-domain exclusion. Use for domain logic changes, recompute behavior, and mandatory unit-test coverage.'
+argument-hint: 'Describe the normalization rule, metric behavior, affected entities or sessions, and whether the task is implementation or test coverage.'
 ---
 
 # Domain and Metrics Computation

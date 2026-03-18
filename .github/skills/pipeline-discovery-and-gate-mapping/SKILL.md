@@ -1,7 +1,7 @@
 ---
-name: pipeline-discovery-and-gate-mapping
-description: 'Discover existing CI/CD assets and map required quality gates by component and environment. Use for baseline audits before changing GitHub Actions workflows.'
-argument-hint: 'Describe target components, environments, and required acceptance gates.'
+name: ci-gate-discovery-and-mapping
+description: 'Inventory existing CI/CD workflows and map required quality gates by component and environment. Use before changing GitHub Actions so pipeline gaps and blockers are explicit.'
+argument-hint: 'Describe the components, environments, and acceptance gates you need inventoried or clarified.'
 ---
 
 # Pipeline Discovery and Gate Mapping

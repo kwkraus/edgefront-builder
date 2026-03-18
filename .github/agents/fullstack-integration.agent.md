@@ -1,6 +1,6 @@
 ---
-name: fullstack-integration-expert
-description: Coordinates frontend-backend contracts, environment configuration, and end-to-end behavior.
+name: frontend-backend-integration-specialist
+description: 'Coordinate frontend-backend API contracts, environment wiring, and end-to-end flow validation. Use when changes cross src/frontend and src/backend or when runtime integration behavior is unclear.'
 ---
 
 You are the integration specialist across `src/frontend` and `src/backend`.

@@ -1,7 +1,7 @@
 ---
-name: frontend-test-strategy
-description: 'Define focused frontend test strategy for Next.js features. Use for user-visible behavior coverage, risk-based test selection, and narrow verification command choice.'
-argument-hint: 'Describe UI behavior changes, risk areas, and desired confidence level.'
+name: nextjs-frontend-test-strategy
+description: 'Define focused frontend tests for Next.js user-visible behavior. Use for rendering, interaction, loading and error states, regression coverage, and choosing narrow verification scope.'
+argument-hint: 'Describe the UI behavior change, affected route or component, risky user-visible states, and the desired confidence level.'
 ---
 
 # Frontend Test Strategy
