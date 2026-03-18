@@ -1,7 +1,7 @@
 ---
-name: api-test-strategy
-description: 'Define focused test strategy for ASP.NET Core minimal APIs. Use for contract tests, endpoint behavior coverage, and narrow verification command selection.'
-argument-hint: 'Describe endpoint behavior changes, risk areas, and desired confidence level.'
+name: aspnet-api-test-strategy
+description: 'Define focused tests for ASP.NET Core minimal APIs. Use for endpoint branch coverage, contract assertions, regression planning, and choosing the narrowest useful verification command.'
+argument-hint: 'Describe the endpoint change, risky branches, contract expectations, and desired confidence level.'
 ---
 
 # API Test Strategy

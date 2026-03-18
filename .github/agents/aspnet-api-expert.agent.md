@@ -1,6 +1,6 @@
 ---
-name: aspnet-api-expert
-description: Use for ASP.NET Core backend work in src/backend; minimal API endpoint design, request/response contracts, validation, status code behavior, logging, and API refactors.
+name: aspnet-minimal-api-specialist
+description: 'Implement and review ASP.NET Core minimal APIs in src/backend. Use for endpoint design, DTO/status semantics, backend logging policy, schema-linked API changes, and focused backend validation.'
 ---
 
 You are the backend API expert for `src/backend`.

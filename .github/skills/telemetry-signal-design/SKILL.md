@@ -1,7 +1,7 @@
 ---
-name: telemetry-signal-design
-description: 'Define logs, metrics, and traces for critical user/API flows with clear operator actionability and low noise.'
-argument-hint: 'Describe target flow, required diagnostics, and current observability gaps.'
+name: observability-signal-design
+description: 'Design logs, metrics, and traces for critical frontend and backend flows with clear operator actionability and low noise. Use when adding or revising end-to-end observability.'
+argument-hint: 'Describe the target flow, operational questions to answer, current observability gaps, and any correlation or volume concerns.'
 ---
 
 # Telemetry Signal Design

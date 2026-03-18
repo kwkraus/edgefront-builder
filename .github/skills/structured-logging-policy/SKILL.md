@@ -1,7 +1,7 @@
 ---
-name: structured-logging-policy
-description: 'Apply production-safe structured logging for ASP.NET Core APIs. Use for endpoint diagnostics, correlation context, event consistency, and secret-safe operational logging.'
-argument-hint: 'Describe endpoint/flow, operational signals needed, and current logging gaps.'
+name: aspnet-structured-logging-policy
+description: 'Define production-safe structured logging for ASP.NET Core API flows. Use for event naming, stable log fields, correlation context, severity policy, and secret-safe diagnostics.'
+argument-hint: 'Describe the backend flow or endpoint, required operational signals, current logging gaps, and any high-volume or sensitive-data concerns.'
 ---
 
 # Structured Logging Policy
