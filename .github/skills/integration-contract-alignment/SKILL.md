@@ -1,7 +1,7 @@
 ---
-name: integration-contract-alignment
-description: 'Coordinate frontend consumption with backend API contracts. Use for cross-stack route/DTO alignment, compatibility checks, and integration handoff decisions.'
-argument-hint: 'Describe endpoint changes, frontend data usage, and compatibility constraints.'
+name: frontend-backend-contract-alignment
+description: 'Align frontend consumers with backend API contracts. Use for route or DTO changes, compatibility windows, rollout sequencing, and cross-stack acceptance criteria.'
+argument-hint: 'Describe the backend contract change, affected frontend consumers, rollout constraints, and compatibility expectations.'
 ---
 
 # Integration Contract Alignment

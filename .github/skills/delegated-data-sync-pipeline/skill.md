@@ -1,7 +1,7 @@
 ---
-name: delegated-data-sync-pipeline
-description: 'Implement the delegated data sync pipeline: fetch from Graph, normalize, deduplicate, upsert, and trigger metrics recompute.'
-argument-hint: 'Describe the sync step, normalization behavior, or idempotency concern to implement.'
+name: graph-delegated-sync-pipeline
+description: 'Design and implement the delegated Graph sync pipeline from fetch through normalization, upsert, and metrics recompute. Use for user-initiated registrations or attendance sync, idempotency, and atomic recomputation.'
+argument-hint: 'Describe the sync stage, Graph data being processed, normalization or deduplication rules, and any idempotency or transaction concern.'
 ---
 
 # Delegated Data Sync Pipeline

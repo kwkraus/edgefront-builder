@@ -1,7 +1,7 @@
 ---
-name: data-schema-migration
-description: 'Design and implement EF Core database schema, migrations, and constraint validation.'
-argument-hint: 'Describe the table, column, constraint, or migration change needed.'
+name: efcore-schema-and-migrations
+description: 'Design EF Core schema changes, constraints, and migrations for the backend data model. Use for entity updates, indexes, uniqueness rules, cascade behavior, and migration planning.'
+argument-hint: 'Describe the entity or table change, columns or constraints affected, and any migration or data-compatibility concerns.'
 ---
 
 # Data Schema and Migration

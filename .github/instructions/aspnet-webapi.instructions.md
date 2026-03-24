@@ -12,11 +12,12 @@ These instructions apply to the backend project under `src/backend`.
 - See the "Instruction Ecosystem Congruency" section in `copilot-instructions.md` for the full checklist.
 
 ## Agent Routing
-- Testing (TDD, test strategy) → `tdd-engineer` agent
+- Testing (TDD, test strategy) → `edgefront-tdd-engineer` agent
 - Logging and observability → `observability-sre` agent
 - Legacy Graph/Teams integration code → `graph-teams-integration` agent
 - Schema and migrations → use `data-schema-migration` skill via `aspnet-api-expert`
 - API contract design → use `api-contract-design` skill via `aspnet-api-expert`
+- Do not use generic plugin TDD agents for backend work unless the user explicitly asks for them by name.
 - If requirements are unclear or missing, ask the user for clarification before inventing behavior.
 
 ## Architecture

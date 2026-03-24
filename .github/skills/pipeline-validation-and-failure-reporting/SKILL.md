@@ -1,7 +1,7 @@
 ---
-name: pipeline-validation-and-failure-reporting
-description: 'Run targeted CI/CD validation, report pass/fail clearly, and provide actionable next steps with minimal noise.'
-argument-hint: 'Describe changed workflow scope and the confidence level needed before merge/deploy.'
+name: ci-validation-and-failure-reporting
+description: 'Run targeted CI/CD validation and report pass/fail outcomes with clear blockers and rerun scope. Use after workflow changes or when diagnosing failed pipeline runs.'
+argument-hint: 'Describe the workflow changes, gates that need confidence, and whether you are validating pre-merge, pre-release, or an active failure.'
 ---
 
 # Pipeline Validation and Failure Reporting

@@ -6,6 +6,11 @@
 - Use custom agents and skills for specialized domain guidance (testing, observability, legacy Graph integration cleanup, etc.).
 - Keep implementation scope focused on the current task.
 
+## Agent Routing Policy
+- For any TDD, test-first, or regression-test-driven work in this repository, use the `edgefront-tdd-engineer` agent by default.
+- Do not choose generic plugin-provided TDD agents such as `testing-automation:tdd-red`, `testing-automation:tdd-green`, or `testing-automation:tdd-refactor` unless the user explicitly asks for one of them by name.
+- Treat plugin TDD agents as optional supporting tools, not the canonical testing path for this repository.
+
 ## Code Style
 - Keep changes minimal and scoped to the task.
 - Follow existing style in touched files; do not reformat unrelated code.

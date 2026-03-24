@@ -1,7 +1,7 @@
 ---
-name: tdd-red-green-refactor
-description: 'Apply red-green-refactor with minimal scope and explicit decision points. Use for test-first implementation flow across frontend and backend changes.'
-argument-hint: 'Describe requested behavior, target component, and constraints on scope/refactoring.'
+name: tdd-red-green-refactor-cycle
+description: 'Execute a minimal-scope red-green-refactor workflow. Use for test-first features, regression-first bug fixes, and refactors that must preserve externally observable behavior.'
+argument-hint: 'Describe the requested behavior, target component, test-first constraints, and any limits on refactoring scope.'
 ---
 
 # TDD Red Green Refactor

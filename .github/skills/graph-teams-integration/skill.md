@@ -1,7 +1,7 @@
 ---
-name: graph-teams-integration
-description: 'Design and implement Microsoft Graph Virtual Events integration with delegated-only OBO token flow, webinar lifecycle, and user-initiated data sync.'
-argument-hint: 'Describe the Graph operation and token flow context.'
+name: graph-teams-webinar-integration
+description: 'Design delegated Microsoft Graph and Teams webinar integration for the backend. Use for OBO token exchange, webinar CRUD, registrations and attendance reads, drift handling, and Graph error semantics.'
+argument-hint: 'Describe the Graph operation, Teams webinar context, delegated scopes or token flow, and any failure or retry concern.'
 ---
 
 # Graph Teams Integration
