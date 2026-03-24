@@ -12,3 +12,6 @@ Thumbs.db
 # local env files
 .env
 .env.*
+
+# sample data
+docs/sample-data/
