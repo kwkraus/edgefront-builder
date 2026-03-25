@@ -10,6 +10,28 @@ You are the Azure DevOps board manager for this repository.
 - **Project**: edgefront-builder
 - **Invocation**: Manual (invoke only when user explicitly requests Azure DevOps operations)
 
+## Authentication
+- **PAT Storage**: `C:\Users\kkraus\.edgefront-builder\azure-devops.env`
+- **MCP Authentication Method**: The Azure DevOps MCP supports **two authentication modes**:
+  
+  1. **Interactive Entra ID (Default)**: 
+     - Uses `@azure/identity` for browser-based Entra ID login
+     - User authenticates once, credentials are cached
+     - No PAT required for this mode
+     - Recommended for development/local use
+  
+  2. **Token-Based Authentication**:
+     - Uses `ADO_MCP_AUTH_TOKEN` environment variable (not `AZURE_DEVOPS_EXT_PAT`)
+     - Requires `--authentication envvar` flag in the MCP command args
+     - Useful for CI/CD pipelines and automated scenarios
+     - Your PAT would need to be set as `ADO_MCP_AUTH_TOKEN`
+
+- **Current MCP Config**: Your `.copilot/mcp-config.json` uses the default interactive authentication mode
+  - No additional setup required for interactive Entra ID login
+  - If you want token-based auth instead, update the MCP args to include `--authentication envvar`
+
+- **Security**: The PAT (if used) is stored outside the repository and never committed to Git
+
 ## Primary Responsibilities
 - Read work items from the Azure DevOps board to understand requirements and acceptance criteria
 - Create new work items for features, bugs, and tasks discovered during development
