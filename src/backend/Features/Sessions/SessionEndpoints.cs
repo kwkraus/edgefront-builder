@@ -278,6 +278,51 @@ public static class SessionEndpoints
             return Results.Ok(coordinators);
         });
 
+        // CSV Import endpoints
+        sessionGroup.MapPost("/{id:guid}/imports/registrations", async (Guid id, IFormFile file, SessionImportService importService, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            if (file is null || file.Length == 0)
+                return Results.BadRequest(new ErrorEnvelope(
+                    "validation_error", "A CSV file is required.", ctx.TraceIdentifier));
+
+            using var stream = file.OpenReadStream();
+            var (result, errorCode) = await importService.ImportRegistrationsAsync(id, userId, stream);
+            if (result is null)
+            {
+                return errorCode == "session_not_found"
+                    ? Results.NotFound(new ErrorEnvelope("session_not_found", "Session not found.", ctx.TraceIdentifier))
+                    : Results.BadRequest(new ErrorEnvelope(errorCode ?? "import_failed", "Import failed.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(result);
+        }).DisableAntiforgery();
+
+        sessionGroup.MapPost("/{id:guid}/imports/attendance", async (Guid id, IFormFile file, SessionImportService importService, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            if (file is null || file.Length == 0)
+                return Results.BadRequest(new ErrorEnvelope(
+                    "validation_error", "A CSV file is required.", ctx.TraceIdentifier));
+
+            using var stream = file.OpenReadStream();
+            var (result, errorCode) = await importService.ImportAttendanceAsync(id, userId, stream);
+            if (result is null)
+            {
+                return errorCode == "session_not_found"
+                    ? Results.NotFound(new ErrorEnvelope("session_not_found", "Session not found.", ctx.TraceIdentifier))
+                    : Results.BadRequest(new ErrorEnvelope(errorCode ?? "import_failed", "Import failed.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(result);
+        }).DisableAntiforgery();
+
         return app;
     }
 

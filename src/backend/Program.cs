@@ -57,6 +57,7 @@ builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<MetricsService>();
 builder.Services.AddScoped<SyncService>();
+builder.Services.AddScoped<SessionImportService>();
 
 // Graph services (delegated-only — no app-credential GraphServiceClient)
 builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
