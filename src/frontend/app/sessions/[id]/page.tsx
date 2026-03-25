@@ -12,6 +12,7 @@ import {
   LinkExternalIcon,
   RocketIcon,
   PencilIcon,
+  UploadIcon,
 } from '@primer/octicons-react'
 import {
   Button,
@@ -31,6 +32,7 @@ import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PeoplePicker } from '@/components/people-picker'
 import { SessionSchedulePicker } from '@/components/session-schedule-picker'
+import { CsvImportDialog } from '@/components/csv-import-dialog'
 
 import { getSessionById } from '@/lib/api/sessions'
 import {
@@ -39,6 +41,8 @@ import {
   publishSession,
   setSessionPresenters,
   setSessionCoordinators,
+  uploadRegistrationsCsv,
+  uploadAttendanceCsv,
 } from '@/lib/api/sessions'
 import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { getSessionMetrics } from '@/lib/api/metrics'
@@ -213,6 +217,10 @@ export default function SessionDetailPage() {
   const [publishLoading, setPublishLoading] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [publishLicenseError, setPublishLicenseError] = useState(false)
+
+  // ── CSV Import ──────────────────────────────────────────────────────────
+  const [importRegOpen, setImportRegOpen] = useState(false)
+  const [importAttOpen, setImportAttOpen] = useState(false)
 
   async function handlePublishSession() {
     setPublishLoading(true)
@@ -534,6 +542,22 @@ export default function SessionDetailPage() {
             <Button as={Link} href={`/series/${session.seriesId}`} variant="default">
               Cancel
             </Button>
+            <Button
+              variant="default"
+              leadingVisual={UploadIcon}
+              onClick={() => setImportRegOpen(true)}
+              disabled={busy}
+            >
+              Import Registrations
+            </Button>
+            <Button
+              variant="default"
+              leadingVisual={UploadIcon}
+              onClick={() => setImportAttOpen(true)}
+              disabled={busy}
+            >
+              Import Attendance
+            </Button>
           </div>
           <IconButton
             icon={TrashIcon}
@@ -620,6 +644,23 @@ export default function SessionDetailPage() {
         loading={publishLoading}
         onConfirm={handlePublishSession}
         onCancel={() => setPublishOpen(false)}
+      />
+
+      {/* ── CSV Import Dialogs ────────────────────────────────────────── */}
+      <CsvImportDialog
+        open={importRegOpen}
+        onClose={() => setImportRegOpen(false)}
+        title="Import Registrations"
+        onUpload={(file) => uploadRegistrationsCsv(id, file, token)}
+        onSuccess={loadData}
+      />
+
+      <CsvImportDialog
+        open={importAttOpen}
+        onClose={() => setImportAttOpen(false)}
+        title="Import Attendance"
+        onUpload={(file) => uploadAttendanceCsv(id, file, token)}
+        onSuccess={loadData}
       />
     </div>
   )

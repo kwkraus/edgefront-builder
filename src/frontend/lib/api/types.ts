@@ -106,3 +106,16 @@ export interface SessionMetricsResponse {
   uniqueAttendeeAccountDomains: number
   warmAccountsTriggered: string[]
 }
+
+export interface ImportResult {
+  totalRows: number
+  importedCount: number
+  skippedCount: number
+  invalidCount: number
+  errors: RowError[]
+}
+
+export interface RowError {
+  row: number
+  reason: string
+}
