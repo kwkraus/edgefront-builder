@@ -11,6 +11,15 @@
 - Do not choose generic plugin-provided TDD agents such as `testing-automation:tdd-red`, `testing-automation:tdd-green`, or `testing-automation:tdd-refactor` unless the user explicitly asks for one of them by name.
 - Treat plugin TDD agents as optional supporting tools, not the canonical testing path for this repository.
 
+## Azure DevOps Integration
+- Use the `devops-workitem-manager` agent to read work items from your board, create new items, and update item status.
+- This agent is pre-configured with organization `kkraus` and project `edgefront-builder` — you never need to specify these.
+- The agent is **not loaded automatically**; invoke it explicitly when you need to:
+  - Read requirements from the board to create an implementation plan
+  - Create work items for new features or bugs discovered during development
+  - Update work item status as implementation progresses
+- Typical workflow: User reads a work item from the board → feeds requirements to plan mode → implements feature → updates board status.
+
 ## Code Style
 - Keep changes minimal and scoped to the task.
 - Follow existing style in touched files; do not reformat unrelated code.
