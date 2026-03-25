@@ -91,6 +91,7 @@ tools/          # PowerShell scripts (e.g., Entra app registration)
 
 ---
 
-## Authentication Setup
+## Authentication and Configuration
 
-See [`docs/setup-entra-permissions.md`](docs/setup-entra-permissions.md) for the current local-only authentication requirements and notes about archived Graph scopes.
+- **Entra ID Setup**: See [`docs/setup-entra-permissions.md`](docs/setup-entra-permissions.md) for local-only authentication requirements and notes about archived Graph scopes.
+- **Azure AI Foundry Setup**: See [`docs/setup-azure-ai-foundry.md`](docs/setup-azure-ai-foundry.md) for CSV parsing service configuration with EntraID authentication.

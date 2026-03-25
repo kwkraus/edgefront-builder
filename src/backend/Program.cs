@@ -54,6 +54,11 @@ builder.Services.AddScoped<SessionImportService>();
 builder.Services.AddScoped<MetricsService>();
 builder.Services.AddScoped<WarmRuleEvaluator>();
 builder.Services.AddScoped<MetricsRecomputeService>();
+builder.Services.AddScoped<RegistrationParsingService>();
+builder.Services.AddScoped<IRegistrationFileParser, CsvRegistrationFileParser>();
+
+// HTTP client for Azure AI integration
+builder.Services.AddHttpClient();
 
 // CORS: allow configured frontend origins (falls back to localhost:3000 in development)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();

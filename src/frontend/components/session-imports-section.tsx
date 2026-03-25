@@ -5,7 +5,6 @@ import { Button, Spinner } from '@primer/react'
 import {
   uploadSessionAttendanceCsv,
   uploadSessionQaCsv,
-  uploadSessionRegistrationsCsv,
 } from '@/lib/api/sessions'
 import type {
   SessionImportType,
@@ -20,6 +19,7 @@ import {
   getImportSummary,
   sessionImportLabels,
 } from '@/lib/session-analytics'
+import { RegistrationUploadFlow } from './registration-upload-flow'
 
 interface SessionImportsSectionProps {
   sessionId: string
@@ -41,17 +41,15 @@ const importDescriptions: Record<SessionImportType, string> = {
 }
 
 const uploaders: Record<
-  SessionImportType,
+  'attendance' | 'qa',
   (sessionId: string, file: File, accessToken: string) => Promise<SessionImportUploadResponse>
 > = {
-  registrations: uploadSessionRegistrationsCsv,
   attendance: uploadSessionAttendanceCsv,
   qa: uploadSessionQaCsv,
 }
 
-function createInitialState(): Record<SessionImportType, UploadState> {
+function createInitialState(): Record<'attendance' | 'qa', UploadState> {
   return {
-    registrations: { file: null, uploading: false, error: null },
     attendance: { file: null, uploading: false, error: null },
     qa: { file: null, uploading: false, error: null },
   }
@@ -63,14 +61,14 @@ export function SessionImportsSection({
   accessToken,
   onUploadComplete,
 }: SessionImportsSectionProps) {
-  const [uploadState, setUploadState] = useState<Record<SessionImportType, UploadState>>(
+  const [uploadState, setUploadState] = useState<Record<'attendance' | 'qa', UploadState>>(
     createInitialState,
   )
   const baseId = useId()
 
   const cards = useMemo(
     () =>
-      (Object.keys(sessionImportLabels) as SessionImportType[]).map((importType) => ({
+      (['attendance', 'qa'] as const).map((importType) => ({
         importType,
         label: sessionImportLabels[importType],
         description: importDescriptions[importType],
@@ -79,7 +77,7 @@ export function SessionImportsSection({
   )
 
   function updateUploadState(
-    importType: SessionImportType,
+    importType: 'attendance' | 'qa',
     nextState: Partial<UploadState>,
   ) {
     setUploadState((current) => ({
@@ -91,7 +89,7 @@ export function SessionImportsSection({
     }))
   }
 
-  async function handleUpload(importType: SessionImportType) {
+  async function handleUpload(importType: 'attendance' | 'qa') {
     const selectedFile = uploadState[importType].file
     if (!selectedFile) {
       updateUploadState(importType, { error: 'Choose a CSV file before uploading.' })
@@ -132,6 +130,75 @@ export function SessionImportsSection({
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {/* AI-powered registration import with preview */}
+        <section
+          aria-labelledby={`${baseId}-registrations-label`}
+          className="space-y-4 rounded-lg border p-4 xl:col-span-3"
+          style={{
+            backgroundColor: 'var(--bgColor-muted, var(--color-canvas-subtle))',
+            borderColor: 'var(--borderColor-default, var(--color-border-default))',
+          }}
+        >
+          <div className="space-y-1">
+            <h3 id={`${baseId}-registrations-label`} className="text-sm font-semibold">
+              {sessionImportLabels.registrations}
+            </h3>
+            <p
+              className="text-sm"
+              style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+            >
+              {importDescriptions.registrations}
+            </p>
+          </div>
+
+          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3 xl:grid-cols-4">
+            <div>
+              <dt
+                className="text-xs font-medium uppercase tracking-wide"
+                style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+              >
+                Last import
+              </dt>
+              <dd>
+                {formatDateTime(getImportImportedAt(getImportSummary(imports, 'registrations')))}
+              </dd>
+            </div>
+            <div>
+              <dt
+                className="text-xs font-medium uppercase tracking-wide"
+                style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+              >
+                File
+              </dt>
+              <dd className="break-words">
+                {getImportFileName(getImportSummary(imports, 'registrations')) ??
+                  'No CSV imported yet'}
+              </dd>
+            </div>
+            <div>
+              <dt
+                className="text-xs font-medium uppercase tracking-wide"
+                style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
+              >
+                Rows
+              </dt>
+              <dd>
+                {(() => {
+                  const rowCount = getImportRowCount(getImportSummary(imports, 'registrations'))
+                  return typeof rowCount === 'number' ? rowCount.toLocaleString() : '—'
+                })()}
+              </dd>
+            </div>
+          </dl>
+
+          <RegistrationUploadFlow
+            sessionId={sessionId}
+            accessToken={accessToken}
+            onUploadComplete={onUploadComplete}
+          />
+        </section>
+
+        {/* Existing attendance and Q&A imports */}
         {cards.map(({ importType, label, description }) => {
           const summary = getImportSummary(imports, importType)
           const importedAt = getImportImportedAt(summary)

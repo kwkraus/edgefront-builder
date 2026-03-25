@@ -8,4 +8,6 @@ public class NormalizedRegistration
     public string Email { get; set; } = string.Empty;
     public string EmailDomain { get; set; } = string.Empty;
     public DateTime RegisteredAt { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
 }

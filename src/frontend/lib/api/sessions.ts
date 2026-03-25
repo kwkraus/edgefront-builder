@@ -92,3 +92,44 @@ export async function uploadSessionQaCsv(
 ): Promise<SessionImportUploadResponse> {
   return uploadSessionImport(sessionId, 'qa', file, accessToken)
 }
+
+/**
+ * Get a preview of parsed registrants without persisting to the database.
+ * Uses AI to parse the CSV file and returns a summary with success/failure counts.
+ */
+export async function getRegistrationPreview(
+  sessionId: string,
+  file: File,
+  accessToken: string,
+): Promise<import('./types').RegistrationPreviewDto> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return apiFetch<import('./types').RegistrationPreviewDto>(
+    `/sessions/${sessionId}/imports/registrations/preview`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    accessToken,
+  )
+}
+
+/**
+ * Confirm and persist the registration import.
+ * Sends the final list of registrants (after any manual corrections) to be saved.
+ */
+export async function confirmRegistrationImport(
+  sessionId: string,
+  registrants: import('./types').ParsedRegistrant[],
+  accessToken: string,
+): Promise<SessionImportUploadResponse> {
+  return apiFetch<SessionImportUploadResponse>(
+    `/sessions/${sessionId}/imports/registrations/confirm`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ registrants }),
+    },
+    accessToken,
+  )
+}

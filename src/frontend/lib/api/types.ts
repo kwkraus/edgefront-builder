@@ -85,3 +85,38 @@ export interface SessionImportUploadResponse {
   fileName: string
   rowCount: number
 }
+
+/**
+ * Represents a single registrant parsed from a registration CSV file.
+ * Status indicates success or failure; ErrorReason is only populated for failed registrants.
+ */
+export interface ParsedRegistrant {
+  email: string
+  firstName: string
+  lastName: string
+  registeredAt: string // ISO 8601 datetime
+  status: 'success' | 'failed'
+  errorReason?: string | null
+}
+
+/**
+ * Response from the registration preview endpoint.
+ * Provides a summary of parsed registrants without persisting to the database.
+ */
+export interface RegistrationPreviewDto {
+  sessionTitle: string
+  registrantCount: number
+  successCount: number
+  failedCount: number
+  registrants: ParsedRegistrant[]
+  warnings?: string[] | null
+  errors?: string[] | null
+}
+
+/**
+ * Request body for confirming and persisting a registration import.
+ * Contains the list of registrants that passed validation in the preview step.
+ */
+export interface ConfirmRegistrationImportRequest {
+  registrants: ParsedRegistrant[]
+}
