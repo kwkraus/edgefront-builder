@@ -20,9 +20,15 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ## Screenshots
 
+> The app supports **dark mode** — toggle via the sun/moon icon in the header.
+
 ### Sign In
 
 ![Login](docs/screenshots/login.png)
+
+### About
+
+![About](docs/screenshots/about.png)
 
 ### Series List
 
