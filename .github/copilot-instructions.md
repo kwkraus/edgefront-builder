@@ -21,6 +21,7 @@
 - Neither agent is loaded automatically; invoke them explicitly when needed.
 - The `spec-driven-development` agent and `devops-workitem-manager` share awareness of the spec lifecycle via the `spec-lifecycle-management` skill.
 - The spec-driven workflow uses Azure DevOps Agile **State** as the primary lifecycle model and uses only these supplemental query tags: `review:ready` and `techspec:stale`.
+- Section-only spec templates live alongside their owning skills under `.github\skills\*\templates\`; update those files for layout changes, and update agents/skills only for rule, field-mapping, or validation changes.
 - See `docs/spec-driven-development-process.md` for the full spec workflow documentation.
 - Typical spec workflow: User invokes `spec-driven-development` → iterates on functional spec → approves → generates tech spec → implements.
 - Typical board workflow: User invokes `devops-workitem-manager` → reads/creates/updates work items → manages sprints.

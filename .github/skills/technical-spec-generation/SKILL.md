@@ -29,6 +29,24 @@ When reading the hierarchy, treat these fields as canonical:
 | **Feature** | Description (including embedded acceptance criteria) |
 | **User Story** | Description + `Microsoft.VSTS.Common.AcceptanceCriteria` |
 
+## Output Contracts
+
+The technical spec and related comments use canonical, user-editable template files. Treat these files as the source of truth for heading order, metadata layout, and comment structure.
+
+| Artifact | Format | Canonical template |
+|----------|--------|--------------------|
+| **Technical specification wiki page** | Markdown | `.github\skills\technical-spec-generation\templates\technical-spec.md` |
+| **Technical spec link comment** | Markdown | `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md` |
+| **Regeneration summary comment** | Markdown | `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md` |
+
+### Output Validation Rules
+
+1. Load the relevant template file before generating or validating output.
+2. Preserve the metadata block, heading order, and required sections from the template file.
+3. Keep prose flexible within each section; do not force identical wording.
+4. If a template file changes, follow the new structure automatically unless it conflicts with the workflow rules in this skill.
+5. Reject or repair output that is missing required sections or still contains unresolved placeholders.
+
 ## Generation Workflow
 
 ### Step 1: Validate Preconditions
@@ -59,7 +77,7 @@ When reading the hierarchy, treat these fields as canonical:
 3. Document risks and open questions.
 
 ### Step 4: Generate the Technical Specification
-Use the wiki page template below. Fill in every section based on the functional spec hierarchy and technical analysis.
+Use `.github\skills\technical-spec-generation\templates\technical-spec.md` as the canonical wiki page template. Fill in every section based on the functional spec hierarchy and technical analysis.
 
 ### Step 5: Publish to Wiki
 1. Create or update the wiki page at path: `/Tech-Specs/[Epic-ID]-[Slugified-Epic-Title]`
@@ -71,123 +89,9 @@ Use the wiki page template below. Fill in every section based on the functional 
    - `content`: the generated markdown
 
 ### Step 6: Link, Comment, and Clear Staleness
-1. Add a comment to the Epic with a link to the wiki page:
-
-```markdown
-📄 **Technical Specification v[VERSION]**: [View Tech Spec](https://dev.azure.com/kkraus/edgefront-builder/_wiki/wikis/edgefront-builder.wiki/Tech-Specs/[Epic-ID]-[Title])
-
-- Generated on: [YYYY-MM-DD]
-- Based on Epic state: Active
-- Based on [N] Features and [M] User Stories
-- Notes: [summary of regeneration reason if applicable]
-```
-
+1. Add a comment to the Epic with a link to the wiki page using `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md`.
 2. Remove `techspec:stale` if present.
-3. If this is a regeneration, add a second comment summarizing what changed from the prior version.
-
-## Wiki Page Template
-
-```markdown
-# Technical Specification: [Epic Title]
-
-| Field | Value |
-|-------|-------|
-| **Epic** | #[Epic ID] - [Epic Title] |
-| **Epic State** | Active |
-| **Version** | [1.0, 2.0, etc.] |
-| **Generated** | [YYYY-MM-DD] |
-| **Approval Evidence** | [Reference to Epic approval comment] |
-
----
-
-## 1. Overview
-
-[Brief summary of what this tech spec covers. Reference the business justification from the Epic. State the technical goal.]
-
-## 2. Architecture & Design Decisions
-
-[High-level architecture approach. Key design decisions and their rationale. Reference existing system patterns where applicable.]
-
-### 2.1 Component Design
-
-| Component | Responsibility | New/Modified |
-|-----------|---------------|--------------|
-| [Component name] | [What it does] | [New / Modified] |
-
-### 2.2 Data Model Changes
-
-[Schema changes, new entities, relationship changes, migration requirements.]
-
-```sql
--- Example migration sketch
-ALTER TABLE ... ADD COLUMN ...
-CREATE TABLE ...
-```
-
-### 2.3 API Contracts
-
-| Endpoint | Verb | Purpose | Request | Response |
-|----------|------|---------|---------|----------|
-| [Route] | [GET/POST/etc.] | [Purpose] | [DTO or body shape] | [Response shape + status codes] |
-
-## 3. Implementation Plan
-
-[Ordered implementation steps, grouped by Feature.]
-
-### Feature: [Feature Title] (#[Feature ID])
-
-| User Story | Implementation Approach | Files Affected | Complexity |
-|-----------|------------------------|----------------|------------|
-| #[Story ID] - [Title] | [Approach summary] | [File paths] | Low / Medium / High |
-
-[Repeat for each Feature]
-
-## 4. Dependencies & Integration Points
-
-| Dependency | Type | Impact |
-|-----------|------|--------|
-| [Dependency] | [Internal/External] | [What happens if unavailable] |
-
-## 5. Security Considerations
-
-- **Authentication**: [Auth requirements]
-- **Authorization**: [Access control rules]
-- **Data Protection**: [Sensitive data handling]
-- **Input Validation**: [Validation approach]
-
-## 6. Test Strategy
-
-| Level | Scope | Approach |
-|-------|-------|----------|
-| Unit | [What to unit test] | [Framework/approach] |
-| Integration | [What to integration test] | [Framework/approach] |
-| E2E | [What to E2E test] | [Framework/approach] |
-
-## 7. Risks & Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| [Risk description] | High/Medium/Low | High/Medium/Low | [Mitigation strategy] |
-
-## 8. Open Questions
-
-- [ ] [Unresolved technical question 1]
-- [ ] [Unresolved technical question 2]
-
----
-
-## Appendix: Functional Spec Summary
-
-### Epic: [Title] (#[ID])
-[One-paragraph summary of business justification]
-
-**Features:**
-- **[Feature Title]** (#[ID]) - [One-line summary]
-  - [Story Title] (#[ID])
-  - [Story Title] (#[ID])
-
-[Repeat for each Feature]
-```
+3. If this is a regeneration, add a second comment using `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md`.
 
 ## Version Numbering
 - First tech spec for an Epic: v1.0
@@ -205,6 +109,7 @@ CREATE TABLE ...
   7. Remove `techspec:stale`
 
 ## Completion Checks
+- The wiki page and related comments conform to the current canonical template files
 - Wiki page exists at the expected path with all template sections populated
 - Epic is in state `Active`
 - Epic has an approval comment

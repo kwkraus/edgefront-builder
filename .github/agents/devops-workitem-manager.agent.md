@@ -79,6 +79,8 @@ Typical session flow:
 
 This agent shares awareness of the spec-driven development process managed by the `spec-driven-development` agent. Consult the `spec-lifecycle-management` skill (`.github/skills/spec-lifecycle-management/SKILL.md`) for the full rules.
 
+Lifecycle comment templates live in `.github\skills\spec-lifecycle-management\templates\`. Use those files when you need to add spec-related audit comments.
+
 ### Strong Signals That a Hierarchy Is Spec-Managed
 - Parent Epic tagged `review:ready`
 - Parent Epic tagged `techspec:stale`
@@ -97,7 +99,7 @@ When you encounter spec-managed work items:
    - "⚠️ This work item is part of the spec-driven workflow. Changing functional content may require stakeholder re-review and technical spec regeneration."
 5. If the user confirms and a technical spec already exists for the parent Epic:
    - add `techspec:stale`
-   - add a staleness comment to the Epic
+   - add a staleness comment to the Epic using `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
 6. Creating child Features or User Stories under an approved hierarchy also requires warning because it changes scope
 
 ### Routing to `spec-driven-development`

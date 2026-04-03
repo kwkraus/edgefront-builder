@@ -109,16 +109,7 @@ If functional spec content changes after a tech spec is generated:
 - Approval is recorded by:
   1. moving the approved hierarchy to `Active`
   2. adding a structured approval comment on the Epic
-
-Example approval comment:
-
-```markdown
-✅ **Functional spec approved for implementation**
-
-- Approved by: [name]
-- Approved on: [YYYY-MM-DD]
-- Notes: [summary of decision or constraints]
-```
+- Use `.github\skills\spec-lifecycle-management\templates\approval-comment.md` as the canonical approval comment template
 
 ### Technical Spec Staleness
 - Staleness is recorded by:
@@ -154,11 +145,25 @@ These steps cannot be automated via MCP and must be done manually in the Azure D
 
 ## Templates
 
-The canonical templates and rules live in:
+The canonical rules live in:
 
 - `.github/skills/functional-spec-authoring/SKILL.md`
 - `.github/skills/technical-spec-generation/SKILL.md`
 - `.github/skills/spec-lifecycle-management/SKILL.md`
+
+The canonical, user-editable section templates live alongside their owning skills:
+
+- `.github\skills\functional-spec-authoring\templates\epic-description.html`
+- `.github\skills\functional-spec-authoring\templates\feature-description.html`
+- `.github\skills\functional-spec-authoring\templates\user-story-description.html`
+- `.github\skills\functional-spec-authoring\templates\user-story-acceptance-criteria.txt`
+- `.github\skills\spec-lifecycle-management\templates\approval-comment.md`
+- `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
+- `.github\skills\technical-spec-generation\templates\technical-spec.md`
+- `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md`
+- `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md`
+
+Update template files for section-only changes. Update skills and agents only when workflow rules, field mapping, or validation behavior changes.
 
 ## Agent Coordination
 

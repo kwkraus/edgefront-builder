@@ -54,26 +54,20 @@ At any point after a tech spec exists:
 
 ## Approval and Audit Comments
 
-### Approval Comment Template
+Use the canonical lifecycle comment templates below. These files are user-editable, and template-only changes should happen there rather than in this skill.
 
-```markdown
-✅ **Functional spec approved for implementation**
+| Comment type | Format | Canonical template |
+|--------------|--------|--------------------|
+| **Approval comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\approval-comment.md` |
+| **Staleness comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\staleness-comment.md` |
+| **Abandonment comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\abandonment-comment.md` |
 
-- Approved by: [name]
-- Approved on: [YYYY-MM-DD]
-- Notes: [summary of decision or constraints]
-```
+### Lifecycle Comment Rules
 
-### Staleness Comment Template
-
-```markdown
-⚠️ **Technical spec is stale**
-
-- Detected on: [YYYY-MM-DD]
-- Changed items:
-  - [Epic/Feature/User Story and what changed]
-- Action: Regenerate the technical specification before continuing implementation that depends on this change.
-```
+1. Load the relevant template file before generating or validating a lifecycle comment.
+2. Preserve the structure from the template file while keeping the actual comment content specific to the current Epic.
+3. If a template file changes, follow the new structure automatically unless it conflicts with the state model or enforcement rules in this skill.
+4. Reject or repair lifecycle comments that still contain unresolved placeholders.
 
 ## Transition Rules
 
@@ -143,7 +137,7 @@ When the `devops-workitem-manager` agent encounters spec-managed work items, it 
    - **User Story**: Description or Acceptance Criteria field
 4. If confirmed and a tech spec already exists for the parent Epic:
    - add `techspec:stale`
-   - add a staleness comment
+   - add a staleness comment using `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
 5. Creating child Features or User Stories under an approved hierarchy also requires a warning because it changes scope.
 
 Treat these as strong signals that an item is part of the spec workflow:

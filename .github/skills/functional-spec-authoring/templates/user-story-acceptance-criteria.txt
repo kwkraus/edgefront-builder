@@ -1,0 +1,2 @@
+Given [precondition], when [action], then [expected result]
+Given [precondition], when [action], then [expected result]

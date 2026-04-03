@@ -27,28 +27,36 @@ This agent uses three skills:
 
 | Skill | Purpose | File |
 |-------|---------|------|
-| `functional-spec-authoring` | Iterative authoring of Epic/Feature/User Story hierarchies with templates | `.github/skills/functional-spec-authoring/SKILL.md` |
+| `functional-spec-authoring` | Iterative authoring of Epic/Feature/User Story hierarchies with field and template rules | `.github/skills/functional-spec-authoring/SKILL.md` |
 | `technical-spec-generation` | Generate tech specs from approved functional specs and publish to wiki | `.github/skills/technical-spec-generation/SKILL.md` |
 | `spec-lifecycle-management` | State model, review readiness, staleness detection, and process enforcement | `.github/skills/spec-lifecycle-management/SKILL.md` |
 
-Always consult the relevant skill before performing an action. Skills contain the templates, rules, and quality gates.
+Always consult the relevant skill before performing an action. Skills contain the workflow rules and quality gates; canonical editable templates live alongside those skills under their local `templates\` folders.
+
+## Canonical Templates
+
+- Functional work item templates: `.github\skills\functional-spec-authoring\templates\`
+- Lifecycle comment templates: `.github\skills\spec-lifecycle-management\templates\`
+- Technical spec templates: `.github\skills\technical-spec-generation\templates\`
+
+Update template files for section-only changes. Update skills only when field mapping, lifecycle behavior, or validation logic changes.
 
 ## Workflow Overview
 
 ### Phase 1: Functional Specification
 1. User describes a business need or feature idea.
 2. Ask clarifying questions to understand scope, users, and success criteria.
-3. Create an Epic in Azure DevOps in state `New` using the Epic template.
-4. Decompose into Features using the Feature template. Keep acceptance criteria in the Feature Description.
+3. Create an Epic in Azure DevOps in state `New` using `.github\skills\functional-spec-authoring\templates\epic-description.html`.
+4. Decompose into Features using `.github\skills\functional-spec-authoring\templates\feature-description.html`. Keep acceptance criteria in the Feature Description.
 5. Decompose Features into User Stories:
-   - put the story statement and notes in Description
-   - put Given/When/Then criteria in the Acceptance Criteria field
+   - put the story statement and notes in Description using `.github\skills\functional-spec-authoring\templates\user-story-description.html`
+   - put Given/When/Then criteria in the Acceptance Criteria field using `.github\skills\functional-spec-authoring\templates\user-story-acceptance-criteria.txt`
 6. Iterate with the user until all quality gates pass.
 7. When ready for stakeholder review, add `review:ready` to the Epic while the hierarchy stays in `New`.
 8. After explicit stakeholder sign-off:
    - remove `review:ready`
    - move the approved hierarchy to `Active`
-   - add a structured approval comment on the Epic
+   - add a structured approval comment on the Epic using `.github\skills\spec-lifecycle-management\templates\approval-comment.md`
 
 ### Phase 2: Technical Specification
 1. Verify the Epic is in state `Active`.
@@ -56,9 +64,9 @@ Always consult the relevant skill before performing an action. Skills contain th
 3. Refuse to proceed if `review:ready` is still present.
 4. Pull the full work item hierarchy via MCP.
 5. Analyze requirements and design the technical approach.
-6. Generate the tech spec using the wiki page template.
+6. Generate the tech spec using `.github\skills\technical-spec-generation\templates\technical-spec.md`.
 7. Publish to Azure DevOps wiki at `/Tech-Specs/[Epic-ID]-[Slugified-Title]`.
-8. Add a comment to the Epic linking to the wiki page.
+8. Add a comment to the Epic linking to the wiki page using `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md`.
 9. Remove `techspec:stale` if present.
 
 ### Phase 3: Change Management
@@ -125,5 +133,5 @@ This agent directly uses these MCP tools:
   - `review:ready`
   - `techspec:stale`
 - The project wiki must exist before tech spec pages can be created. If wiki operations fail with `WikiNotFoundException`, instruct the user to create the project wiki manually in Azure DevOps.
-- Record approval and staleness changes as comments on the Epic for auditability
+- Record approval and staleness changes as comments on the Epic for auditability using the canonical lifecycle templates
 - When in doubt about requirements, ask the user. Do not invent behavior.

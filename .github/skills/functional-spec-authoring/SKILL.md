@@ -53,95 +53,25 @@ Tags are operational signals only. They do not replace Azure DevOps State.
 | **Feature** | Canonical source for capability, business value, scope, dependencies, and feature-level acceptance criteria | Not used in the Agile template for Features |
 | **User Story** | Canonical source for story statement, UI/UX notes, data rules, and edge cases | Canonical source for executable Given/When/Then criteria (`Microsoft.VSTS.Common.AcceptanceCriteria`) |
 
-## Work Item Templates
+## Output Contracts
 
-### Epic Template (Description field - HTML format)
+The section-only templates for functional spec content are user-editable files. Treat them as the canonical source for section headings, ordering, and placeholder structure.
 
-```html
-<h2>Business Justification</h2>
-<p>[WHY this epic exists - the business problem or opportunity being addressed]</p>
+| Artifact | Format | Canonical template |
+|----------|--------|--------------------|
+| **Epic Description** | HTML | `.github\skills\functional-spec-authoring\templates\epic-description.html` |
+| **Feature Description** | HTML | `.github\skills\functional-spec-authoring\templates\feature-description.html` |
+| **User Story Description** | HTML | `.github\skills\functional-spec-authoring\templates\user-story-description.html` |
+| **User Story Acceptance Criteria** | Plain text | `.github\skills\functional-spec-authoring\templates\user-story-acceptance-criteria.txt` |
 
-<h2>Success Criteria</h2>
-<ul>
-<li>[Measurable outcome 1]</li>
-<li>[Measurable outcome 2]</li>
-</ul>
+### Output Validation Rules
 
-<h2>Scope</h2>
-<h3>In Scope</h3>
-<ul>
-<li>[Capability included]</li>
-</ul>
-<h3>Out of Scope</h3>
-<ul>
-<li>[Explicitly excluded item]</li>
-</ul>
-
-<h2>Stakeholders</h2>
-<ul>
-<li>[Stakeholder name - role]</li>
-</ul>
-
-<h2>Assumptions &amp; Constraints</h2>
-<ul>
-<li>[Known assumption or constraint]</li>
-</ul>
-```
-
-### Feature Template (Description field - HTML format)
-
-```html
-<h2>Capability</h2>
-<p>[WHAT this feature delivers at a high level]</p>
-
-<h2>Business Value</h2>
-<p>[How this feature contributes to the Epic's goals]</p>
-
-<h2>Functional Scope</h2>
-<ul>
-<li>[Detailed scope boundary]</li>
-</ul>
-
-<h2>Dependencies</h2>
-<ul>
-<li>[Other features or systems this depends on]</li>
-</ul>
-
-<h2>Acceptance Criteria</h2>
-<ul>
-<li>[Capability-level verification 1]</li>
-<li>[Capability-level verification 2]</li>
-</ul>
-```
-
-### User Story Template (Description field - HTML format)
-
-```html
-<h2>User Story</h2>
-<p>As a [persona], I want to [action], so that [benefit].</p>
-
-<h2>UI/UX Notes</h2>
-<p>[Any relevant UI behavior, layouts, or interaction patterns]</p>
-
-<h2>Data &amp; Validation Rules</h2>
-<ul>
-<li>[Input validation, data transformations, business rules]</li>
-</ul>
-
-<h2>Edge Cases</h2>
-<ul>
-<li>[Known edge case and expected behavior]</li>
-</ul>
-```
-
-### User Story Acceptance Criteria Field
-
-Store the testable criteria in `Microsoft.VSTS.Common.AcceptanceCriteria`, not in Description.
-
-```text
-Given [precondition], when [action], then [expected result]
-Given [precondition], when [action], then [expected result]
-```
+1. Load the relevant template file before generating or validating output.
+2. Preserve the required section headings and ordering from the template file.
+3. Keep prose flexible inside each section; do not force identical wording.
+4. If a template file changes, follow the new structure automatically unless it conflicts with the Agile field model in this skill.
+5. If a template change conflicts with field mapping or lifecycle rules, STOP and ask the user rather than inventing behavior.
+6. Reject or repair output that is missing required sections or still contains unresolved placeholders.
 
 ## Authoring Workflow
 
@@ -176,15 +106,7 @@ Given [precondition], when [action], then [expected result]
 1. Address stakeholder feedback by refining the Epic, Features, and Stories.
 2. When stakeholders approve, remove `review:ready`.
 3. Move the approved Epic and implementation-ready child Features/User Stories from `New` to `Active`.
-4. Add a structured approval comment on the Epic:
-
-```markdown
-✅ **Functional spec approved for implementation**
-
-- Approved by: [name]
-- Approved on: [YYYY-MM-DD]
-- Notes: [summary of decision or constraints]
-```
+4. Add a structured approval comment on the Epic using `.github\skills\spec-lifecycle-management\templates\approval-comment.md`.
 
 This approval unlocks technical specification generation.
 
@@ -203,6 +125,7 @@ A functional spec is ready for stakeholder review when:
 - [ ] Every Feature Description includes capability, business value, scope, dependencies, and acceptance criteria
 - [ ] Every User Story Description is complete
 - [ ] Every User Story Acceptance Criteria field is populated with Given/When/Then criteria
+- [ ] All generated artifacts conform to the current canonical template files
 - [ ] No placeholder text remains (`[TODO]`, `[TBD]`, or empty sections)
 - [ ] Scope boundaries are explicit (In Scope / Out of Scope defined)
 
