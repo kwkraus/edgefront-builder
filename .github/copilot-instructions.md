@@ -10,15 +10,19 @@
 - For any TDD, test-first, or regression-test-driven work in this repository, use the `edgefront-tdd-engineer` agent by default.
 - Do not choose generic plugin-provided TDD agents such as `testing-automation:tdd-red`, `testing-automation:tdd-green`, or `testing-automation:tdd-refactor` unless the user explicitly asks for one of them by name.
 - Treat plugin TDD agents as optional supporting tools, not the canonical testing path for this repository.
+- For spec authoring (functional/technical specifications), use the `spec-driven-development` agent.
+- For general board CRUD, sprint planning, task/bug management, use the `devops-workitem-manager` agent.
+- If work items have `spec:*` or `techspec:*` tags, prefer `spec-driven-development` for edits to Description or Acceptance Criteria.
 
 ## Azure DevOps Integration
 - Use the `devops-workitem-manager` agent to read work items from your board, create new items, and update item status.
-- This agent is pre-configured with organization `kkraus` and project `edgefront-builder` — you never need to specify these.
-- The agent is **not loaded automatically**; invoke it explicitly when you need to:
-  - Read requirements from the board to create an implementation plan
-  - Create work items for new features or bugs discovered during development
-  - Update work item status as implementation progresses
-- Typical workflow: User reads a work item from the board → feeds requirements to plan mode → implements feature → updates board status.
+- Use the `spec-driven-development` agent to author functional specs as work item hierarchies and generate technical specs as wiki pages.
+- Both agents are pre-configured with organization `kkraus` and project `edgefront-builder` — you never need to specify these.
+- Neither agent is loaded automatically; invoke them explicitly when needed.
+- The `spec-driven-development` agent and `devops-workitem-manager` share awareness of the spec lifecycle via the `spec-lifecycle-management` skill.
+- See `docs/spec-driven-development-process.md` for the full spec workflow documentation.
+- Typical spec workflow: User invokes `spec-driven-development` → iterates on functional spec → approves → generates tech spec → implements.
+- Typical board workflow: User invokes `devops-workitem-manager` → reads/creates/updates work items → manages sprints.
 
 ## Code Style
 - Keep changes minimal and scoped to the task.

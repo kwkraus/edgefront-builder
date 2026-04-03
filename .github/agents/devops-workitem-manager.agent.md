@@ -74,3 +74,33 @@ Typical session flow:
 - When reading items, include acceptance criteria in your response so plan mode can reference them
 - When creating items, ensure titles are clear and descriptions include enough context for future reference
 - Prefer linking created items to parent items to maintain board hierarchy
+
+## Spec Lifecycle Awareness
+
+This agent shares awareness of the spec-driven development process managed by the `spec-driven-development` agent. Consult the `spec-lifecycle-management` skill (`.github/skills/spec-lifecycle-management/SKILL.md`) for full rules.
+
+### Recognizing Spec-Managed Items
+Work items with any of these tags are managed by the spec process:
+- `spec:draft`, `spec:review`, `spec:approved` — functional spec lifecycle
+- `techspec:current`, `techspec:stale` — technical spec lifecycle
+
+### Guard Rails
+When you encounter spec-managed work items:
+
+1. **Read operations**: Always allowed — no restrictions
+2. **Safe field updates** (Priority, Iteration, Assignment, State, non-spec Tags): Always allowed
+3. **Description or Acceptance Criteria changes** on items with `spec:approved` or `techspec:current`:
+   - **Warn the user**: "⚠️ This work item is managed by the spec-driven development process (tag: [tag]). Modifying its description or acceptance criteria will trigger tech spec staleness."
+   - Ask the user to confirm before proceeding
+   - If confirmed and `techspec:current` is present on the parent Epic, replace it with `techspec:stale` and add an audit comment
+4. **Creating child items** under a spec-managed parent:
+   - Warn that adding items may affect the functional spec scope
+   - If `techspec:current` is present on the parent Epic, transition to `techspec:stale` after creation
+
+### Routing to spec-driven-development Agent
+If a user asks for spec-related work, direct them to the `spec-driven-development` agent:
+- "Define a new feature/capability" → `spec-driven-development`
+- "Write a functional spec" → `spec-driven-development`
+- "Generate a tech spec" → `spec-driven-development`
+- "Check spec status" → `spec-driven-development`
+
