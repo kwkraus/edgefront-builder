@@ -12,7 +12,7 @@
 - Treat plugin TDD agents as optional supporting tools, not the canonical testing path for this repository.
 - For spec authoring (functional/technical specifications), use the `spec-driven-development` agent.
 - For general board CRUD, sprint planning, task/bug management, use the `devops-workitem-manager` agent.
-- If work items have `spec:*` or `techspec:*` tags, prefer `spec-driven-development` for edits to Description or Acceptance Criteria.
+- If work items are part of the spec-driven hierarchy - especially those in `New`/`Active` or tagged `review:ready` / `techspec:stale` - prefer `spec-driven-development` for edits to Description or Acceptance Criteria.
 
 ## Azure DevOps Integration
 - Use the `devops-workitem-manager` agent to read work items from your board, create new items, and update item status.
@@ -20,6 +20,7 @@
 - Both agents are pre-configured with organization `kkraus` and project `edgefront-builder` — you never need to specify these.
 - Neither agent is loaded automatically; invoke them explicitly when needed.
 - The `spec-driven-development` agent and `devops-workitem-manager` share awareness of the spec lifecycle via the `spec-lifecycle-management` skill.
+- The spec-driven workflow uses Azure DevOps Agile **State** as the primary lifecycle model and uses only these supplemental query tags: `review:ready` and `techspec:stale`.
 - See `docs/spec-driven-development-process.md` for the full spec workflow documentation.
 - Typical spec workflow: User invokes `spec-driven-development` → iterates on functional spec → approves → generates tech spec → implements.
 - Typical board workflow: User invokes `devops-workitem-manager` → reads/creates/updates work items → manages sprints.
