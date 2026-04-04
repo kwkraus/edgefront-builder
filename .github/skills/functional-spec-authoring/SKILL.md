@@ -75,25 +75,53 @@ The section-only templates for functional spec content are user-editable files. 
 
 ## Authoring Workflow
 
-### Phase 1: Discovery
-1. Gather the business need from the user. Ask clarifying questions if the request is vague.
-2. Draft the Epic with business justification, success criteria, and initial scope.
-3. Create the Epic in Azure DevOps in state `New`.
+> **Key principle:** Do not create any Azure DevOps work items until the user approves the full hierarchy preview in Phase 4. Phases 1–3 are entirely conversational.
 
-### Phase 2: Feature Decomposition
+### Phase 1: Discovery (conversational only)
+1. Gather the business need from the user. Ask clarifying questions until the idea reaches a logical conclusion.
+2. Draft the Epic description in-conversation: business justification, success criteria, initial scope, stakeholders, and constraints. Use the sections from `epic-description.html` as a guide.
+3. **Do NOT create any work items in Azure DevOps yet.**
+
+### Phase 2: Feature Decomposition (conversational only)
 1. Identify distinct capabilities within the Epic's scope.
-2. For each capability, create a Feature as a child of the Epic.
-3. Put capability-level acceptance criteria inside the Feature Description.
-4. Review with the user: are these the right Features, and do the boundaries make sense?
+2. Draft each Feature description in-conversation: capability, business value, scope boundaries, dependencies, and acceptance criteria. Use the sections from `feature-description.html` as a guide.
+3. Review with the user: are these the right Features, and do the boundaries make sense?
+4. **Do NOT create any work items in Azure DevOps yet.**
 
-### Phase 3: Story Definition
+### Phase 3: Story Definition (conversational only)
 1. For each Feature, decompose into user-facing behaviors.
-2. Create User Stories as children of Features.
-3. Put the story statement and supporting notes in Description.
-4. Put Given/When/Then criteria in the User Story Acceptance Criteria field.
-5. Review with the user: are the criteria clear, testable, and complete?
+2. Draft each User Story in-conversation: story statement, supporting notes, and Given/When/Then acceptance criteria. Use `user-story-description.html` and `user-story-acceptance-criteria.txt` as guides.
+3. Review with the user: are the criteria clear, testable, and complete?
+4. **Do NOT create any work items in Azure DevOps yet.**
 
-### Phase 4: Review Readiness
+### Phase 4: Hierarchy Preview and Approval
+1. Verify all quality gates pass (check in-conversation content for completeness before showing the preview).
+2. Present the complete hierarchy as a structured preview in the conversation using this format:
+
+```
+**Epic**: [Title]
+[1–2 sentence business justification summary]
+
+  **Feature 1**: [Title]
+  [Scope summary — 1 sentence]
+    - User Story 1.1: [Title]
+      Given/When/Then summary
+    - User Story 1.2: [Title]
+      Given/When/Then summary
+
+  **Feature 2**: [Title]
+  ...
+```
+
+3. Ask the user to review the hierarchy and either approve it or request changes.
+4. If the user requests changes, loop back to the relevant Phase (1, 2, or 3) and iterate. Re-present the preview after changes.
+5. After explicit user approval, create all work items in Azure DevOps in this order:
+   - Create the Epic in state `New` using `epic-description.html` template
+   - Create all Features as children of the Epic
+   - Create all User Stories as children of their respective Features
+6. After creation, confirm completion by listing all created work item IDs and titles.
+
+### Phase 5: Review Readiness
 1. Verify the Epic Description is complete.
 2. Verify every Feature Description is complete and includes an `Acceptance Criteria` subsection.
 3. Verify every User Story has both:
@@ -102,7 +130,7 @@ The section-only templates for functional spec content are user-editable files. 
 4. Add `review:ready` to the Epic while keeping the hierarchy in state `New`.
 5. Present a summary to the user for stakeholder review.
 
-### Phase 5: Approval
+### Phase 6: Approval
 1. Address stakeholder feedback by refining the Epic, Features, and Stories.
 2. When stakeholders approve, remove `review:ready`.
 3. Move the approved Epic and implementation-ready child Features/User Stories from `New` to `Active`.

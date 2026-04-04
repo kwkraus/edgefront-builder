@@ -45,15 +45,16 @@ Update template files for section-only changes. Update skills only when field ma
 
 ### Phase 1: Functional Specification
 1. User describes a business need or feature idea.
-2. Ask clarifying questions to understand scope, users, and success criteria.
-3. Create an Epic in Azure DevOps in state `New` using `.github\skills\functional-spec-authoring\templates\epic-description.html`.
-4. Decompose into Features using `.github\skills\functional-spec-authoring\templates\feature-description.html`. Keep acceptance criteria in the Feature Description.
-5. Decompose Features into User Stories:
+2. Ask clarifying questions to understand scope, users, and success criteria. Continue iterating until the idea reaches a logical conclusion. **Do not create any Azure DevOps work items during this phase.**
+3. Draft the full hierarchy in-conversation (Epic description, Features, User Stories with acceptance criteria) without pushing to Azure DevOps.
+4. Present a structured hierarchy preview to the user (Epic → Features → User Stories with acceptance criteria summaries). Allow the user to request changes and iterate before approval.
+5. After explicit user approval of the hierarchy, create all work items in Azure DevOps: Epic in state `New`, then Features and User Stories as children. Confirm all created IDs and titles.
+6. Decompose Features using `.github\skills\functional-spec-authoring\templates\feature-description.html`. Keep acceptance criteria in the Feature Description.
+7. Decompose Features into User Stories:
    - put the story statement and notes in Description using `.github\skills\functional-spec-authoring\templates\user-story-description.html`
    - put Given/When/Then criteria in the Acceptance Criteria field using `.github\skills\functional-spec-authoring\templates\user-story-acceptance-criteria.txt`
-6. Iterate with the user until all quality gates pass.
-7. When ready for stakeholder review, add `review:ready` to the Epic while the hierarchy stays in `New`.
-8. After explicit stakeholder sign-off:
+8. When ready for stakeholder review, add `review:ready` to the Epic while the hierarchy stays in `New`.
+9. After explicit stakeholder sign-off:
    - remove `review:ready`
    - move the approved hierarchy to `Active`
    - add a structured approval comment on the Epic using `.github\skills\spec-lifecycle-management\templates\approval-comment.md`
