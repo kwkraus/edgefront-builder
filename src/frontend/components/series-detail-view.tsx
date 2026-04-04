@@ -5,14 +5,14 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon } from '@primer/octicons-react'
+import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon, DownloadIcon } from '@primer/octicons-react'
 import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token, Tooltip } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { SyncStatusCell } from '@/components/sync-status-cell'
-import { updateSeries, deleteSeries, publishSeries } from '@/lib/api/series'
+import { updateSeries, deleteSeries, publishSeries, exportSeriesMarkdown } from '@/lib/api/series'
 import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { deleteSession, publishSession } from '@/lib/api/sessions'
 import type { SeriesResponse, SessionListItem, SeriesMetricsResponse } from '@/lib/api/types'
@@ -232,6 +232,22 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
+  // ── Export Markdown ───────────────────────────────────────────────────────
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  async function handleExportMarkdown() {
+    setIsExporting(true)
+    setExportError(null)
+    try {
+      await exportSeriesMarkdown(series.seriesId, token)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const seriesDisplayStatus =
     series.status === 'Published' && series.draftSessionCount > 0
       ? 'Partially Published'
@@ -270,6 +286,14 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
               Publish Series
             </Button>
           )}
+          <Button
+            leadingVisual={DownloadIcon}
+            onClick={handleExportMarkdown}
+            disabled={busy || isExporting}
+            aria-label="Download series as Markdown"
+          >
+            {isExporting ? 'Exporting…' : 'Download Markdown'}
+          </Button>
           <IconButton
             icon={TrashIcon}
             aria-label="Delete series"
@@ -311,6 +335,12 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           variant="warning"
           title="Teams webinar license required."
           description="Cannot publish session — assign a Teams webinar license, then retry."
+        />
+      )}
+      {exportError && (
+        <ErrorBanner
+          message={exportError}
+          onRetry={handleExportMarkdown}
         />
       )}
 

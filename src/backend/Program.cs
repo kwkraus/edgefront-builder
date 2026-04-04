@@ -1,4 +1,5 @@
 using EdgeFront.Builder.Domain;
+using EdgeFront.Builder.Features.Export;
 using EdgeFront.Builder.Features.Me;
 using EdgeFront.Builder.Features.Metrics;
 using EdgeFront.Builder.Features.People;
@@ -57,6 +58,7 @@ builder.Services.AddScoped<SeriesService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<MetricsService>();
 builder.Services.AddScoped<SyncService>();
+builder.Services.AddScoped<MarkdownExportService>();
 
 // Graph services (delegated-only — no app-credential GraphServiceClient)
 builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
@@ -125,6 +127,7 @@ app.MapSessionEndpoints();
 app.MapPeopleEndpoints();
 app.MapMetricsEndpoints();
 app.MapMeEndpoints();
+app.MapExportEndpoints();
 
 app.Run();
 
