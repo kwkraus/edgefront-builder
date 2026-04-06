@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -95,6 +95,11 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   const router = useRouter()
   const token = authSession?.accessToken ?? ''
   const busy = sessionStatus === 'loading'
+
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+    [sessions],
+  )
 
   // ── Auto-sync published sessions via shared hook ─────────────────────────
   const { isSyncing, getSyncState, syncOne, syncAll, autoSyncIfStale, cancelAll } = useTeamsSync({
@@ -398,7 +403,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
               className="text-sm font-semibold uppercase tracking-wide"
               style={{ color: 'var(--fgColor-muted)' }}
             >
-              Sessions ({sessions.length})
+              Sessions ({sortedSessions.length})
             </h2>
             {series.status === 'Published' && series.draftSessionCount > 0 && (
               <span
@@ -425,7 +430,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           </Button>
         </div>
 
-        {sessions.length === 0 ? (
+        {sortedSessions.length === 0 ? (
           <div
             className="rounded-lg px-8 py-12 text-center"
             style={{
@@ -494,7 +499,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s, idx) => {
+                {sortedSessions.map((s, idx) => {
                   const rowSync = getSyncState(s.sessionId)
                   const dataCellClass = clsx({
                     'sync-cell-syncing': rowSync === 'syncing',
@@ -509,7 +514,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       'sync-row-done': rowSync === 'done',
                     })}
                     style={{
-                      borderBottom: idx < sessions.length - 1 ? '1px solid var(--borderColor-default)' : undefined,
+                      borderBottom: idx < sortedSessions.length - 1 ? '1px solid var(--borderColor-default)' : undefined,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = 'var(--bgColor-muted)'
