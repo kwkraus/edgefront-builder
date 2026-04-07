@@ -1,16 +1,22 @@
 # build output
 bin/
 obj/
+TestResults/
 
 # user-specific files
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
+*.rsuser
+*.userprefs
 
 # VS / VS Code
 .vs/
 .vscode/
+
+# C# Dev Kit / language service cache
+*.lscache
 
 # logs
 *.log
