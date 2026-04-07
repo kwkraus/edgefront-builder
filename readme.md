@@ -52,6 +52,10 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ![Session Detail (Published)](docs/screenshots/session-detail-published.png)
 
+### About
+
+![About](docs/screenshots/about.png)
+
 ---
 
 ## Tech Stack

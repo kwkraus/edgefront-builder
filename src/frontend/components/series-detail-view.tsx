@@ -291,16 +291,13 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
               Publish Series
             </Button>
           )}
-          <Tooltip text="Download Series" type="description">
-            <IconButton
-              icon={DownloadIcon}
-              aria-label="Download Series"
-              variant="invisible"
-              unsafeDisableTooltip
-              onClick={handleExportMarkdown}
-              disabled={busy || isExporting}
-            />
-          </Tooltip>
+          <IconButton
+            icon={DownloadIcon}
+            aria-label="Download Series"
+            variant="invisible"
+            onClick={handleExportMarkdown}
+            disabled={busy || isExporting}
+          />
           <IconButton
             icon={TrashIcon}
             aria-label="Delete series"
