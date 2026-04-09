@@ -8,6 +8,7 @@ Thumbs.db
 
 # logs
 *.log
+.github/hooks/logs/
 
 # local env files
 .env
