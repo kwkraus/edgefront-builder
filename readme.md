@@ -14,6 +14,8 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 - **Registration & attendance tracking** — Sync registrations and attendance from Teams on page load; data is persisted locally for fast reads.
 - **Drift detection** — Detect when Teams-side metadata (title, start, end) diverges from Builder and surface a warning badge so you can reconcile.
 - **Metrics & analytics** — Aggregated engagement metrics per session and across a series: total registrations, attendees, unique account domains, and warm-account influence tracking.
+- **CSV import** — Import registration and attendance data from CSV files; raw files are parsed and normalized by Azure AI before being persisted.
+- **Markdown export** — Export a series summary as Markdown, including session details and domain-level registration and attendance analytics.
 - **Entra ID authentication** — Single-tenant login via Entra ID; all Graph operations use delegated OBO tokens — no application permissions required.
 
 ---
@@ -63,7 +65,8 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Primer React v38 |
-| Backend | ASP.NET Core Minimal API, .NET 10, EF Core |
+| Backend | ASP.NET Core Minimal API, .NET 10, EF Core 9 |
+| AI | Azure AI Foundry (Azure OpenAI) — CSV parsing via GPT-4.1 |
 | Database | Azure SQL |
 | Auth | Microsoft Entra ID (next-auth, single-tenant) |
 | Graph integration | Microsoft Graph v1 — delegated `VirtualEvent.ReadWrite` via OBO flow |
@@ -74,7 +77,7 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 ## Project Structure
 
 ```text
-docs/           # Setup guides, screenshots
+docs/           # Setup guides, screenshots, process documentation
 src/
   backend/      # ASP.NET Core Minimal API
   frontend/     # Next.js App Router app
