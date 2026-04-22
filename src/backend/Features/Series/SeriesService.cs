@@ -30,18 +30,20 @@ public class SeriesService
             .Where(m => seriesIds.Contains(m.SeriesId))
             .ToDictionaryAsync(m => m.SeriesId);
 
-        var sessionCounts = await _db.Sessions
+        var sessionCountsByStatus = await _db.Sessions
             .Where(s => seriesIds.Contains(s.SeriesId))
-            .GroupBy(s => s.SeriesId)
-            .Select(g => new { SeriesId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.SeriesId, x => x.Count);
+            .GroupBy(s => new { s.SeriesId, s.Status })
+            .Select(g => new { g.Key.SeriesId, g.Key.Status, Count = g.Count() })
+            .ToListAsync();
 
-        var draftSessionCounts = await _db.Sessions
-            .Where(s => seriesIds.Contains(s.SeriesId) && s.Status == SessionStatus.Draft)
-            .GroupBy(s => s.SeriesId)
-            .Select(g => new { SeriesId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.SeriesId, x => x.Count);
+        var sessionCounts = sessionCountsByStatus
+            .GroupBy(x => x.SeriesId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
 
+        var draftSessionCounts = sessionCountsByStatus
+            .Where(x => x.Status == SessionStatus.Draft)
+            .ToDictionary(x => x.SeriesId, x => x.Count);
+            
         return series.Select(s =>
         {
             var m = metrics.TryGetValue(s.SeriesId, out var sm) ? sm : null;
