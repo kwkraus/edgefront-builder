@@ -3,11 +3,6 @@ description: Webinar management platform integrating with Microsoft Teams
 metadata:
   template: edgefront-builder@0.1.0
   author: EdgeFront Team
-
-infra:
-  path: infra
-  params: infra/main.dev.bicepparam
-
 services:
   frontend:
     project: src/frontend
