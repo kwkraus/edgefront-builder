@@ -1,0 +1,716 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "7463645060060351141"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "dev",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Deployment environment name (dev or prod)"
+      }
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Project name for resource naming (max 20 alphanumeric chars)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for resource deployment"
+      }
+    },
+    "resourceNamePrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Prefix for all resource names (lowercase alphanumeric and hyphens, max 15 chars)"
+      }
+    },
+    "appServicePlanSku": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service Plan SKU"
+      }
+    },
+    "appServicePlanTier": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service Plan tier"
+      }
+    },
+    "appServiceRuntimeStack": {
+      "type": "string",
+      "metadata": {
+        "description": "ASP.NET Core runtime stack (format: DOTNETCORE|VERSION)"
+      }
+    },
+    "sqlServerAdminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Server administrator username"
+      }
+    },
+    "sqlServerAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "SQL Server administrator password (must be 8-128 chars with uppercase, lowercase, digit, special char)"
+      }
+    },
+    "sqlDatabaseSku": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Database SKU (Free for dev, Standard for prod)"
+      }
+    },
+    "sqlDatabaseMaxSizeBytes": {
+      "type": "int",
+      "metadata": {
+        "description": "SQL Database maximum size in bytes"
+      }
+    },
+    "backupRetentionDays": {
+      "type": "int",
+      "metadata": {
+        "description": "Backup retention period in days (1-35)"
+      }
+    },
+    "staticWebAppsSku": {
+      "type": "string",
+      "metadata": {
+        "description": "Static Web Apps SKU"
+      }
+    },
+    "staticWebAppsRuntimeStack": {
+      "type": "string",
+      "metadata": {
+        "description": "Static Web Apps runtime stack"
+      }
+    },
+    "nodeVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Node.js version for Static Web Apps"
+      }
+    },
+    "enableApplicationInsights": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable Application Insights monitoring"
+      }
+    },
+    "applicationsInsightsSku": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights pricing model"
+      }
+    },
+    "logAnalyticsRetentionDays": {
+      "type": "int",
+      "metadata": {
+        "description": "Log Analytics data retention in days (1-730)"
+      }
+    },
+    "entraadTenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure AD tenant ID"
+      }
+    },
+    "entraadClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "App registration client ID"
+      }
+    },
+    "entraadAudience": {
+      "type": "string",
+      "metadata": {
+        "description": "App registration audience URI"
+      }
+    },
+    "graphBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Graph API endpoint"
+      }
+    },
+    "corsAllowedOrigins": {
+      "type": "array",
+      "metadata": {
+        "description": "CORS allowed origins for backend"
+      }
+    },
+    "enableManagedIdentity": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable managed identity for resources"
+      }
+    },
+    "enableEncryption": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable encryption at rest"
+      }
+    },
+    "enableDiagnostics": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable diagnostic logging"
+      }
+    },
+    "commonTags": {
+      "type": "object",
+      "metadata": {
+        "description": "Common tags applied to all resources"
+      }
+    }
+  },
+  "variables": {
+    "appServicePlanName": "[format('{0}-plan', parameters('resourceNamePrefix'))]",
+    "appServiceName": "[format('{0}-app', parameters('resourceNamePrefix'))]",
+    "sqlServerName": "[format('{0}-sql-{1}', parameters('resourceNamePrefix'), uniqueString(resourceGroup().id))]",
+    "sqlDatabaseName": "[format('{0}db', parameters('projectName'))]",
+    "staticWebAppName": "[format('{0}-swa', parameters('resourceNamePrefix'))]",
+    "applicationInsightsName": "[format('{0}-appinsights', parameters('resourceNamePrefix'))]",
+    "logAnalyticsWorkspaceName": "[format('{0}-logs', parameters('resourceNamePrefix'))]",
+    "storageAccountName": "[format('{0}storage', replace(parameters('resourceNamePrefix'), '-', ''))]",
+    "managedIdentityName": "[format('{0}-identity', parameters('resourceNamePrefix'))]",
+    "appServiceDiagnosticsName": "[format('{0}-diagnostics', variables('appServiceName'))]",
+    "sqlDatabaseDiagnosticsName": "[format('{0}-diagnostics', variables('sqlDatabaseName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('logAnalyticsWorkspaceName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('commonTags')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": "[parameters('logAnalyticsRetentionDays')]",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      }
+    },
+    {
+      "condition": "[parameters('enableApplicationInsights')]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('applicationInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "tags": "[parameters('commonTags')]",
+      "properties": {
+        "Application_Type": "web",
+        "RetentionInDays": "[parameters('logAnalyticsRetentionDays')]",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "tags": "[parameters('commonTags')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": "[parameters('enableEncryption')]"
+            },
+            "file": {
+              "enabled": "[parameters('enableEncryption')]"
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "condition": "[parameters('enableManagedIdentity')]",
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[variables('managedIdentityName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('commonTags')]"
+    },
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[variables('sqlServerName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('commonTags')]",
+      "properties": {
+        "administratorLogin": "[parameters('sqlServerAdminUsername')]",
+        "administratorLoginPassword": "[parameters('sqlServerAdminPassword')]",
+        "version": "12.0",
+        "minimalTlsVersion": "1.2",
+        "publicNetworkAccess": "Enabled",
+        "administrators": {
+          "administratorType": "ActiveDirectory",
+          "azureADOnlyAuthentication": false,
+          "login": "[parameters('sqlServerAdminUsername')]",
+          "principalType": "User",
+          "sid": "",
+          "tenantId": "[subscription().tenantId]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[format('{0}/{1}', variables('sqlServerName'), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[format('{0}/{1}', variables('sqlServerName'), variables('sqlDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('commonTags')]",
+      "sku": {
+        "name": "[parameters('sqlDatabaseSku')]",
+        "tier": "[if(equals(parameters('sqlDatabaseSku'), 'Free'), 'Free', 'Standard')]"
+      },
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS",
+        "maxSizeBytes": "[parameters('sqlDatabaseMaxSizeBytes')]",
+        "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+        "zoneRedundant": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('sqlServerName'), variables('sqlDatabaseName'), 'default')]",
+      "properties": {
+        "retentionDays": "[parameters('backupRetentionDays')]",
+        "diffBackupIntervalInHours": 24
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableDiagnostics')]",
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]",
+      "name": "[variables('sqlDatabaseDiagnosticsName')]",
+      "properties": {
+        "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]",
+        "logs": [
+          {
+            "category": "SQLSecurityAuditEvents",
+            "enabled": true
+          },
+          {
+            "category": "SQLInsights",
+            "enabled": true
+          },
+          {
+            "category": "AutomaticTuning",
+            "enabled": true
+          },
+          {
+            "category": "QueryStoreRuntimeStatistics",
+            "enabled": true
+          },
+          {
+            "category": "QueryStoreWaitStatistics",
+            "enabled": true
+          },
+          {
+            "category": "Errors",
+            "enabled": true
+          },
+          {
+            "category": "DatabaseWaitStatistics",
+            "enabled": true
+          },
+          {
+            "category": "Timeouts",
+            "enabled": true
+          },
+          {
+            "category": "Blocks",
+            "enabled": true
+          },
+          {
+            "category": "Deadlocks",
+            "enabled": true
+          }
+        ],
+        "metrics": [
+          {
+            "category": "Basic",
+            "enabled": true
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "kind": "Linux",
+      "tags": "[parameters('commonTags')]",
+      "sku": {
+        "name": "[parameters('appServicePlanSku')]",
+        "tier": "[parameters('appServicePlanTier')]"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServiceName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux",
+      "tags": "[parameters('commonTags')]",
+      "identity": "[if(parameters('enableManagedIdentity'), createObject('type', 'UserAssigned', 'userAssignedIdentities', createObject(format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))), createObject())), createObject('type', 'None'))]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "[parameters('appServiceRuntimeStack')]",
+          "alwaysOn": true,
+          "http20Enabled": true,
+          "minTlsVersion": "1.2",
+          "scmMinTlsVersion": "1.2",
+          "use32BitWorkerProcess": false,
+          "appSettings": [
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[if(parameters('enableApplicationInsights'), reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2020-02-02').ConnectionString, '')]"
+            },
+            {
+              "name": "ApplicationInsightsAgent_EXTENSION_VERSION",
+              "value": "~3"
+            },
+            {
+              "name": "XDT_MicrosoftApplicationInsights_Mode",
+              "value": "recommended"
+            },
+            {
+              "name": "EntraAD__TenantId",
+              "value": "[parameters('entraadTenantId')]"
+            },
+            {
+              "name": "EntraAD__ClientId",
+              "value": "[parameters('entraadClientId')]"
+            },
+            {
+              "name": "EntraAD__Audience",
+              "value": "[parameters('entraadAudience')]"
+            },
+            {
+              "name": "GraphAPI__BaseUrl",
+              "value": "[parameters('graphBaseUrl')]"
+            },
+            {
+              "name": "CORS__AllowedOrigins",
+              "value": "[join(parameters('corsAllowedOrigins'), ',')]"
+            },
+            {
+              "name": "Database__ConnectionString",
+              "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName')), '2021-11-01-preview').fullyQualifiedDomainName, variables('sqlDatabaseName'))]"
+            },
+            {
+              "name": "Database__UseManagedIdentity",
+              "value": "[string(parameters('enableManagedIdentity'))]"
+            }
+          ],
+          "connectionStrings": [
+            {
+              "name": "DefaultConnection",
+              "connectionString": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName')), '2021-11-01-preview').fullyQualifiedDomainName, variables('sqlDatabaseName'))]",
+              "type": "SQLServer"
+            }
+          ]
+        },
+        "httpsOnly": true,
+        "publicNetworkAccess": "Enabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableDiagnostics')]",
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]",
+      "name": "[variables('appServiceDiagnosticsName')]",
+      "properties": {
+        "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]",
+        "logs": [
+          {
+            "category": "AppServiceHTTPLogs",
+            "enabled": true
+          },
+          {
+            "category": "AppServiceConsoleLogs",
+            "enabled": true
+          },
+          {
+            "category": "AppServiceAppLogs",
+            "enabled": true
+          },
+          {
+            "category": "AppServicePlatformLogs",
+            "enabled": true
+          }
+        ],
+        "metrics": [
+          {
+            "category": "AllMetrics",
+            "enabled": true
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]",
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableManagedIdentity')]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]",
+      "name": "[guid(resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName')), 'dc9ce79b-5c97-4a28-92ac-4222ca76eacd')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'dc9ce79b-5c97-4a28-92ac-4222ca76eacd')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/staticSites",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('staticWebAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "staticsite",
+      "tags": "[parameters('commonTags')]",
+      "sku": {
+        "name": "[parameters('staticWebAppsSku')]",
+        "tier": "[if(equals(parameters('staticWebAppsSku'), 'Free'), 'Free', 'Standard')]"
+      },
+      "properties": {
+        "buildProperties": {
+          "appLocation": "src/frontend",
+          "apiLocation": "",
+          "appArtifactLocation": ".next",
+          "outputLocation": "out",
+          "githubActionSecretNameOverride": ""
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "frontendUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Frontend URL - Static Web Apps domain"
+      },
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', variables('staticWebAppName')), '2022-09-01').defaultHostname)]"
+    },
+    "backendUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Backend URL - App Service domain"
+      },
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('appServiceName')), '2022-09-01').defaultHostNames[0])]"
+    },
+    "sqlServerFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Server FQDN"
+      },
+      "value": "[reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName')), '2021-11-01-preview').fullyQualifiedDomainName]"
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Database name"
+      },
+      "value": "[variables('sqlDatabaseName')]"
+    },
+    "appInsightsInstrumentationKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights instrumentation key"
+      },
+      "value": "[if(parameters('enableApplicationInsights'), reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2020-02-02').InstrumentationKey, '')]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights connection string"
+      },
+      "value": "[if(parameters('enableApplicationInsights'), reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2020-02-02').ConnectionString, '')]"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace ID"
+      },
+      "value": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+    },
+    "managedIdentityId": {
+      "type": "string",
+      "metadata": {
+        "description": "Managed Identity resource ID"
+      },
+      "value": "[if(parameters('enableManagedIdentity'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '')]"
+    },
+    "managedIdentityPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Managed Identity principal ID"
+      },
+      "value": "[if(parameters('enableManagedIdentity'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId, '')]"
+    },
+    "appServiceId": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service resource ID"
+      },
+      "value": "[resourceId('Microsoft.Web/sites', variables('appServiceName'))]"
+    },
+    "appServicePlanId": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service plan resource ID"
+      },
+      "value": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+    },
+    "sqlServerId": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Server resource ID"
+      },
+      "value": "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+    },
+    "sqlDatabaseId": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL Database resource ID"
+      },
+      "value": "[resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName'))]"
+    },
+    "storageAccountId": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account resource ID"
+      },
+      "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+    },
+    "staticWebAppId": {
+      "type": "string",
+      "metadata": {
+        "description": "Static Web App resource ID"
+      },
+      "value": "[resourceId('Microsoft.Web/staticSites', variables('staticWebAppName'))]"
+    },
+    "portalAppServiceLink": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Portal App Service link"
+      },
+      "value": "[format('https://portal.azure.com/#resource{0}/overview', resourceId('Microsoft.Web/sites', variables('appServiceName')))]"
+    },
+    "portalSqlDatabaseLink": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Portal SQL Database link"
+      },
+      "value": "[format('https://portal.azure.com/#resource{0}/overview', resourceId('Microsoft.Sql/servers/databases', variables('sqlServerName'), variables('sqlDatabaseName')))]"
+    },
+    "portalAppInsightsLink": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Portal Application Insights link"
+      },
+      "value": "[if(parameters('enableApplicationInsights'), format('https://portal.azure.com/#resource{0}/overview', resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))), '')]"
+    },
+    "portalLogAnalyticsLink": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Portal Log Analytics link"
+      },
+      "value": "[format('https://portal.azure.com/#resource{0}/overview', resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')))]"
+    },
+    "deploymentSummary": {
+      "type": "object",
+      "metadata": {
+        "description": "Deployment summary"
+      },
+      "value": {
+        "environment": "[parameters('environment')]",
+        "projectName": "[parameters('projectName')]",
+        "location": "[parameters('location')]",
+        "resourceNamePrefix": "[parameters('resourceNamePrefix')]",
+        "frontendUrl": "[format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', variables('staticWebAppName')), '2022-09-01').defaultHostname)]",
+        "backendUrl": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('appServiceName')), '2022-09-01').defaultHostNames[0])]",
+        "sqlFqdn": "[reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName')), '2021-11-01-preview').fullyQualifiedDomainName]",
+        "appInsightsEnabled": "[parameters('enableApplicationInsights')]",
+        "managedIdentityEnabled": "[parameters('enableManagedIdentity')]",
+        "diagnosticsEnabled": "[parameters('enableDiagnostics')]"
+      }
+    }
+  }
+}

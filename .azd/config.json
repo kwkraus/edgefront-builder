@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.microsoft.com/azure/dev/schema/v0.1/config.json",
+  "name": "edgefront-builder",
+  "metadata": {
+    "description": "Webinar management platform integrating with Microsoft Teams",
+    "version": "0.1.0"
+  },
+  "defaultEnvironment": "dev",
+  "documentationLinks": {
+    "environments": "./environments/README.md"
+  }
+}

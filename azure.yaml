@@ -1,0 +1,33 @@
+name: edgefront-builder
+description: Webinar management platform integrating with Microsoft Teams
+metadata:
+  template: edgefront-builder@0.1.0
+  author: EdgeFront Team
+
+infra:
+  path: infra/main.bicep
+  params: infra/main.bicepparam
+
+services:
+  frontend:
+    project: src/frontend
+    language: js
+    dist: dist
+    module: appServiceModule
+    host: staticwebapp
+    
+  backend:
+    project: src/backend
+    language: csharp
+    module: appServiceModule
+    host: appservice
+
+env:
+  default: dev
+  values:
+    dev:
+      parameters:
+        bicepParam: infra/main.dev.bicepparam
+    prod:
+      parameters:
+        bicepParam: infra/main.prod.bicepparam
