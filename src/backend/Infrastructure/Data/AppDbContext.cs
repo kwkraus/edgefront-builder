@@ -56,6 +56,8 @@ public class AppDbContext : DbContext
             e.Property(x => x.LastSyncAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
             e.HasOne<Series>().WithMany().HasForeignKey(x => x.SeriesId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.SeriesId, x.StartsAt });
+            e.HasIndex(x => x.OwnerUserId);
+            e.HasIndex(x => new { x.OwnerUserId, x.Status });
         });
 
         // --- SessionPresenter ---
