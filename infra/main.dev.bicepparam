@@ -13,8 +13,7 @@ param resourceNamePrefix = 'ef-dev'
 // Compute (App Service)
 // ============================================================================
 
-param appServicePlanSku = 'Standard_B1s'
-param appServicePlanTier = 'Standard'
+param appServicePlanSku = 'B1'
 param appServiceRuntimeStack = 'DOTNETCORE|10.0'
 
 // ============================================================================
@@ -27,24 +26,17 @@ param sqlServerAdminUsername = 'sqladmin'
 // Minimum requirements: 8-128 chars, uppercase, lowercase, digit, special char
 param sqlServerAdminPassword = 'DevP@ssw0rd123!'
 
-param sqlDatabaseSku = 'Free'
-param sqlDatabaseMaxSizeBytes = 1073741824
-param backupRetentionDays = 7
-
 // ============================================================================
-// Frontend (Static Web Apps)
+// Frontend (App Service)
 // ============================================================================
 
-param staticWebAppsSku = 'Standard'
-param staticWebAppsRuntimeStack = 'node'
-param nodeVersion = 'lts'
+// Frontend now runs on App Service instead of Static Web Apps
 
 // ============================================================================
 // Monitoring (Application Insights)
 // ============================================================================
 
 param enableApplicationInsights = true
-param applicationsInsightsSku = 'PerGB2018'
 param logAnalyticsRetentionDays = 30
 
 // ============================================================================
@@ -73,7 +65,6 @@ param corsAllowedOrigins = [
 // ============================================================================
 
 param enableManagedIdentity = true
-param enableEncryption = true
 param enableDiagnostics = true
 
 // ============================================================================

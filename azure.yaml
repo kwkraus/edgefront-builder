@@ -5,16 +5,15 @@ metadata:
   author: EdgeFront Team
 
 infra:
-  path: infra/main.bicep
-  params: infra/main.bicepparam
+  path: infra
+  params: infra/main.dev.bicepparam
 
 services:
   frontend:
     project: src/frontend
     language: js
-    dist: dist
-    module: appServiceModule
-    host: staticwebapp
+    module: frontendAppServiceModule
+    host: appservice
     
   backend:
     project: src/backend
@@ -25,9 +24,7 @@ services:
 env:
   default: dev
   values:
-    dev:
-      parameters:
-        bicepParam: infra/main.dev.bicepparam
+    dev: {}
     prod:
-      parameters:
-        bicepParam: infra/main.prod.bicepparam
+      infra:
+        params: infra/main.prod.bicepparam

@@ -20,37 +20,30 @@ param location = 'eastus'
 param resourceNamePrefix = 'aie'
 
 // ============================================================================
-// COMPUTE (3 parameters)
+// COMPUTE (2 parameters)
 // ============================================================================
 
-param appServicePlanSku = 'Standard_B1s'
-param appServicePlanTier = 'Standard'
+param appServicePlanSku = 'B2'
 param appServiceRuntimeStack = 'DOTNETCORE|10.0'
 
 // ============================================================================
-// DATABASE (5 parameters)
+// DATABASE (2 parameters)
 // ============================================================================
 
 param sqlServerAdminUsername = 'sqladmin'
 param sqlServerAdminPassword = ''
-param sqlDatabaseSku = 'Standard'
-param sqlDatabaseMaxSizeBytes = 10737418240
-param backupRetentionDays = 35
 
 // ============================================================================
-// FRONTEND (3 parameters)
+// FRONTEND
 // ============================================================================
 
-param staticWebAppsSku = 'Standard'
-param staticWebAppsRuntimeStack = 'node'
-param nodeVersion = 'lts'
+// Frontend now runs on App Service instead of Static Web Apps
 
 // ============================================================================
-// MONITORING (3 parameters)
+// MONITORING (2 parameters)
 // ============================================================================
 
 param enableApplicationInsights = true
-param applicationsInsightsSku = 'PerGB2018'
 param logAnalyticsRetentionDays = 90
 
 // ============================================================================
@@ -64,11 +57,10 @@ param graphBaseUrl = 'https://graph.microsoft.com/v1.0'
 param corsAllowedOrigins = []
 
 // ============================================================================
-// SECURITY & NETWORKING (3 parameters)
+// SECURITY & NETWORKING (2 parameters)
 // ============================================================================
 
 param enableManagedIdentity = true
-param enableEncryption = true
 param enableDiagnostics = true
 
 // ============================================================================

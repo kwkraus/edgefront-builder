@@ -1,0 +1,69 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "projectName": {
+      "value": "edgefront-builder"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "resourceNamePrefix": {
+      "value": "aie"
+    },
+    "appServicePlanSku": {
+      "value": "B2"
+    },
+    "appServiceRuntimeStack": {
+      "value": "DOTNETCORE|10.0"
+    },
+    "sqlServerAdminUsername": {
+      "value": "sqladmin"
+    },
+    "sqlServerAdminPassword": {
+      "value": ""
+    },
+    "staticWebAppsSku": {
+      "value": "Standard"
+    },
+    "enableApplicationInsights": {
+      "value": true
+    },
+    "logAnalyticsRetentionDays": {
+      "value": 90
+    },
+    "entraadTenantId": {
+      "value": ""
+    },
+    "entraadClientId": {
+      "value": ""
+    },
+    "entraadAudience": {
+      "value": ""
+    },
+    "graphBaseUrl": {
+      "value": "https://graph.microsoft.com/v1.0"
+    },
+    "corsAllowedOrigins": {
+      "value": []
+    },
+    "enableManagedIdentity": {
+      "value": true
+    },
+    "enableDiagnostics": {
+      "value": true
+    },
+    "commonTags": {
+      "value": {
+        "environment": "prod",
+        "project": "edgefront-builder",
+        "costCenter": "operations",
+        "createdBy": "deployment-pipeline",
+        "criticality": "high"
+      }
+    }
+  }
+}

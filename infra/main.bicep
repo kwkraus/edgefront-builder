@@ -1,5 +1,5 @@
 // EdgeFront Builder Main Bicep Template
-// Defines all Azure infrastructure for the full-stack application:
+// Defines all Azure infrastructure for the full-stack application using Azure Verified Modules:
 // - ASP.NET Core backend API on App Service
 // - Next.js frontend on Static Web Apps
 // - Azure SQL Database for data persistence
@@ -27,9 +27,6 @@ param resourceNamePrefix string
 @description('App Service Plan SKU')
 param appServicePlanSku string
 
-@description('App Service Plan tier')
-param appServicePlanTier string
-
 @description('ASP.NET Core runtime stack (format: DOTNETCORE|VERSION)')
 param appServiceRuntimeStack string
 
@@ -41,31 +38,9 @@ param sqlServerAdminUsername string
 @secure()
 param sqlServerAdminPassword string
 
-@description('SQL Database SKU (Free for dev, Standard for prod)')
-param sqlDatabaseSku string
-
-@description('SQL Database maximum size in bytes')
-param sqlDatabaseMaxSizeBytes int
-
-@description('Backup retention period in days (1-35)')
-param backupRetentionDays int
-
-// Frontend parameters
-@description('Static Web Apps SKU')
-param staticWebAppsSku string
-
-@description('Static Web Apps runtime stack')
-param staticWebAppsRuntimeStack string
-
-@description('Node.js version for Static Web Apps')
-param nodeVersion string
-
 // Monitoring parameters
 @description('Enable Application Insights monitoring')
 param enableApplicationInsights bool
-
-@description('Application Insights pricing model')
-param applicationsInsightsSku string
 
 @description('Log Analytics data retention in days (1-730)')
 param logAnalyticsRetentionDays int
@@ -90,9 +65,6 @@ param corsAllowedOrigins array
 @description('Enable managed identity for resources')
 param enableManagedIdentity bool
 
-@description('Enable encryption at rest')
-param enableEncryption bool
-
 @description('Enable diagnostic logging')
 param enableDiagnostics bool
 
@@ -106,81 +78,68 @@ param commonTags object
 
 // Resource naming (using symbolic references)
 var appServicePlanName = '${resourceNamePrefix}-plan'
-var appServiceName = '${resourceNamePrefix}-app'
+var backendAppServiceName = '${resourceNamePrefix}-backend'
+var frontendAppServiceName = '${resourceNamePrefix}-frontend'
 var sqlServerName = '${resourceNamePrefix}-sql-${uniqueString(resourceGroup().id)}'
 var sqlDatabaseName = '${projectName}db'
-var staticWebAppName = '${resourceNamePrefix}-swa'
 var applicationInsightsName = '${resourceNamePrefix}-appinsights'
 var logAnalyticsWorkspaceName = '${resourceNamePrefix}-logs'
 var storageAccountName = '${replace(resourceNamePrefix, '-', '')}storage'
 var managedIdentityName = '${resourceNamePrefix}-identity'
 
 // Connection strings and configuration
-var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabaseName};Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+var sqlConnectionString = 'Server=tcp:${sqlServer.outputs.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabaseName};Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
 
 // Diagnostic settings names
-var appServiceDiagnosticsName = '${appServiceName}-diagnostics'
-var sqlDatabaseDiagnosticsName = '${sqlDatabaseName}-diagnostics'
+var backendAppServiceDiagnosticsName = '${backendAppServiceName}-diagnostics'
+var frontendAppServiceDiagnosticsName = '${frontendAppServiceName}-diagnostics'
 
 // ============================================================================
 // RESOURCES
 // ============================================================================
 
-// Log Analytics Workspace - Central logging
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: logAnalyticsWorkspaceName
-  location: location
-  tags: commonTags
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
+// Log Analytics Workspace AVM - Central logging
+module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.6.0' = {
+  name: 'logAnalyticsWorkspace-${uniqueString(deployment().name)}'
+  params: {
+    name: logAnalyticsWorkspaceName
+    location: location
+    tags: commonTags
+    dataRetention: logAnalyticsRetentionDays
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+// Application Insights AVM - Monitoring and observability
+module applicationInsights 'br/public:avm/res/insights/component:0.7.1' = if (enableApplicationInsights) {
+  name: 'applicationInsights-${uniqueString(deployment().name)}'
+  params: {
+    name: applicationInsightsName
+    location: location
+    tags: commonTags
+    applicationType: 'web'
+    kind: 'web'
     retentionInDays: logAnalyticsRetentionDays
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
+    workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId
   }
 }
 
-// Application Insights - Monitoring and observability
-resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = if (enableApplicationInsights) {
-  name: applicationInsightsName
-  location: location
-  kind: 'web'
-  tags: commonTags
-  properties: {
-    Application_Type: 'web'
-    RetentionInDays: logAnalyticsRetentionDays
-    publicNetworkAccessForIngestion: 'Enabled'
-    publicNetworkAccessForQuery: 'Enabled'
-    WorkspaceResourceId: logAnalyticsWorkspace.id
-  }
-}
-
-// Storage Account - Optional for future file uploads
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: storageAccountName
-  location: location
-  kind: 'StorageV2'
-  tags: commonTags
-  sku: {
-    name: 'Standard_LRS'
-  }
-  properties: {
+// Storage Account AVM - Optional for future file uploads
+module storageAccount 'br/public:avm/res/storage/storage-account:0.12.0' = {
+  name: 'storageAccount-${uniqueString(deployment().name)}'
+  params: {
+    name: storageAccountName
+    location: location
+    tags: commonTags
+    kind: 'StorageV2'
+    skuName: 'Standard_LRS'
     accessTier: 'Hot'
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
-    encryption: {
-      services: {
-        blob: {
-          enabled: enableEncryption
-        }
-        file: {
-          enabled: enableEncryption
-        }
-      }
-      keySource: 'Microsoft.Storage'
-    }
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Allow'
@@ -188,161 +147,67 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
-// Managed Identity for App Service - Enables secure SQL connection without passwords
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (enableManagedIdentity) {
-  name: managedIdentityName
-  location: location
-  tags: commonTags
+// Managed Identity AVM - Enables secure SQL connection without passwords
+module managedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.3.0' = if (enableManagedIdentity) {
+  name: 'managedIdentity-${uniqueString(deployment().name)}'
+  params: {
+    name: managedIdentityName
+    location: location
+    tags: commonTags
+  }
 }
 
-// SQL Server
-resource sqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
-  name: sqlServerName
-  location: location
-  tags: commonTags
-  properties: {
+// SQL Server AVM
+module sqlServer 'br/public:avm/res/sql/server:0.21.1' = {
+  name: 'sqlServer-${uniqueString(deployment().name)}'
+  params: {
+    name: sqlServerName
+    location: location
+    tags: commonTags
     administratorLogin: sqlServerAdminUsername
     administratorLoginPassword: sqlServerAdminPassword
-    version: '12.0'
     minimalTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
-    administrators: {
-      administratorType: 'ActiveDirectory'
-      azureADOnlyAuthentication: false
-      login: sqlServerAdminUsername
-      principalType: 'User'
-      sid: ''
-      tenantId: subscription().tenantId
-    }
-  }
-}
-
-// SQL Server Firewall Rule - Allow Azure services
-resource sqlServerFirewallRule 'Microsoft.Sql/servers/firewallRules@2021-11-01-preview' = {
-  parent: sqlServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// SQL Database
-resource sqlDatabase 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
-  parent: sqlServer
-  name: sqlDatabaseName
-  location: location
-  tags: commonTags
-  sku: {
-    name: sqlDatabaseSku
-    tier: sqlDatabaseSku == 'Free' ? 'Free' : 'Standard'
-  }
-  properties: {
-    collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: sqlDatabaseMaxSizeBytes
-    catalogCollation: 'SQL_Latin1_General_CP1_CI_AS'
-    zoneRedundant: false
-  }
-}
-
-// SQL Database Backup (short-term retention)
-resource sqlDatabaseBackupPolicy 'Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies@2021-11-01-preview' = {
-  parent: sqlDatabase
-  name: 'default'
-  properties: {
-    retentionDays: backupRetentionDays
-    diffBackupIntervalInHours: 24
-  }
-}
-
-// SQL Database Diagnostics - Send logs to Log Analytics
-resource sqlDatabaseDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableDiagnostics) {
-  name: sqlDatabaseDiagnosticsName
-  scope: sqlDatabase
-  properties: {
-    workspaceId: logAnalyticsWorkspace.id
-    logs: [
+    databases: [
       {
-        category: 'SQLSecurityAuditEvents'
-        enabled: true
-      }
-      {
-        category: 'SQLInsights'
-        enabled: true
-      }
-      {
-        category: 'AutomaticTuning'
-        enabled: true
-      }
-      {
-        category: 'QueryStoreRuntimeStatistics'
-        enabled: true
-      }
-      {
-        category: 'QueryStoreWaitStatistics'
-        enabled: true
-      }
-      {
-        category: 'Errors'
-        enabled: true
-      }
-      {
-        category: 'DatabaseWaitStatistics'
-        enabled: true
-      }
-      {
-        category: 'Timeouts'
-        enabled: true
-      }
-      {
-        category: 'Blocks'
-        enabled: true
-      }
-      {
-        category: 'Deadlocks'
-        enabled: true
-      }
-    ]
-    metrics: [
-      {
-        category: 'Basic'
-        enabled: true
+        name: sqlDatabaseName
+        collation: 'SQL_Latin1_General_CP1_CI_AS'
+        availabilityZone: 1
       }
     ]
   }
 }
 
-// App Service Plan (Linux, Standard tier)
-resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
-  name: appServicePlanName
-  location: location
-  kind: 'Linux'
-  tags: commonTags
-  sku: {
-    name: appServicePlanSku
-    tier: appServicePlanTier
-  }
-  properties: {
+// App Service Plan AVM
+module appServicePlan 'br/public:avm/res/web/serverfarm:0.7.0' = {
+  name: 'appServicePlan-${uniqueString(deployment().name)}'
+  params: {
+    name: appServicePlanName
+    location: location
+    tags: commonTags
+    kind: 'Linux'
     reserved: true
+    skuName: appServicePlanSku
+    skuCapacity: appServicePlanSku == 'F1' ? 1 : appServicePlanSku == 'B1' ? 1 : 2
   }
 }
 
-// App Service - Backend API (.NET 10)
-resource appService 'Microsoft.Web/sites@2022-09-01' = {
-  name: appServiceName
-  location: location
-  kind: 'app,linux'
-  tags: commonTags
-  identity: enableManagedIdentity ? {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${managedIdentity.id}': {}
-    }
-  } : {
-    type: 'None'
-  }
-  properties: {
-    serverFarmId: appServicePlan.id
+// App Service AVM - Backend API (.NET 10)
+module appServiceModule 'br/public:avm/res/web/site:0.22.0' = {
+  name: 'appService-backend-${uniqueString(deployment().name)}'
+  params: {
+    name: backendAppServiceName
+    location: location
+    tags: commonTags
+    kind: 'app'
+    serverFarmResourceId: appServicePlan.outputs.resourceId
+    httpsOnly: true
+    publicNetworkAccess: 'Enabled'
+    managedIdentities: enableManagedIdentity ? {
+      userAssignedResourceIds: [
+        managedIdentity.outputs.resourceId
+      ]
+    } : null
     siteConfig: {
       linuxFxVersion: appServiceRuntimeStack
       alwaysOn: true
@@ -353,7 +218,7 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
       appSettings: [
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: enableApplicationInsights ? applicationInsights.properties.ConnectionString : ''
+          value: enableApplicationInsights ? applicationInsights.outputs.connectionString : ''
         }
         {
           name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
@@ -400,73 +265,117 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
         }
       ]
     }
-    httpsOnly: true
-    publicNetworkAccess: 'Enabled'
-  }
-}
-
-// App Service Diagnostics - Send logs to Log Analytics
-resource appServiceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableDiagnostics) {
-  name: appServiceDiagnosticsName
-  scope: appService
-  properties: {
-    workspaceId: logAnalyticsWorkspace.id
-    logs: [
+    diagnosticSettings: enableDiagnostics ? [
       {
-        category: 'AppServiceHTTPLogs'
-        enabled: true
+        name: backendAppServiceDiagnosticsName
+        workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId
+        logs: [
+          {
+            category: 'AppServiceHTTPLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServiceConsoleLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServiceAppLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServicePlatformLogs'
+            enabled: true
+          }
+        ]
+        metrics: [
+          {
+            category: 'AllMetrics'
+            enabled: true
+          }
+        ]
       }
-      {
-        category: 'AppServiceConsoleLogs'
-        enabled: true
-      }
-      {
-        category: 'AppServiceAppLogs'
-        enabled: true
-      }
-      {
-        category: 'AppServicePlatformLogs'
-        enabled: true
-      }
-    ]
-    metrics: [
-      {
-        category: 'AllMetrics'
-        enabled: true
-      }
-    ]
+    ] : []
   }
 }
 
 // RBAC Role Assignment - App Service Managed Identity gets SQL Database Data Reader/Writer
 resource sqlDatabaseRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableManagedIdentity) {
-  name: guid(sqlDatabase.id, 'dc9ce79b-5c97-4a28-92ac-4222ca76eacd')
-  scope: sqlDatabase
+  name: guid(sqlServer.name, 'dc9ce79b-5c97-4a28-92ac-4222ca76eacd')
+  scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'dc9ce79b-5c97-4a28-92ac-4222ca76eacd')
-    principalId: managedIdentity.properties.principalId
+    principalId: managedIdentity.outputs.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-// Static Web App - Frontend (Next.js 16)
-resource staticWebApp 'Microsoft.Web/staticSites@2022-09-01' = {
-  name: staticWebAppName
-  location: location
-  kind: 'staticsite'
-  tags: commonTags
-  sku: {
-    name: staticWebAppsSku
-    tier: staticWebAppsSku == 'Free' ? 'Free' : 'Standard'
-  }
-  properties: {
-    buildProperties: {
-      appLocation: 'src/frontend'
-      apiLocation: ''
-      appArtifactLocation: '.next'
-      outputLocation: 'out'
-      githubActionSecretNameOverride: ''
+// App Service AVM - Frontend (Next.js 16)
+module frontendAppServiceModule 'br/public:avm/res/web/site:0.22.0' = {
+  name: 'appService-frontend-${uniqueString(deployment().name)}'
+  params: {
+    name: frontendAppServiceName
+    location: location
+    tags: commonTags
+    kind: 'app'
+    serverFarmResourceId: appServicePlan.outputs.resourceId
+    httpsOnly: true
+    publicNetworkAccess: 'Enabled'
+    siteConfig: {
+      linuxFxVersion: 'NODE|20'
+      alwaysOn: true
+      http20Enabled: true
+      minTlsVersion: '1.2'
+      scmMinTlsVersion: '1.2'
+      use32BitWorkerProcess: false
+      appSettings: [
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: enableApplicationInsights ? applicationInsights.outputs.connectionString : ''
+        }
+        {
+          name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+          value: '~3'
+        }
+        {
+          name: 'XDT_MicrosoftApplicationInsights_Mode'
+          value: 'recommended'
+        }
+        {
+          name: 'NODE_ENV'
+          value: 'production'
+        }
+      ]
     }
+    diagnosticSettings: enableDiagnostics ? [
+      {
+        name: frontendAppServiceDiagnosticsName
+        workspaceResourceId: logAnalyticsWorkspace.outputs.resourceId
+        logs: [
+          {
+            category: 'AppServiceHTTPLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServiceConsoleLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServiceAppLogs'
+            enabled: true
+          }
+          {
+            category: 'AppServicePlatformLogs'
+            enabled: true
+          }
+        ]
+        metrics: [
+          {
+            category: 'AllMetrics'
+            enabled: true
+          }
+        ]
+      }
+    ] : []
   }
 }
 
@@ -474,62 +383,59 @@ resource staticWebApp 'Microsoft.Web/staticSites@2022-09-01' = {
 // OUTPUTS
 // ============================================================================
 
-@description('Frontend URL - Static Web Apps domain')
-output frontendUrl string = 'https://${staticWebApp.properties.defaultHostname}'
+@description('Frontend URL - App Service domain')
+output frontendUrl string = frontendAppServiceModule.outputs.defaultHostname
 
 @description('Backend URL - App Service domain')
-output backendUrl string = 'https://${appService.properties.defaultHostNames[0]}'
+output backendUrl string = appServiceModule.outputs.defaultHostname
 
 @description('SQL Server FQDN')
-output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
+output sqlServerFqdn string = sqlServer.outputs.fullyQualifiedDomainName
 
 @description('SQL Database name')
 output sqlDatabaseName string = sqlDatabaseName
 
 @description('Application Insights instrumentation key')
-output appInsightsInstrumentationKey string = enableApplicationInsights ? applicationInsights.properties.InstrumentationKey : ''
+output appInsightsInstrumentationKey string = enableApplicationInsights ? applicationInsights.outputs.instrumentationKey : ''
 
 @description('Application Insights connection string')
-output appInsightsConnectionString string = enableApplicationInsights ? applicationInsights.properties.ConnectionString : ''
+output appInsightsConnectionString string = enableApplicationInsights ? applicationInsights.outputs.connectionString : ''
 
 @description('Log Analytics workspace ID')
-output logAnalyticsWorkspaceId string = logAnalyticsWorkspace.id
+output logAnalyticsWorkspaceId string = logAnalyticsWorkspace.outputs.resourceId
 
 @description('Managed Identity resource ID')
-output managedIdentityId string = enableManagedIdentity ? managedIdentity.id : ''
+output managedIdentityId string = enableManagedIdentity ? managedIdentity.outputs.resourceId : ''
 
 @description('Managed Identity principal ID')
-output managedIdentityPrincipalId string = enableManagedIdentity ? managedIdentity.properties.principalId : ''
+output managedIdentityPrincipalId string = enableManagedIdentity ? managedIdentity.outputs.principalId : ''
 
-@description('App Service resource ID')
-output appServiceId string = appService.id
+@description('Backend App Service resource ID')
+output backendAppServiceId string = appServiceModule.outputs.resourceId
+
+@description('Frontend App Service resource ID')
+output frontendAppServiceId string = frontendAppServiceModule.outputs.resourceId
 
 @description('App Service plan resource ID')
-output appServicePlanId string = appServicePlan.id
+output appServicePlanId string = appServicePlan.outputs.resourceId
 
 @description('SQL Server resource ID')
-output sqlServerId string = sqlServer.id
-
-@description('SQL Database resource ID')
-output sqlDatabaseId string = sqlDatabase.id
+output sqlServerId string = sqlServer.outputs.resourceId
 
 @description('Storage Account resource ID')
-output storageAccountId string = storageAccount.id
+output storageAccountId string = storageAccount.outputs.resourceId
 
-@description('Static Web App resource ID')
-output staticWebAppId string = staticWebApp.id
+@description('Azure Portal Backend App Service link')
+output portalBackendAppServiceLink string = 'https://portal.azure.com/#resource${appServiceModule.outputs.resourceId}/overview'
 
-@description('Azure Portal App Service link')
-output portalAppServiceLink string = 'https://portal.azure.com/#resource${appService.id}/overview'
-
-@description('Azure Portal SQL Database link')
-output portalSqlDatabaseLink string = 'https://portal.azure.com/#resource${sqlDatabase.id}/overview'
+@description('Azure Portal Frontend App Service link')
+output portalFrontendAppServiceLink string = 'https://portal.azure.com/#resource${frontendAppServiceModule.outputs.resourceId}/overview'
 
 @description('Azure Portal Application Insights link')
-output portalAppInsightsLink string = enableApplicationInsights ? 'https://portal.azure.com/#resource${applicationInsights.id}/overview' : ''
+output portalAppInsightsLink string = enableApplicationInsights ? 'https://portal.azure.com/#resource${applicationInsights.outputs.resourceId}/overview' : ''
 
 @description('Azure Portal Log Analytics link')
-output portalLogAnalyticsLink string = 'https://portal.azure.com/#resource${logAnalyticsWorkspace.id}/overview'
+output portalLogAnalyticsLink string = 'https://portal.azure.com/#resource${logAnalyticsWorkspace.outputs.resourceId}/overview'
 
 @description('Deployment summary')
 output deploymentSummary object = {
@@ -537,9 +443,9 @@ output deploymentSummary object = {
   projectName: projectName
   location: location
   resourceNamePrefix: resourceNamePrefix
-  frontendUrl: 'https://${staticWebApp.properties.defaultHostname}'
-  backendUrl: 'https://${appService.properties.defaultHostNames[0]}'
-  sqlFqdn: sqlServer.properties.fullyQualifiedDomainName
+  frontendUrl: frontendAppServiceModule.outputs.defaultHostname
+  backendUrl: appServiceModule.outputs.defaultHostname
+  sqlFqdn: sqlServer.outputs.fullyQualifiedDomainName
   appInsightsEnabled: enableApplicationInsights
   managedIdentityEnabled: enableManagedIdentity
   diagnosticsEnabled: enableDiagnostics
