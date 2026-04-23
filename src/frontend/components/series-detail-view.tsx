@@ -5,11 +5,12 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import clsx from 'clsx'
-import { PencilIcon, TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon, DownloadIcon } from '@primer/octicons-react'
-import { Button, IconButton, Dialog, Banner, Spinner, TextInput, Token, Tooltip } from '@primer/react'
+import { TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon, DownloadIcon } from '@primer/octicons-react'
+import { Button, IconButton, Banner, Token, Tooltip } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { InlineEditableTitle } from '@/components/inline-editable-title'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { SyncStatusCell } from '@/components/sync-status-cell'
 import { updateSeries, deleteSeries, publishSeries, exportSeriesMarkdown } from '@/lib/api/series'
@@ -94,7 +95,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   const { data: authSession, status: sessionStatus } = useSession()
   const router = useRouter()
   const token = authSession?.accessToken ?? ''
-  const busy = sessionStatus === 'loading'
+  const [seriesTitle, setSeriesTitle] = useState(series.title)
 
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
@@ -119,28 +120,24 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
   }
 
   // ── Edit Series ──────────────────────────────────────────────────────────
-  const [editOpen, setEditOpen] = useState(false)
-  const [editTitle, setEditTitle] = useState(series.title)
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const busy = sessionStatus === 'loading' || editLoading
 
-  function openEdit() {
-    setEditTitle(series.title)
-    setEditError(null)
-    setEditOpen(true)
-  }
+  useEffect(() => {
+    setSeriesTitle(series.title)
+  }, [series.title])
 
-  async function handleEditSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editTitle.trim()) return
+  async function handleTitleSave(nextTitle: string) {
     setEditLoading(true)
     setEditError(null)
     try {
-      await updateSeries(series.seriesId, { title: editTitle.trim() }, token)
-      setEditOpen(false)
+      await updateSeries(series.seriesId, { title: nextTitle }, token)
+      setSeriesTitle(nextTitle)
       router.refresh()
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Failed to update series')
+      throw err
     } finally {
       setEditLoading(false)
     }
@@ -264,14 +261,14 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{series.title}</h1>
-            <IconButton
-              icon={PencilIcon}
-              aria-label="Edit series title"
-              variant="invisible"
-              size="small"
-              onClick={openEdit}
+            <InlineEditableTitle
+              value={seriesTitle}
+              onSave={handleTitleSave}
               disabled={busy}
+              editAriaLabel="Edit series title"
+              saveAriaLabel="Save series title"
+              inputAriaLabel="Series title"
+              titleClassName="text-2xl font-bold tracking-tight"
             />
             <StatusBadge status={seriesDisplayStatus} />
           </div>
@@ -311,6 +308,9 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
       {/* ── Error banners ────────────────────────────────────────────────── */}
       {deleteError && (
         <ErrorBanner message={deleteError} onRetry={() => setDeleteOpen(true)} />
+      )}
+      {editError && (
+        <ErrorBanner message={editError} />
       )}
       {deleteSessionError && (
         <ErrorBanner message={deleteSessionError} />
@@ -628,61 +628,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           </div>
         )}
       </section>
-
-      {/* ── Edit Series Modal ─────────────────────────────────────────────── */}
-      {editOpen && (
-        <Dialog
-          title="Edit Series"
-          width="medium"
-          onClose={() => setEditOpen(false)}
-          footerButtons={[
-            {
-              buttonType: 'default',
-              content: 'Cancel',
-              onClick: () => setEditOpen(false),
-              disabled: editLoading,
-            },
-            {
-              buttonType: 'primary',
-              content: (
-                <span className="inline-flex items-center gap-2">
-                  {editLoading && <Spinner size="small" />}
-                  Save
-                </span>
-              ),
-              onClick: (e) => handleEditSubmit(e),
-              disabled: editLoading || !editTitle.trim(),
-            },
-          ]}
-        >
-          {editError && <ErrorBanner message={editError} className="mb-4" />}
-          <form
-            onSubmit={handleEditSubmit}
-            id="edit-series-form"
-            className="space-y-4"
-          >
-            <div>
-              <label
-                htmlFor="series-title"
-                className="block text-sm font-medium mb-1"
-              >
-                Title{' '}
-                <span style={{ color: 'var(--fgColor-danger)' }} aria-hidden="true">
-                  *
-                </span>
-              </label>
-              <TextInput
-                id="series-title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                required
-                block
-                autoFocus
-              />
-            </div>
-          </form>
-        </Dialog>
-      )}
 
       {/* ── Delete Series Confirm ─────────────────────────────────────────── */}
       <ConfirmDialog

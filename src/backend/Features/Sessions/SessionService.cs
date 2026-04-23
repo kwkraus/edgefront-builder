@@ -136,26 +136,30 @@ public class SessionService
         session.StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime();
         session.EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime();
 
-        // SPEC-200: if Published and graph client provided, sync the Teams webinar
-        if (session.Status == SessionStatus.Published
-            && session.TeamsWebinarId is not null
-            && graphClient is not null
-            && !string.IsNullOrEmpty(oboToken))
-        {
-            try
-            {
-                await graphClient.UpdateWebinarAsync(
-                    session.TeamsWebinarId,
-                    session.Title,
-                    new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                    new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
-                    oboToken);
-            }
-            catch (Exception)
-            {
-                return (null, "TEAMS_UPDATE_FAILED");
-            }
-        }
+        var graphSyncError = await TryUpdatePublishedWebinarAsync(session, oboToken, graphClient);
+        if (graphSyncError is not null)
+            return (null, graphSyncError);
+
+        await _db.SaveChangesAsync();
+
+        var (presenters, coordinators) = await GetRolesAsync(sessionId);
+        return (ToResponseDto(session, presenters, coordinators), null);
+    }
+
+    public async Task<(SessionResponseDto? session, string? errorCode)> UpdateTitleAsync(
+        Guid sessionId, UpdateSessionTitleRequest req, string ownerUserId,
+        string? oboToken = null, ITeamsGraphClient? graphClient = null)
+    {
+        var session = await _db.Sessions
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
+        if (session is null)
+            return (null, "session_not_found");
+
+        session.Title = req.Title;
+
+        var graphSyncError = await TryUpdatePublishedWebinarAsync(session, oboToken, graphClient);
+        if (graphSyncError is not null)
+            return (null, graphSyncError);
 
         await _db.SaveChangesAsync();
 
@@ -210,6 +214,35 @@ public class SessionService
         return true;
     }
 
+    private static async Task<string?> TryUpdatePublishedWebinarAsync(
+        Session session,
+        string? oboToken,
+        ITeamsGraphClient? graphClient)
+    {
+        if (session.Status != SessionStatus.Published
+            || session.TeamsWebinarId is null
+            || graphClient is null
+            || string.IsNullOrEmpty(oboToken))
+        {
+            return null;
+        }
+
+        try
+        {
+            await graphClient.UpdateWebinarAsync(
+                session.TeamsWebinarId,
+                session.Title,
+                new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
+                new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
+                oboToken);
+        }
+        catch (Exception)
+        {
+            return "TEAMS_UPDATE_FAILED";
+        }
+
+        return null;
+    }
     // TODO-SPEC: Session-level publish not yet defined in SPEC-110; added to support
     // publishing individual Draft sessions after a series has already been published.
     /// <summary>
