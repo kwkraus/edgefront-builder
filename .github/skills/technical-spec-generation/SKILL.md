@@ -7,113 +7,58 @@ argument-hint: 'Provide the Epic ID to generate a technical specification for, o
 # Technical Spec Generation
 
 ## When to Use
-- Generating a technical specification from an approved functional spec
-- Updating a technical spec after functional spec revisions
-- Reviewing an existing technical spec for completeness before implementation begins
+- Generate tech spec from approved functional spec
+- Update tech spec after functional revisions
+- Review existing tech spec before implementation
 
 ## Prerequisites
-- The Epic must be in state `Active`
-- The Epic must have a structured approval comment recording stakeholder sign-off
-- The Epic must not be tagged `review:ready`
-- An Azure DevOps project wiki must exist (named `edgefront-builder.wiki`)
-  - **Manual setup required**: Go to Azure DevOps -> Project -> Wiki -> Create project wiki
-  - This only needs to be done once per project
+- Epic is `Active` + has approval comment + no `review:ready` tag
+- Project wiki exists: `edgefront-builder.wiki` (manual one-time setup: Azure DevOps → Project → Wiki → Create project wiki)
 
-## Functional Input Model
+## Functional Input
 
-When reading the hierarchy, treat these fields as canonical:
+| Type | Canonical fields |
+|------|------------------|
+| Epic | Description |
+| Feature | Description (includes embedded AC) |
+| User Story | Description + `Microsoft.VSTS.Common.AcceptanceCriteria` |
 
-| Work item type | Canonical fields |
-|----------------|------------------|
-| **Epic** | Description |
-| **Feature** | Description (including embedded acceptance criteria) |
-| **User Story** | Description + `Microsoft.VSTS.Common.AcceptanceCriteria` |
+## Templates (canonical, user-editable)
 
-## Output Contracts
+| Artifact | Format | Path |
+|----------|--------|------|
+| Tech spec wiki page | Markdown | `.github\skills\technical-spec-generation\templates\technical-spec.md` |
+| Link comment | Markdown | `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md` |
+| Regeneration summary | Markdown | `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md` |
 
-The technical spec and related comments use canonical, user-editable template files. Treat these files as the source of truth for heading order, metadata layout, and comment structure.
+Rules: load template first; preserve metadata block + heading order; reject output with unresolved placeholders.
 
-| Artifact | Format | Canonical template |
-|----------|--------|--------------------|
-| **Technical specification wiki page** | Markdown | `.github\skills\technical-spec-generation\templates\technical-spec.md` |
-| **Technical spec link comment** | Markdown | `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md` |
-| **Regeneration summary comment** | Markdown | `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md` |
+## Workflow
 
-### Output Validation Rules
+1. **Validate preconditions**: Epic `Active`, has approval comment, no `review:ready`. If `techspec:stale`, warn and proceed only on confirmed understanding.
+2. **Pull hierarchy**: fetch Epic (ID, title, description, state, tags, comments), child Features (Description), and each Feature's Stories (Description + AC). Build structured hierarchy.
+3. **Analyze & design**: identify architecture decisions, components, data model changes, API contracts, external deps, security, test strategy per Feature. Ask clarifying questions for ambiguity. Record risks + open questions.
+4. **Generate spec**: fill every section in canonical template from hierarchy + analysis.
+5. **Publish**: path `/Tech-Specs/[Epic-ID]-[Slugified-Title]` (e.g. `/Tech-Specs/356-Session-Import-from-CSV`). Use MCP `wiki_create_or_update_page` with `wikiIdentifier: edgefront-builder.wiki`, `project: edgefront-builder`.
+6. **Link & clear stale**: add Epic comment with wiki link (link template); remove `techspec:stale`; if regeneration, add second comment (regeneration template).
 
-1. Load the relevant template file before generating or validating output.
-2. Preserve the metadata block, heading order, and required sections from the template file.
-3. Keep prose flexible within each section; do not force identical wording.
-4. If a template file changes, follow the new structure automatically unless it conflicts with the workflow rules in this skill.
-5. Reject or repair output that is missing required sections or still contains unresolved placeholders.
+## Versioning
+- First tech spec: v1.0
+- Regeneration after functional change: major bump (v2.0, v3.0)
+- Editorial fixes: minor bump (v1.1, v1.2)
 
-## Generation Workflow
-
-### Step 1: Validate Preconditions
-1. Fetch the Epic by ID.
-2. Verify the Epic state is `Active`.
-3. Verify the Epic has an approval comment.
-4. If `review:ready` is present, STOP and inform the user the spec is still awaiting stakeholder review.
-5. If `techspec:stale` is present, warn the user and proceed with regeneration only after confirming the functional changes are understood and approved.
-
-### Step 2: Pull the Work Item Hierarchy
-1. Fetch the Epic details (ID, title, description, state, tags, comments).
-2. Fetch all child Features with their Descriptions.
-3. For each Feature, fetch all child User Stories with:
-   - Description
-   - Acceptance Criteria field
-4. Build a structured hierarchy in memory.
-
-### Step 3: Analyze and Design
-1. Review the functional requirements and identify:
-   - Architecture and design decisions needed
-   - Components affected or to be created
-   - Data model changes required
-   - API contracts to add or modify
-   - External dependencies and integration points
-   - Security considerations
-   - Test strategy per Feature
-2. Ask the user clarifying questions about technical approach if ambiguous.
-3. Document risks and open questions.
-
-### Step 4: Generate the Technical Specification
-Use `.github\skills\technical-spec-generation\templates\technical-spec.md` as the canonical wiki page template. Fill in every section based on the functional spec hierarchy and technical analysis.
-
-### Step 5: Publish to Wiki
-1. Create or update the wiki page at path: `/Tech-Specs/[Epic-ID]-[Slugified-Epic-Title]`
-   - Example: `/Tech-Specs/356-Session-Import-from-CSV`
-2. Use MCP tool `wiki_create_or_update_page` with:
-   - `wikiIdentifier`: `edgefront-builder.wiki`
-   - `project`: `edgefront-builder`
-   - `path`: `/Tech-Specs/[Epic-ID]-[Slugified-Title]`
-   - `content`: the generated markdown
-
-### Step 6: Link, Comment, and Clear Staleness
-1. Add a comment to the Epic with a link to the wiki page using `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md`.
-2. Remove `techspec:stale` if present.
-3. If this is a regeneration, add a second comment using `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md`.
-
-## Version Numbering
-- First tech spec for an Epic: v1.0
-- Regeneration after functional spec change: increment major version (v2.0, v3.0)
-- Minor editorial fixes (typos, clarifications): increment minor version (v1.1, v1.2)
-
-## Regeneration Rules
-- When regenerating for an Epic tagged `techspec:stale`:
-  1. Fetch the previous wiki page content for reference
-  2. Compare the current hierarchy against what was documented
-  3. Confirm there is still valid approval evidence on the Epic, or add a refreshed approval comment if needed
-  4. Generate a new version, noting what changed
-  5. Update the wiki page
-  6. Add a new Epic comment noting the version change
-  7. Remove `techspec:stale`
+## Regeneration (`techspec:stale` present)
+1. Fetch previous wiki content for reference.
+2. Diff current hierarchy vs documented.
+3. Confirm valid approval evidence (add refreshed approval comment if needed).
+4. Generate new version + note changes.
+5. Update wiki page.
+6. Add Epic comment noting version change.
+7. Remove `techspec:stale`.
 
 ## Completion Checks
-- The wiki page and related comments conform to the current canonical template files
-- Wiki page exists at the expected path with all template sections populated
-- Epic is in state `Active`
-- Epic has an approval comment
-- Epic has a comment linking to the wiki page
-- Epic does not have `review:ready`
-- Epic does not have `techspec:stale` after generation
-- No `[TODO]` or placeholder text remains in the wiki page
+- Wiki page + comments match current templates
+- Wiki page exists at expected path with all sections populated
+- Epic `Active` + approval comment + wiki-link comment
+- No `review:ready` / `techspec:stale` remaining
+- No placeholder text in wiki page
