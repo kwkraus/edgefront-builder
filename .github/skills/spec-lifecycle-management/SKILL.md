@@ -6,164 +6,116 @@ argument-hint: 'Provide an Epic ID to check lifecycle state, or describe a lifec
 
 # Spec Lifecycle Management
 
+Canonical owner of spec states, tags, transitions, and enforcement gates.
+
 ## When to Use
-- Checking the current lifecycle state of a spec hierarchy
-- Transitioning a spec from drafting to review readiness to approved
-- Detecting staleness when functional spec content changes after tech spec generation
-- Enforcing process gates before technical spec generation or implementation
-- Warning users about spec-managed work items when editing through general board tools
+- Check current state of a spec hierarchy
+- Transition drafting → review → approved
+- Detect staleness when functional content changes after tech spec
+- Enforce process gates before tech spec generation / implementation
+- Warn when general board tools touch spec-managed items
 
-## Workflow Signals
+## State Model (primary signal)
 
-### Primary Signal: Azure DevOps State
+| State | Meaning |
+|-------|---------|
+| `New` | Drafting or under review (default while authoring) |
+| `Active` | Approved; implementation may begin (requires approval comment) |
+| `Resolved` | Implementation complete (delivery tracking) |
+| `Closed` | Validation complete (delivery tracking) |
+| `Removed` | Abandoned / out of scope |
 
-| State | Meaning | Notes |
-|-------|---------|-------|
-| `New` | Drafting or under stakeholder review | Default during authoring |
-| `Active` | Approved and ready for implementation | Requires approval comment |
-| `Resolved` | Implementation complete | Delivery tracking |
-| `Closed` | Validation complete | Delivery tracking |
-| `Removed` | No longer needed | Abandoned or deleted scope |
+No custom states.
 
-### Supplemental Query Tags (Epic only)
+## Query Tags (Epic only, supplemental)
 
-| Tag | Meaning | Purpose |
-|-----|---------|---------|
-| `review:ready` | The spec is ready for stakeholder review while still in `New` | Supports review meeting queries and dashboards |
-| `techspec:stale` | The existing technical spec is no longer valid | Supports regeneration workflows and dashboards |
+| Tag | Meaning |
+|-----|---------|
+| `review:ready` | Ready for stakeholder review while still in `New` |
+| `techspec:stale` | Existing tech spec invalidated by functional changes |
 
-Tags are supplemental only. They do not replace State.
+Tags never replace State.
 
-## Lifecycle Model
+## Lifecycle
 
 ```text
 New (drafting)
-  |
-  +-- quality gates pass --> New + review:ready
-                                |
-                                +-- stakeholder approval -->
-                                    Active + approval comment
-                                          |
-                                          +-- implementation complete --> Resolved
-                                          |
-                                          +-- validated correct --> Closed
-
-At any point after a tech spec exists:
-  functional spec content changes --> add techspec:stale + audit comment
+  → New + review:ready        (quality gates pass)
+  → Active + approval comment (stakeholder approval)
+  → Resolved / Closed         (delivery)
+At any post-tech-spec point:
+  functional change → add techspec:stale + audit comment
 ```
 
-## Approval and Audit Comments
-
-Use the canonical lifecycle comment templates below. These files are user-editable, and template-only changes should happen there rather than in this skill.
-
-| Comment type | Format | Canonical template |
-|--------------|--------|--------------------|
-| **Approval comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\approval-comment.md` |
-| **Staleness comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\staleness-comment.md` |
-| **Abandonment comment** | Markdown | `.github\skills\spec-lifecycle-management\templates\abandonment-comment.md` |
-
-### Lifecycle Comment Rules
-
-1. Load the relevant template file before generating or validating a lifecycle comment.
-2. Preserve the structure from the template file while keeping the actual comment content specific to the current Epic.
-3. If a template file changes, follow the new structure automatically unless it conflicts with the state model or enforcement rules in this skill.
-4. Reject or repair lifecycle comments that still contain unresolved placeholders.
-
-## Transition Rules
+## Transitions
 
 | From | To | Trigger | Action |
 |------|----|---------|--------|
-| (none) | `New` | Epic created | Create hierarchy in draft state |
-| `New` | `New` + `review:ready` | All quality gates pass | Add `review:ready` to Epic |
-| `New` + `review:ready` | `New` | Stakeholder feedback requires changes | Remove `review:ready`, add comment if helpful |
-| `New` + `review:ready` | `Active` | Stakeholder approval | Remove `review:ready`, add approval comment, move approved hierarchy to `Active` |
-| `Active` / `Resolved` / `Closed` | same state + `techspec:stale` | Functional spec content changed after tech spec generation | Add `techspec:stale`, add staleness comment |
-| any state + `techspec:stale` | same state | Tech spec regenerated | Remove `techspec:stale`, add regeneration comment |
-| any active state | `Removed` | Scope no longer needed | Move to `Removed`, add abandonment comment |
+| (none) | `New` | Epic created | Create hierarchy |
+| `New` | `New` + `review:ready` | Gates pass | Add tag |
+| `New` + `review:ready` | `New` | Feedback requires changes | Remove tag |
+| `New` + `review:ready` | `Active` | Stakeholder approval | Remove tag, add approval comment, move hierarchy to `Active` |
+| any | same + `techspec:stale` | Functional change post-tech-spec | Add tag + staleness comment |
+| any + `techspec:stale` | same | Tech spec regenerated | Remove tag + regeneration comment |
+| any active | `Removed` | Scope dropped | Abandonment comment |
+
+## Comment Templates (canonical)
+
+| Type | Path |
+|------|------|
+| Approval | `.github\skills\spec-lifecycle-management\templates\approval-comment.md` |
+| Staleness | `.github\skills\spec-lifecycle-management\templates\staleness-comment.md` |
+| Abandonment | `.github\skills\spec-lifecycle-management\templates\abandonment-comment.md` |
+
+Load template before generating; preserve structure; reject output with unresolved placeholders.
 
 ## Staleness Detection
 
-### What Triggers Staleness
-A technical spec becomes stale when any of the following change after the tech spec was generated:
-1. **Epic Description** modified
-2. **Feature Description** modified
-3. **User Story Description** modified
-4. **User Story Acceptance Criteria field** modified
-5. **Feature or User Story hierarchy** changes (items added, removed, or reparented)
+Triggers (post tech-spec-generation):
+- Epic/Feature/User Story Description modified
+- User Story Acceptance Criteria modified
+- Feature or Story added/removed/reparented
 
-### What Does Not Trigger Staleness
-- Changing Priority, Iteration, or Assignment
-- Adding comments
-- Changing State by itself
-- Adding or removing tags other than `review:ready` and `techspec:stale`
+Non-triggers: Priority, Iteration, Assignment, State alone, comments, other tags.
 
-### Detection Method
-Do not rely on the Epic revision alone.
-
-1. When the tech spec is generated, record the generation date in:
-   - the wiki page header
-   - the Epic comment linking to the tech spec
-2. On each invocation involving a generated tech spec:
-   - fetch the Epic, child Features, and child User Stories
-   - inspect revisions for each item since the tech spec generation date
-   - check whether the changed fields include:
-     - Epic Description
-     - Feature Description
-     - User Story Description
-     - User Story Acceptance Criteria
-     - child hierarchy membership
-3. If any substantive changes are detected, add `techspec:stale` and a staleness comment.
+Method:
+1. Record tech-spec generation date in wiki page header + Epic link comment.
+2. On invocation: fetch Epic + children; inspect revisions since that date; check changed fields.
+3. If substantive change detected → add `techspec:stale` + staleness comment.
 
 ## Process Enforcement
 
 ### Gates for `spec-driven-development`
 
-| Action | Required condition | Block behavior |
-|--------|--------------------|----------------|
-| Mark ready for review | Epic in `New`; all quality gates pass | Refuse until missing content is filled in |
-| Approve spec | Epic in `New` with `review:ready` | Refuse until stakeholder approval is explicit |
-| Generate tech spec | Epic in `Active`; approval comment exists; no `review:ready` tag | Refuse and explain what is missing |
-| Modify approved functional spec | Epic/children in `Active`, `Resolved`, or `Closed` | Warn that changes may require `techspec:stale` |
+| Action | Required | Block if |
+|--------|----------|----------|
+| Mark ready for review | Epic `New` + gates pass | Content incomplete |
+| Approve spec | Epic `New` + `review:ready` | No explicit stakeholder approval |
+| Generate tech spec | Epic `Active` + approval comment + no `review:ready` | Any missing |
+| Modify approved spec | Epic/children `Active`/`Resolved`/`Closed` | — (warn: may need `techspec:stale`) |
 
 ### Guards for `devops-workitem-manager`
 
-When the `devops-workitem-manager` agent encounters spec-managed work items, it should:
+1. Reads: always allowed.
+2. Safe fields: Priority, Iteration, Assignment, State, unrelated tags — allowed.
+3. Functional fields (Epic/Feature Description; User Story Description or AC) → warn + confirm.
+4. On confirm AND tech spec exists: add `techspec:stale` + staleness comment.
+5. Creating new Features/Stories under approved hierarchy → warn (scope change).
 
-1. **Read operations**: Always allowed.
-2. **Safe field updates**: Priority, Iteration, Assignment, State, and unrelated tags are allowed.
-3. **Functional field updates** require warning and confirmation:
-   - **Epic**: Description
-   - **Feature**: Description
-   - **User Story**: Description or Acceptance Criteria field
-4. If confirmed and a tech spec already exists for the parent Epic:
-   - add `techspec:stale`
-   - add a staleness comment using `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
-5. Creating child Features or User Stories under an approved hierarchy also requires a warning because it changes scope.
-
-Treat these as strong signals that an item is part of the spec workflow:
-- parent Epic tagged `review:ready`
-- parent Epic tagged `techspec:stale`
-- parent Epic in `Active` with an approval comment
+Signals that an item is spec-managed: parent Epic has `review:ready`, `techspec:stale`, or `Active` + approval comment.
 
 ## Audit Trail
-
-Record lifecycle events with Epic comments:
-- approval comments when moving to `Active`
-- staleness comments when functional changes invalidate the tech spec
-- regeneration comments when a stale tech spec is replaced
-- abandonment comments when moving to `Removed`
+Epic comments record approval, staleness, regeneration, abandonment.
 
 ## Decision Points
-
-- If an Epic is `New` and not tagged `review:ready`, it is still drafting.
-- If an Epic is `New` and tagged `review:ready`, it is waiting for stakeholder review.
-- If an Epic is `Active`, approval has been granted and implementation may begin.
-- If an Epic is in any state with `techspec:stale`, the technical spec must be refreshed before relying on it for implementation.
+- `New` alone → drafting
+- `New` + `review:ready` → awaiting stakeholder review
+- `Active` → approved; implementation may begin
+- any + `techspec:stale` → refresh tech spec before implementation
 
 ## Completion Checks
-
-- The hierarchy uses Agile states, not custom lifecycle states
-- `review:ready` appears only while the Epic is in `New`
-- `techspec:stale` is present only when a generated tech spec needs refresh
-- User Story Acceptance Criteria changes are treated as substantive functional changes
-- All approval and staleness events have corresponding Epic comments
+- Hierarchy uses Agile states only
+- `review:ready` only while `New`
+- `techspec:stale` only when tech spec needs refresh
+- User Story AC changes treated as substantive
+- All approval/staleness events have Epic comments

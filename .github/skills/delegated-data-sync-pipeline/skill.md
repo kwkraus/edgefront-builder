@@ -6,60 +6,51 @@ argument-hint: 'Describe the sync stage, Graph data being processed, normalizati
 
 # Delegated Data Sync Pipeline
 
+Fetch → normalize → upsert → recompute flow, user-initiated via OBO.
+
 ## When to Use
-- Building the fetch → normalize → upsert → recompute flow for registrations/attendance
-- Implementing user-initiated sync triggered on page load
-- Ensuring idempotency for repeated sync operations
-- Writing integration tests for sync flows
+- Implement fetch/normalize/upsert/recompute stages
+- User-initiated sync on page load
+- Ensure idempotency
+- Integration tests for sync
 
-## Quick Checklist
-1. User opens session/series detail page → triggers sync via OBO token.
-2. Fetch registrations and attendance from Graph API (delegated).
-3. Normalize + upsert into NormalizedRegistration or NormalizedAttendance.
-4. Trigger atomic metrics recompute.
-5. Update `LastSyncAt` timestamp on session.
-6. Verify idempotency — repeated syncs must not inflate metrics.
+## Pipeline
 
-## Session Sync Flow
-1. Receive sync request with user's OBO token.
-2. Fetch registrations from Graph: `GET /solutions/virtualEvents/webinars/{id}/registrations`.
-3. Fetch attendance from Graph via sessions → attendanceReports → attendanceRecords.
-4. Normalize email (trim + lowercase) and domain (eTLD+1).
-5. Upsert into NormalizedRegistration using unique constraint (ownerUserId, sessionId, email).
-6. Upsert into NormalizedAttendance using unique constraint.
-7. Within same transaction: recompute SessionMetrics + SeriesMetrics.
-8. Update `LastSyncAt` timestamp on session.
-9. Commit atomically.
+1. User opens session/series page → sync triggered with OBO token.
+2. Fetch from Graph (see `graph-teams-integration`): registrations + attendance.
+3. Normalize (see `domain-metrics-computation`): trim+lowercase email, eTLD+1 domain.
+4. Upsert NormalizedRegistration / NormalizedAttendance via unique `(ownerUserId, sessionId, email)`.
+5. **Within same transaction**: recompute SessionMetrics + SeriesMetrics.
+6. Update `LastSyncAt` on session.
+7. Commit atomically.
 
-## Series Sync Flow
-1. Iterate all published sessions in the series.
-2. Sync each session individually.
-3. Individual session failures are logged but do not block other sessions.
+## Series Sync
+Iterate all published sessions; sync each individually. Per-session failures logged but do not block other sessions.
 
-## Idempotency Rules
-- Unique constraints prevent duplicate rows: (ownerUserId, sessionId, email).
-- Upsert semantics: INSERT or UPDATE on conflict.
-- Metrics are always recomputed from current normalized data — never incremented.
-- Full recompute guarantees correctness regardless of repeated sync calls.
+## Idempotency
+- Unique constraints `(ownerUserId, sessionId, email)` prevent duplicate rows.
+- Upsert = INSERT or UPDATE on conflict.
+- Metrics always fully recomputed from current normalized data — never incremented.
+- Full recompute guarantees correctness across repeated calls.
 
 ## Error Handling
-- Sync failures surface to user with retry option (inline error banner).
-- Failed Graph fetch: log with correlationId, surface error to frontend.
-- If Graph returns licensing error: surface "Teams webinar license required" message.
+- Sync failure → surface to user with retry (inline error banner).
+- Graph fetch failure → log with correlationId + surface to frontend.
+- Licensing error → surface "Teams webinar license required".
 
 ## Decision Points
-- If session not found: return 404.
-- If Graph data fetch fails: surface error, do not partially commit.
-- If concurrent syncs arrive for same session: DB transaction isolation prevents race conditions.
+- Session not found → 404.
+- Graph fetch fails → surface error; no partial commit.
+- Concurrent syncs same session → DB transaction isolation prevents race.
 
 ## Mandatory Integration Tests
 - Sync → normalized upsert → metrics updated
 - Repeated sync does not inflate metrics
-- Concurrent syncs for same session → no inconsistent metrics
+- Concurrent syncs same session → no inconsistency
 - Partial Graph failure → no partial commit
 
 ## Completion Checks
-- Normalize → upsert → recompute pipeline is atomic.
-- Idempotency proven by repeated sync tests.
-- LastSyncAt updated correctly.
-- Error states surface clearly to frontend.
+- Normalize → upsert → recompute atomic
+- Idempotency proven by tests
+- `LastSyncAt` updated
+- Error states surface clearly to frontend

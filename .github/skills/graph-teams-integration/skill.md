@@ -6,59 +6,69 @@ argument-hint: 'Describe the Graph operation, Teams webinar context, delegated s
 
 # Graph Teams Integration
 
+Canonical owner of Graph endpoints, OBO flow, and webinar lifecycle.
+
 ## When to Use
-- Implementing webinar create/update/delete via Graph API
-- Setting up OBO token exchange for delegated Graph calls
-- Implementing user-initiated data sync (registrations, attendance)
-- Implementing drift detection against Graph metadata
-- Any work involving Microsoft.Identity.Web or Microsoft.Graph SDK
+- Webinar create/update/delete via Graph
+- OBO token exchange
+- User-initiated data sync (registrations, attendance)
+- Drift detection vs Graph metadata
+- Any Microsoft.Identity.Web / Microsoft.Graph SDK work
 
 ## Quick Checklist
-1. All Graph operations use OBO flow — user must be authenticated.
-2. Verify Graph API endpoint and delegated permission requirements.
-3. Implement centralized token acquisition via TeamsGraphClient + OboTokenService.
-4. Add error handling with correlation IDs and Graph-specific failure modes.
+1. All Graph ops use OBO — user must be authenticated.
+2. Verify endpoint + delegated permissions.
+3. Centralize token acquisition via `TeamsGraphClient` + `OboTokenService`.
+4. Error handling with correlation IDs + Graph-specific classification.
 
-## Deep Workflow
-1. Classify the operation:
-   - Webinar CRUD → OBO flow (delegated `VirtualEvent.ReadWrite`)
-   - Registration reads → OBO flow (delegated `VirtualEvent.ReadWrite`)
-   - Attendance reads → OBO flow (delegated `OnlineMeetingArtifact.Read.All`)
-   - Drift detection → OBO flow (delegated)
-2. Implement token acquisition:
-   - OBO: Extract user JWT from request → call `ITokenAcquisition.GetAccessTokenForUserAsync` with Graph scopes
-   - **No client credentials** — all operations require an authenticated user
-3. Implement the Graph API call with retry and error classification:
-   - 401/403: Token or permission issue — log and surface clearly
-   - 404: Resource not found — handle gracefully for drift/delete
-   - 429: Throttled — respect Retry-After header
-   - 5xx: Transient — retry with exponential backoff
-4. Map Graph response to domain model (e.g., webinar ID → teamsWebinarId).
-5. Log all Graph operations with correlation ID, operation name, and result.
+## Operation → Scope
+
+| Operation | Flow | Delegated scope |
+|-----------|------|-----------------|
+| Webinar CRUD | OBO | `VirtualEvent.ReadWrite` |
+| Registration reads | OBO | `VirtualEvent.ReadWrite` |
+| Attendance reads | OBO | `OnlineMeetingArtifact.Read.All` |
+| Drift detection | OBO | (delegated) |
+
+**No client credentials** — all operations require an authenticated user.
+
+## Token Flow (OBO)
+Extract user JWT from request → `ITokenAcquisition.GetAccessTokenForUserAsync` with Graph scopes.
+
+## Error Classification
+
+| Code | Class | Action |
+|------|-------|--------|
+| 401/403 | Token/permission | Log + surface clearly |
+| 404 | Not found | Handle gracefully (drift/delete) |
+| 429 | Throttled | Respect `Retry-After` |
+| 5xx | Transient | Exponential backoff retry |
+
+Map Graph response → domain model (e.g. webinar id → `teamsWebinarId`). Log all ops with correlation id, operation name, result.
 
 ## Publish Flow
-1. For each session in series:
-   a. Create webinar via OBO → store teamsWebinarId
-   b. Publish webinar via OBO → POST .../publish
-2. If any step fails:
-   a. Run compensating rollback: best-effort delete created webinars
-   b. If rollback fails: log failures, surface partial-failure state
-   c. Return failure to caller
+For each session in series:
+1. Create webinar (OBO) → store `teamsWebinarId`
+2. Publish webinar (OBO) → `POST .../publish`
 
-## Data Sync Flow
-1. User opens session/series page → triggers sync.
-2. Fetch registrations via OBO: `GET /solutions/virtualEvents/webinars/{id}/registrations`.
-3. Fetch attendance via OBO: sessions → attendanceReports → attendanceRecords.
-4. Hand off to normalize → upsert → recompute pipeline.
-5. Update `LastSyncAt` timestamp on session.
+On any failure: best-effort rollback (delete created webinars); if rollback fails log + surface partial-failure state; return failure.
+
+## Data Sync
+1. User opens session/series page → sync triggered.
+2. Registrations (OBO): `GET /solutions/virtualEvents/webinars/{id}/registrations`
+3. Attendance (OBO): sessions → attendanceReports → attendanceRecords
+4. Hand off to normalize → upsert → recompute pipeline (see `delegated-data-sync-pipeline`).
+5. Update `LastSyncAt` on session.
+
+Drift cache: 5-minute window.
 
 ## Decision Points
-- If Graph API returns licensing error (e.g., user lacks Teams Premium): classify as non-retryable, surface clear message.
-- If drift detection fetch fails: keep previous driftStatus, do not clear.
-- If webinar delete fails during series/session delete: log as best-effort failure, continue with local delete.
+- Licensing error (e.g. no Teams Premium) → non-retryable; clear user message.
+- Drift fetch fails → keep previous `driftStatus`.
+- Webinar delete fails during series/session delete → log best-effort, continue local delete.
 
 ## Completion Checks
-- All Graph calls use OBO tokens (no client credentials).
-- All Graph calls have error handling with correlation IDs.
-- Publish is atomic with compensating rollback.
-- Integration tests mock Graph API responses for all flows.
+- All Graph calls OBO (no client credentials)
+- All calls have correlation-id error handling
+- Publish atomic with compensating rollback
+- Integration tests mock Graph for all flows

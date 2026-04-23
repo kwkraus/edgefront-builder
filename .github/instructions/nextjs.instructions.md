@@ -5,74 +5,55 @@ applyTo: "src/frontend/**"
 
 # Next.js Frontend Instructions
 
-These instructions apply to the frontend project under `src/frontend`.
-
-## Instruction Consistency
-- After making frontend changes, review this file and any agents/skills that reference the frontend stack to ensure they still match the code.
-- See the "Instruction Ecosystem Congruency" section in `copilot-instructions.md` for the full checklist.
+Applies to `src/frontend`. Shared rules (architecture, build/test, congruency check) live in `copilot-instructions.md`.
 
 ## Agent Routing
-- Testing (TDD, test strategy) → `edgefront-tdd-engineer` agent
-- UX design and composition → `ui-ux-nextjs` agent
-- Accessibility checks → use `frontend-accessibility-and-ux-acceptance` skill via `ui-ux-nextjs`
-- Do not use generic plugin TDD agents for frontend work unless the user explicitly asks for them by name.
-- If requirements are unclear or missing, ask the user for clarification before inventing behavior.
+- Testing → `edgefront-tdd-engineer`
+- UX/composition → `ui-ux-nextjs`
+- Accessibility → `frontend-accessibility-and-ux-acceptance` skill via `ui-ux-nextjs`
+- Ask when requirements are unclear.
 
 ## Architecture
-- Use the App Router (`app/`) with React Server Components by default.
-- Keep pages thin: route handlers and server components orchestrate; UI components render.
-- Organize by feature using `app/<feature>/` and colocate components and styles.
-- Extract shared UI into `components/` and shared utilities into `lib/`.
+- App Router (`app/`) with React Server Components by default.
+- Thin routes; UI components render; organize by feature (`app/<feature>/`).
+- Shared UI → `components/`; shared utilities → `lib/`.
 
 ## Project Structure
-- `app/` for routes, layouts, pages, loading and error states.
-- `app/series/` for series list, detail, create/edit flows.
-- `app/sessions/` for session detail, edit flows.
-- `components/` for reusable UI; keep them pure and prop-driven.
-- `lib/` for data access, API clients, and helpers.
-- `lib/api/` for typed API client helpers consuming backend API DTOs.
-- `public/` for static assets.
-- E2E tests live in `src/frontend/e2e/`.
+- `app/` — routes, layouts, pages, loading/error states
+- `app/series/`, `app/sessions/` — feature flows
+- `components/` — pure, prop-driven reusable UI
+- `lib/` — data access, API clients, helpers; `lib/api/` for typed clients matching backend DTOs
+- `public/` — static assets
+- E2E: `src/frontend/e2e/`
 
-## Core Dependencies
-- Next.js 16 with React 19.
-- TypeScript is required for all new files.
-- Tailwind CSS v4 is available; prefer utility-first styling.
-- Primer React v38 (@primer/react) with @primer/octicons-react for UI components.
-- ESLint must remain clean; use `npm run lint`.
-- next-auth for Entra ID authentication.
-- Playwright for E2E testing (configured in `playwright.config.ts`).
+## Dependencies
+- Next.js 16, React 19, TypeScript (required for new files).
+- Tailwind CSS v4 utility-first.
+- Primer React v38 (`@primer/react`) + `@primer/octicons-react`.
+- next-auth (Entra ID); Playwright E2E (`playwright.config.ts`).
+- ESLint must remain clean.
 
 ## Authentication
-- Login via Entra ID redirect.
-- Unauthenticated access → redirect to Entra login.
-- Token refresh handled silently; on failure → redirect to login.
-- Logout clears session and redirects to login.
-- Pass user JWT to backend API for all authenticated requests.
+- Entra ID redirect login; unauthenticated → redirect to login.
+- Silent token refresh; on failure → login.
+- Logout clears session and redirects.
+- Pass user JWT to backend for authenticated requests.
 
-## Data Fetching and State
+## Data & State
 - Prefer server components for data fetching.
-- Use `fetch` with caching strategies (`no-store`, `force-cache`, revalidate).
-- Keep client state local; use context only when needed.
-- Avoid global stores unless the feature truly requires it.
-- Metrics are read-only from API (no compute-on-read).
-- No pagination in V1 — list endpoints return all results.
+- `fetch` caching (`no-store`, `force-cache`, revalidate).
+- Local client state; context only when needed; no global stores unless required.
+- Metrics are read-only (no compute-on-read); no pagination in V1.
 
-## UI and UX
-- Favor accessible, semantic HTML.
-- Use loading and error boundaries for routes.
-- Desktop-first; ensure readable on tablet. Mobile not required for V1.
-- Keep UI consistent with existing patterns.
-- Inline error banners with retry for failed API calls.
-- No optimistic updates in V1 (wait for server confirmation).
+## UI/UX
+- Accessible, semantic HTML; loading + error boundaries.
+- Desktop-first, readable on tablet; mobile not required in V1.
+- Inline error banners with retry; no optimistic updates in V1.
+- Keep visual consistency with existing patterns.
 
 ## Best Practices
-- Keep components small and focused.
-- Avoid `any`; use accurate types and shared interfaces matching backend API DTOs.
-- Use `async` server actions where appropriate.
-- Prefer composition over prop drilling.
+- Small focused components; no `any` — share interfaces with backend DTOs.
+- Async server actions where appropriate; composition over prop drilling.
 
-## Build and Tooling
-- `npm run build` should pass for new features.
-- `npm run lint` should remain clean.
-- Keep formatting consistent with existing lint rules.
+## Build
+- `npm run build` passes; `npm run lint` clean.

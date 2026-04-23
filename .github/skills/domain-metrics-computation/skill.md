@@ -6,75 +6,79 @@ argument-hint: 'Describe the normalization rule, metric behavior, affected entit
 
 # Domain and Metrics Computation
 
+Canonical owner of email/domain normalization and session/series metrics.
+
 ## When to Use
-- Implementing email/domain normalization logic
-- Implementing SessionMetrics or SeriesMetrics computation
-- Implementing W1/W2 warm account rules
-- Implementing influence (uniqueAccountsInfluenced) counting
-- Applying internal domain exclusion filter
-- Writing unit tests for any of the above
+- Normalization logic
+- SessionMetrics / SeriesMetrics computation
+- W1/W2 warm-account rules
+- Influence (uniqueAccountsInfluenced) counting
+- Internal-domain exclusion
+- Unit tests for any of the above
 
 ## Quick Checklist
-1. Apply normalization: trim + lowercase email, eTLD+1 for domain.
-2. Filter internal domains before computing influence and warm.
-3. Follow computation pseudocode below exactly.
-4. Verify warm precedence: W2 > W1, one entry per domain.
+1. Normalize: trim+lowercase email, eTLD+1 domain.
+2. Filter internal domains before influence/warm.
+3. Follow formulas below exactly.
+4. Warm precedence W2 > W1; one entry per domain.
 
-## Domain Normalization
-1. Email: trim whitespace + lowercase. Identity key = normalized email.
-2. Domain: extract registrable domain using public-suffix-aware eTLD+1 parsing.
-   - `kt.kpmg.com` → `kpmg.com`
-   - `example.co.uk` → `example.co.uk` (not `co.uk`)
-   - `kpmg.com` ≠ `kpmg.au` (different TLDs = different accounts)
-3. Internal domain list: loaded from environment/config, validated at startup.
-4. Normalization applied before persistence — store only normalized values.
+## Normalization
+- **Email**: trim + lowercase. Identity key = normalized email.
+- **Domain**: public-suffix-aware eTLD+1.
+  - `kt.kpmg.com` → `kpmg.com`
+  - `example.co.uk` → `example.co.uk` (not `co.uk`)
+  - `kpmg.com` ≠ `kpmg.au` (different TLDs = different accounts)
+- Internal domain list: env/config, validated at startup.
+- Apply before persistence — store only normalized values.
 
-## SessionMetrics Computation
-All counts exclude internal domains for influence/warm, include for totals:
-1. `totalRegistrations` = COUNT(NormalizedRegistration) — all domains
-2. `totalAttendees` = COUNT(NormalizedAttendance) — all domains
-3. `uniqueRegistrantAccountDomains` = COUNT(DISTINCT emailDomain) from registrations — external only
-4. `uniqueAttendeeAccountDomains` = COUNT(DISTINCT emailDomain) from attendance — external only
-5. `warmAccountsTriggered` (W1): for each external emailDomain in attendance, if COUNT(DISTINCT email) >= 2 → include. Lexicographic sort.
+## SessionMetrics
+External-only = excludes internal domains.
 
-## SeriesMetrics Computation
-1. `totalRegistrations` = SUM(SessionMetrics.totalRegistrations)
-2. `totalAttendees` = SUM(SessionMetrics.totalAttendees)
-3. `uniqueRegistrantAccountDomains` = COUNT(DISTINCT emailDomain) across all sessions — external only
-4. `uniqueAccountsInfluenced` = COUNT(DISTINCT emailDomain) across attendance in all sessions — external only
-5. `warmAccounts`:
-   - W1: propagate from SessionMetrics.warmAccountsTriggered
-   - W2: any email in an external domain attending >= 2 distinct sessions in series
-   - Precedence: W2 > W1 — store one entry per domain
-   - Lexicographic sort by accountDomain
+| Metric | Formula |
+|--------|---------|
+| `totalRegistrations` | COUNT(NormalizedRegistration), all domains |
+| `totalAttendees` | COUNT(NormalizedAttendance), all domains |
+| `uniqueRegistrantAccountDomains` | COUNT(DISTINCT emailDomain) from registrations, external only |
+| `uniqueAttendeeAccountDomains` | COUNT(DISTINCT emailDomain) from attendance, external only |
+| `warmAccountsTriggered` (W1) | external emailDomains in attendance where COUNT(DISTINCT email) ≥ 2; lex-sorted |
+
+## SeriesMetrics
+
+| Metric | Formula |
+|--------|---------|
+| `totalRegistrations` | SUM(SessionMetrics.totalRegistrations) |
+| `totalAttendees` | SUM(SessionMetrics.totalAttendees) |
+| `uniqueRegistrantAccountDomains` | COUNT(DISTINCT emailDomain) across all sessions, external only |
+| `uniqueAccountsInfluenced` | COUNT(DISTINCT emailDomain) across attendance in all sessions, external only |
+| `warmAccounts` | W1: propagate from sessions. W2: any email in external domain attending ≥ 2 distinct sessions in series. **W2 > W1; one entry per domain; lex-sorted by accountDomain.** |
 
 ## Transaction Boundaries
-- Normalized upserts + metrics recompute must be atomic (single DB transaction).
-- Concurrency: use database-level strategy to prevent race conditions on same session.
-- If any step fails: rollback entire transaction; caller handles retry.
+- Normalized upserts + metrics recompute atomic (single DB transaction).
+- Concurrency: DB-level strategy prevents same-session races.
+- Any failure → rollback entire transaction; caller handles retry.
 
 ## Decision Points
 - Registration-only records do NOT count toward influence or W2.
-- Attendance with any duration (even zero) counts as attended.
-- W1 does not trigger on duplicate records of same email (must be distinct emails).
-- If eTLD+1 library is unavailable, use a well-known public suffix list; do not fall back to last-2-label.
+- Attendance with any duration (incl. 0) counts as attended.
+- W1 requires distinct emails; duplicates of same email do NOT trigger.
+- eTLD+1 library unavailable → use public suffix list; do not fall back to last-2-label.
 
 ## Mandatory Unit Tests
-- Same email differing by case → one Person
-- Subdomain stripped correctly via eTLD+1
+- Email case-insensitive → one Person
+- Subdomain stripped via eTLD+1
 - Different TLDs = different accounts
-- Internal domains excluded from influence and warm
-- W1: >= 2 distinct emails same domain triggers warm
-- W1: duplicate records of same email do not trigger
-- W2: same email across >= 2 sessions triggers warm
-- W2: registration-only does not trigger
+- Internal domains excluded from influence/warm
+- W1: ≥ 2 distinct emails same domain triggers
+- W1: duplicate records same email does NOT trigger
+- W2: same email across ≥ 2 sessions triggers
+- W2: registration-only does NOT trigger
 - W2 > W1 precedence
-- Stable lexicographic sort of warm lists
-- Duplicate sync does not change metrics
-- Repeated sync upsert updates metrics correctly
+- Stable lex-sort of warm lists
+- Duplicate sync: metrics unchanged
+- Repeated sync: metrics update correctly
 
 ## Completion Checks
-- All normalization uses eTLD+1 (no last-2-label heuristic).
-- Internal domain filter applied before influence/warm computation.
-- All mandatory unit tests pass.
-- Metrics recompute is atomic with normalized data writes.
+- All normalization uses eTLD+1 (no last-2-label)
+- Internal filter applied before influence/warm
+- All mandatory tests pass
+- Metrics recompute atomic with normalized writes
