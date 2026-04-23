@@ -103,6 +103,31 @@ public static class SessionEndpoints
             return Results.Ok(session);
         });
 
+        sessionGroup.MapPut("/{id:guid}/title", async (Guid id, UpdateSessionTitleRequest req, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx) =>
+        {
+            var userId = ctx.GetUserOid();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(req.Title))
+                return Results.BadRequest(new ErrorEnvelope(
+                    "validation_error", "Title is required.", ctx.TraceIdentifier));
+
+            var oboToken = await TryGetOboTokenAsync(ctx, oboService);
+            var (session, errorCode) = await service.UpdateTitleAsync(id, req, userId, oboToken, graphClient);
+            if (session is null)
+            {
+                if (errorCode == "TEAMS_UPDATE_FAILED")
+                    return Results.UnprocessableEntity(new ErrorEnvelope(
+                        "TEAMS_UPDATE_FAILED", "Teams webinar could not be updated.", ctx.TraceIdentifier));
+
+                return Results.NotFound(new ErrorEnvelope(
+                    "session_not_found", "Session not found.", ctx.TraceIdentifier));
+            }
+
+            return Results.Ok(session);
+        });
+
         sessionGroup.MapDelete("/{id:guid}", async (Guid id, SessionService service, IOboTokenService oboService, ITeamsGraphClient graphClient, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();

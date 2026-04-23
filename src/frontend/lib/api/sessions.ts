@@ -49,6 +49,20 @@ export async function updateSession(
   )
 }
 
+export async function updateSessionTitle(
+  id: string,
+  data: { title: string },
+  accessToken: string,
+): Promise<SessionResponse> {
+  return apiFetch<SessionResponse>(
+    `/sessions/${id}/title`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    },
+    accessToken,
+  )
+}
 export async function deleteSession(id: string, accessToken: string): Promise<void> {
   return apiFetch<void>(`/sessions/${id}`, { method: 'DELETE' }, accessToken)
 }

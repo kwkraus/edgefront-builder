@@ -3,8 +3,10 @@ using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
+using EdgeFront.Builder.Infrastructure.Graph;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 
 namespace EdgeFront.Builder.Tests.Features.Sessions;
 
@@ -463,6 +465,136 @@ public class SessionServiceTests : IDisposable
 
         // Act
         var (result, errorCode) = await _sut.UpdateAsync(session.SessionId, req, OtherUserId);
+
+        // Assert
+        result.Should().BeNull();
+        errorCode.Should().Be("session_not_found");
+    }
+
+    [Fact]
+    public async Task UpdateTitleAsync_UpdatesOnlyTitle()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        var originalStartsAt = session.StartsAt;
+        var originalEndsAt = session.EndsAt;
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var req = new UpdateSessionTitleRequest("Renamed Session");
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateTitleAsync(session.SessionId, req, OwnerUserId);
+
+        // Assert
+        errorCode.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Title.Should().Be("Renamed Session");
+        result.StartsAt.Should().BeCloseTo(originalStartsAt, TimeSpan.FromSeconds(1));
+        result.EndsAt.Should().BeCloseTo(originalEndsAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task UpdateTitleAsync_UpdatesPublishedTeamsWebinar()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        session.Status = SessionStatus.Published;
+        session.TeamsWebinarId = "webinar-123";
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var graphMock = new Mock<ITeamsGraphClient>();
+        var req = new UpdateSessionTitleRequest("Published Rename");
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateTitleAsync(
+            session.SessionId,
+            req,
+            OwnerUserId,
+            "obo-token",
+            graphMock.Object);
+
+        // Assert
+        errorCode.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Title.Should().Be("Published Rename");
+        graphMock.Verify(g => g.UpdateWebinarAsync(
+            "webinar-123",
+            "Published Rename",
+            It.IsAny<DateTimeOffset>(),
+            It.IsAny<DateTimeOffset>(),
+            "obo-token",
+            default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateTitleAsync_ReturnsError_WhenTeamsUpdateFails()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        session.Status = SessionStatus.Published;
+        session.TeamsWebinarId = "webinar-123";
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var graphMock = new Mock<ITeamsGraphClient>();
+        graphMock
+            .Setup(g => g.UpdateWebinarAsync(
+                "webinar-123",
+                "Broken Rename",
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<DateTimeOffset>(),
+                "obo-token",
+                default))
+            .ThrowsAsync(new InvalidOperationException("Graph failed"));
+
+        var req = new UpdateSessionTitleRequest("Broken Rename");
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateTitleAsync(
+            session.SessionId,
+            req,
+            OwnerUserId,
+            "obo-token",
+            graphMock.Object);
+
+        // Assert
+        result.Should().BeNull();
+        errorCode.Should().Be("TEAMS_UPDATE_FAILED");
+    }
+
+    [Fact]
+    public async Task UpdateTitleAsync_ReturnsError_WhenSessionNotFound()
+    {
+        var req = new UpdateSessionTitleRequest("Title");
+
+        var (result, errorCode) = await _sut.UpdateTitleAsync(Guid.NewGuid(), req, OwnerUserId);
+
+        result.Should().BeNull();
+        errorCode.Should().Be("session_not_found");
+    }
+
+    [Fact]
+    public async Task UpdateTitleAsync_ReturnsError_ForWrongOwner()
+    {
+        // Arrange
+        var series = BuildSeries();
+        _db.Series.Add(series);
+        var session = BuildSession(series.SeriesId);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var req = new UpdateSessionTitleRequest("Hack");
+
+        // Act
+        var (result, errorCode) = await _sut.UpdateTitleAsync(session.SessionId, req, OtherUserId);
 
         // Assert
         result.Should().BeNull();

@@ -11,14 +11,10 @@ import {
   SyncIcon,
   LinkExternalIcon,
   RocketIcon,
-  PencilIcon,
 } from '@primer/octicons-react'
 import {
   Button,
   IconButton,
-  Dialog,
-  TextInput,
-  FormControl,
   Banner,
   Spinner,
   Token,
@@ -29,12 +25,14 @@ import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { InlineEditableTitle } from '@/components/inline-editable-title'
 import { PeoplePicker } from '@/components/people-picker'
 import { SessionSchedulePicker } from '@/components/session-schedule-picker'
 
 import { getSessionById } from '@/lib/api/sessions'
 import {
   updateSession,
+  updateSessionTitle,
   deleteSession,
   publishSession,
   setSessionPresenters,
@@ -137,19 +135,24 @@ export default function SessionDetailPage() {
       ? 'End time must be after start time'
       : null
 
-  // ── Title edit dialog ────────────────────────────────────────────────────
-  const [editTitleOpen, setEditTitleOpen] = useState(false)
-  const [editTitleDraft, setEditTitleDraft] = useState('')
+  // ── Inline title save ────────────────────────────────────────────────────
+  const [titleSaveLoading, setTitleSaveLoading] = useState(false)
+  const [titleSaveError, setTitleSaveError] = useState<string | null>(null)
 
-  function openTitleEdit() {
-    setEditTitleDraft(title)
-    setEditTitleOpen(true)
-  }
-
-  function handleTitleSave() {
-    if (!editTitleDraft.trim()) return
-    setTitle(editTitleDraft.trim())
-    setEditTitleOpen(false)
+  async function handleInlineTitleSave(nextTitle: string) {
+    setTitleSaveLoading(true)
+    setTitleSaveError(null)
+    try {
+      const updatedSession = await updateSessionTitle(id, { title: nextTitle }, token)
+      setTitle(updatedSession.title)
+      setSession((currentSession) => (currentSession ? { ...currentSession, ...updatedSession } : updatedSession))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update session title'
+      setTitleSaveError(message.includes('TEAMS_UPDATE_FAILED') ? 'Teams webinar could not be updated.' : message)
+      throw err
+    } finally {
+      setTitleSaveLoading(false)
+    }
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────
@@ -236,7 +239,7 @@ export default function SessionDetailPage() {
   }
 
   // ── Derived state ────────────────────────────────────────────────────────
-  const busy = saveLoading || deleteLoading || publishLoading
+  const busy = saveLoading || deleteLoading || publishLoading || titleSaveLoading
 
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loadingData) {
@@ -336,14 +339,14 @@ export default function SessionDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-            <IconButton
-              icon={PencilIcon}
-              aria-label="Edit session title"
-              variant="invisible"
-              size="small"
-              onClick={openTitleEdit}
+            <InlineEditableTitle
+              value={title}
+              onSave={handleInlineTitleSave}
               disabled={busy}
+              editAriaLabel="Edit session title"
+              saveAriaLabel="Save session title"
+              inputAriaLabel="Session title"
+              titleClassName="text-2xl font-bold tracking-tight"
             />
             <StatusBadge status={session.status} />
           </div>
@@ -427,6 +430,7 @@ export default function SessionDetailPage() {
       )}
 
       {deleteError && <ErrorBanner message={deleteError} />}
+      {titleSaveError && <ErrorBanner message={titleSaveError} />}
       {saveError && <ErrorBanner message={saveError} />}
       {publishError && (
         <ErrorBanner
@@ -569,34 +573,6 @@ export default function SessionDetailPage() {
             </div>
           )}
         </section>
-      )}
-
-      {/* ── Title edit dialog ──────────────────────────────────────────────── */}
-      {editTitleOpen && (
-        <Dialog
-          title="Edit Session Title"
-          onClose={() => setEditTitleOpen(false)}
-          footerButtons={[
-            { buttonType: 'default', content: 'Cancel', onClick: () => setEditTitleOpen(false) },
-            { buttonType: 'primary', content: 'Save', onClick: handleTitleSave, disabled: !editTitleDraft.trim() },
-          ]}
-        >
-          <FormControl required>
-            <FormControl.Label>Title</FormControl.Label>
-            <TextInput
-              value={editTitleDraft}
-              onChange={(e) => setEditTitleDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  handleTitleSave()
-                }
-              }}
-              block
-              autoFocus
-            />
-          </FormControl>
-        </Dialog>
       )}
 
       {/* ── Delete Confirm ────────────────────────────────────────────────── */}
