@@ -15,6 +15,10 @@ Canonical owner of spec states, tags, transitions, and enforcement gates.
 - Enforce process gates before tech spec generation / implementation
 - Warn when general board tools touch spec-managed items
 
+## Required Caller Configuration
+
+The calling agent must provide the Azure DevOps organization, project, wiki identity, and base URL when lifecycle actions need to read or write external records. This skill owns generic lifecycle semantics only; do not hardcode repository-specific Azure DevOps targets here.
+
 ## State Model (primary signal)
 
 | State | Meaning |

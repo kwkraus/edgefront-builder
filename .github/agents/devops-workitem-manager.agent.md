@@ -27,7 +27,7 @@ List/read/create/update work items; add comments; link items. Prefer linking cre
 - **Update status**: State transitions, comments for progress.
 
 ## Spec Lifecycle Awareness
-See `.github\skills\spec-lifecycle-management\SKILL.md` for full rules. Lifecycle comment templates: `.github\skills\spec-lifecycle-management\templates\`.
+Use the `spec-lifecycle-management` skill for spec state rules, lifecycle enforcement, and any lifecycle comments.
 
 Strong signals a hierarchy is spec-managed:
 - Parent Epic tagged `review:ready` or `techspec:stale`
@@ -45,7 +45,7 @@ Warning text: "⚠️ This work item is part of the spec-driven workflow. Changi
 
 If user confirms and a tech spec already exists for the parent Epic:
 - Add `techspec:stale` tag
-- Add staleness comment using `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
+- Add the staleness comment defined by the `spec-lifecycle-management` skill
 
 ## Routing to `spec-driven-development`
 Route these requests there: define new capability, write functional spec, mark ready for review, approve spec, generate tech spec, check spec status.

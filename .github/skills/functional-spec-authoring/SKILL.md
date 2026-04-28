@@ -11,6 +11,10 @@ argument-hint: 'Describe the business need or feature idea to explore, or provid
 - Iterate requirements before technical spec
 - Prepare a spec for review or approval
 
+## Required Caller Configuration
+
+The calling agent must provide the Azure DevOps organization, project, and any other target-specific values needed for MCP calls. This skill defines generic field, template, and workflow rules only; do not hardcode repository-specific Azure DevOps targets here.
+
 ## Hierarchy
 
 | Level | Purpose | Azure DevOps type |
