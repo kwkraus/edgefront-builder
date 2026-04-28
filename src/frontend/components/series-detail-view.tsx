@@ -290,8 +290,8 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
           )}
           <IconButton
             icon={DownloadIcon}
-            aria-label="Download Series"
-            variant="invisible"
+            aria-label="Download Markdown"
+            variant="default"
             onClick={handleExportMarkdown}
             disabled={busy || isExporting}
           />
