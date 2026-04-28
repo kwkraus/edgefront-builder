@@ -9,9 +9,10 @@ Spec-driven development process manager.
 - **Organization**: kkraus
 - **Project**: edgefront-builder
 - **Wiki**: `edgefront-builder.wiki` (create manually in Azure DevOps if missing)
+- **Azure DevOps base URL**: `https://dev.azure.com/kkraus/edgefront-builder`
 - **Invocation**: Manual (authoring, review, approval, revision)
 
-Always use configured org/project — never ask.
+Always use configured org/project/wiki — never ask. When invoking spec skills, pass this configuration explicitly as the calling context; skills are generic and must not embed repository-specific Azure DevOps targets.
 
 ## Responsibilities
 - Iterative authoring of Epic → Feature → User Story hierarchies.
@@ -24,18 +25,17 @@ Always use configured org/project — never ask.
 ## Skills
 | Skill | Purpose | File |
 |---|---|---|
-| `functional-spec-authoring` | Epic/Feature/User Story authoring with field + template rules | `.github/skills/functional-spec-authoring/SKILL.md` |
+| `functional-spec-authoring` | Epic/Feature/User Story authoring and field rules | `.github/skills/functional-spec-authoring/SKILL.md` |
 | `technical-spec-generation` | Generate tech specs, publish to wiki | `.github/skills/technical-spec-generation/SKILL.md` |
 | `spec-lifecycle-management` | State model, review readiness, staleness, enforcement | `.github/skills/spec-lifecycle-management/SKILL.md` |
 
-Consult the relevant skill before acting. Templates live under each skill's `templates\` folder.
+Consult the relevant skill before acting. Skills own their internal templates and define how those templates are used.
 
-## Canonical Templates
-- Functional: `.github\skills\functional-spec-authoring\templates\`
-- Lifecycle comments: `.github\skills\spec-lifecycle-management\templates\`
-- Technical: `.github\skills\technical-spec-generation\templates\`
-
-Edit templates for section-only changes; edit skills only for field-mapping / lifecycle / validation changes.
+Skill invocation context:
+- `organization`: `kkraus`
+- `project`: `edgefront-builder`
+- `wikiIdentifier`: `edgefront-builder.wiki`
+- `azureDevOpsBaseUrl`: `https://dev.azure.com/kkraus/edgefront-builder`
 
 ## Workflow
 
@@ -44,17 +44,17 @@ Edit templates for section-only changes; edit skills only for field-mapping / li
 2. Draft full hierarchy (Epic description, Features, User Stories + AC) in conversation.
 3. Present hierarchy preview; iterate until user approves.
 4. On explicit approval, create all work items: Epic in `New`, then Features + User Stories as children. Confirm IDs/titles.
-5. Feature Description uses `feature-description.html` (AC lives here).
-6. User Story Description uses `user-story-description.html`; Acceptance Criteria field uses `user-story-acceptance-criteria.txt`.
+5. Populate Feature and User Story fields according to the `functional-spec-authoring` skill.
+6. Keep User Story acceptance criteria in the Acceptance Criteria field.
 7. Ready for review: add `review:ready` tag to Epic (state stays `New`).
-8. After stakeholder sign-off: remove `review:ready`, move hierarchy to `Active`, add approval comment to Epic using `approval-comment.md`.
+8. After stakeholder sign-off: remove `review:ready`, move hierarchy to `Active`, and add the approval comment defined by the `spec-lifecycle-management` skill.
 
 ### Phase 2 — Technical
 1. Verify Epic is `Active` and has approval comment. Refuse if `review:ready` still present.
 2. Pull full hierarchy via MCP → analyze → design approach.
-3. Generate tech spec using `technical-spec.md` template.
+3. Generate tech spec using the `technical-spec-generation` skill.
 4. Publish to wiki at `/Tech-Specs/[Epic-ID]-[Slugified-Title]`.
-5. Add Epic comment linking to wiki using `tech-spec-link-comment.md`.
+5. Add the Epic wiki-link comment defined by the `technical-spec-generation` skill.
 6. Remove `techspec:stale` if present.
 
 ### Phase 3 — Change Management
@@ -102,5 +102,5 @@ Both share the `spec-lifecycle-management` skill.
 - Azure DevOps Agile **State** is the lifecycle — no custom states.
 - Only supplemental tags: `review:ready`, `techspec:stale`.
 - Wiki must exist before tech spec pages; on `WikiNotFoundException`, instruct user to create project wiki manually.
-- Record approval + staleness as Epic comments using canonical templates.
+- Record approval + staleness as Epic comments using the `spec-lifecycle-management` skill.
 - Ask when unclear; don't invent behavior.

@@ -1,4 +1,4 @@
-📄 **Technical Specification v[VERSION]**: [View Tech Spec](https://dev.azure.com/kkraus/edgefront-builder/_wiki/wikis/edgefront-builder.wiki/Tech-Specs/[Epic-ID]-[Title])
+📄 **Technical Specification v[VERSION]**: [View Tech Spec]([TECH_SPEC_URL])
 
 - Generated on: [YYYY-MM-DD]
 - Based on Epic state: Active

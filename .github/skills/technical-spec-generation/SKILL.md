@@ -11,9 +11,19 @@ argument-hint: 'Provide the Epic ID to generate a technical specification for, o
 - Update tech spec after functional revisions
 - Review existing tech spec before implementation
 
+## Required Caller Configuration
+
+The calling agent must provide:
+- Azure DevOps organization
+- Azure DevOps project
+- Wiki identifier
+- Azure DevOps base URL
+
+Use these values for all MCP calls, wiki publishing, and link generation. This skill defines generic generation rules only; do not hardcode repository-specific Azure DevOps targets here.
+
 ## Prerequisites
 - Epic is `Active` + has approval comment + no `review:ready` tag
-- Project wiki exists: `edgefront-builder.wiki` (manual one-time setup: Azure DevOps → Project → Wiki → Create project wiki)
+- Project wiki exists using the caller-provided wiki identifier (manual one-time setup: Azure DevOps → Project → Wiki → Create project wiki)
 
 ## Functional Input
 
@@ -39,7 +49,7 @@ Rules: load template first; preserve metadata block + heading order; reject outp
 2. **Pull hierarchy**: fetch Epic (ID, title, description, state, tags, comments), child Features (Description), and each Feature's Stories (Description + AC). Build structured hierarchy.
 3. **Analyze & design**: identify architecture decisions, components, data model changes, API contracts, external deps, security, test strategy per Feature. Ask clarifying questions for ambiguity. Record risks + open questions.
 4. **Generate spec**: fill every section in canonical template from hierarchy + analysis.
-5. **Publish**: path `/Tech-Specs/[Epic-ID]-[Slugified-Title]` (e.g. `/Tech-Specs/356-Session-Import-from-CSV`). Use MCP `wiki_create_or_update_page` with `wikiIdentifier: edgefront-builder.wiki`, `project: edgefront-builder`.
+5. **Publish**: path `/Tech-Specs/[Epic-ID]-[Slugified-Title]` (e.g. `/Tech-Specs/356-Session-Import-from-CSV`). Use MCP `wiki_create_or_update_page` with caller-provided `wikiIdentifier` and `project`.
 6. **Link & clear stale**: add Epic comment with wiki link (link template); remove `techspec:stale`; if regeneration, add second comment (regeneration template).
 
 ## Versioning

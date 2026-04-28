@@ -84,7 +84,7 @@ The process aligns to the Azure DevOps **Agile** template.
 1. **Verify approval** - the Epic must be `Active` and have an approval comment
 2. **Pull hierarchy** - read the full Epic -> Feature -> Story tree via MCP
 3. **Analyze** - identify architecture, data model, API, and test implications
-4. **Generate** - produce a structured tech spec using the wiki page template
+4. **Generate** - produce a structured tech spec using the `technical-spec-generation` skill
 5. **Publish** - create or update a wiki page at `/Tech-Specs/[Epic-ID]-[Slugified-Title]`
 6. **Link** - add an Epic comment with the wiki page URL
 7. **Clear stale flag** - remove `techspec:stale` if present
@@ -109,7 +109,7 @@ If functional spec content changes after a tech spec is generated:
 - Approval is recorded by:
   1. moving the approved hierarchy to `Active`
   2. adding a structured approval comment on the Epic
-- Use `.github\skills\spec-lifecycle-management\templates\approval-comment.md` as the canonical approval comment template
+- The `spec-lifecycle-management` skill owns the approval comment format
 
 ### Technical Spec Staleness
 - Staleness is recorded by:
@@ -143,27 +143,15 @@ These do **not** invalidate the technical specification by themselves:
 
 These steps cannot be automated via MCP and must be done manually in the Azure DevOps web UI.
 
-## Templates
+## Skill-Owned Templates
 
-The canonical rules live in:
+The canonical process rules live in:
 
 - `.github/skills/functional-spec-authoring/SKILL.md`
 - `.github/skills/technical-spec-generation/SKILL.md`
 - `.github/skills/spec-lifecycle-management/SKILL.md`
 
-The canonical, user-editable section templates live alongside their owning skills:
-
-- `.github\skills\functional-spec-authoring\templates\epic-description.html`
-- `.github\skills\functional-spec-authoring\templates\feature-description.html`
-- `.github\skills\functional-spec-authoring\templates\user-story-description.html`
-- `.github\skills\functional-spec-authoring\templates\user-story-acceptance-criteria.txt`
-- `.github\skills\spec-lifecycle-management\templates\approval-comment.md`
-- `.github\skills\spec-lifecycle-management\templates\staleness-comment.md`
-- `.github\skills\technical-spec-generation\templates\technical-spec.md`
-- `.github\skills\technical-spec-generation\templates\tech-spec-link-comment.md`
-- `.github\skills\technical-spec-generation\templates\regeneration-summary-comment.md`
-
-Update template files for section-only changes. Update skills and agents only when workflow rules, field mapping, or validation behavior changes.
+Each skill owns its own internal templates and explains how to use them. Agents should invoke the appropriate skill for template-backed output rather than depending on template file names or folder structure.
 
 ## Agent Coordination
 
