@@ -8,7 +8,7 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ## Key Capabilities
 
-- **Series & session management** — Create webinar series containing multiple sessions; manage titles, schedules, presenters, and coordinators.
+- **Series & session management** — Create webinar series containing multiple sessions; manage titles (editable inline on the detail page), schedules, presenters, and coordinators.
 - **Teams webinar publishing** — Publish a series to automatically create Teams webinars for every session via the Microsoft Graph API.
 - **People roles** — Assign presenters and co-organizers per session using a live Entra ID people picker; changes sync to Teams automatically.
 - **Registration & attendance tracking** — Sync registrations and attendance from Teams on page load; data is persisted locally for fast reads.
