@@ -1,5 +1,5 @@
 /**
- * E2E tests for the "Download Markdown" export button on the series detail page.
+ * E2E tests for the "Download Series Data" export button on the series detail page.
  *
  * ── Auth strategy ────────────────────────────────────────────────────────────
  * A valid next-auth v4 session token is generated with `encode` from
@@ -102,7 +102,7 @@ async function injectSessionCookie(context: BrowserContext): Promise<void> {
 
 // ── Test suite ────────────────────────────────────────────────────────────────
 
-test.describe('Series detail page — Download Markdown export', () => {
+test.describe('Series detail page — Download Series Data export', () => {
   /**
    * Before every test:
    *   1. Inject a valid session cookie so the server component doesn't redirect
@@ -140,13 +140,13 @@ test.describe('Series detail page — Download Markdown export', () => {
 
   test('export button is visible on the series detail page', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: 'Download Markdown' }),
+      page.getByRole('button', { name: 'Download Series Data' }),
     ).toBeVisible()
   })
 
   // ── Test 2: successful download ───────────────────────────────────────────
 
-  test('clicking Download Markdown triggers a file download with the correct filename', async ({
+  test('clicking Download Series Data triggers a file download with the correct filename', async ({
     page,
   }) => {
     // Intercept the export API call and return a mock markdown blob.
@@ -170,7 +170,7 @@ test.describe('Series detail page — Download Markdown export', () => {
     // don't miss it. Promise.all ensures both arms race in the right order.
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: 'Download Markdown' }).click(),
+      page.getByRole('button', { name: 'Download Series Data' }).click(),
     ])
 
     expect(download.suggestedFilename()).toBe('test-series.md')
@@ -189,7 +189,7 @@ test.describe('Series detail page — Download Markdown export', () => {
       },
     )
 
-    await page.getByRole('button', { name: 'Download Markdown' }).click()
+    await page.getByRole('button', { name: 'Download Series Data' }).click()
 
     // Call chain on error:
     //   exportSeriesMarkdown()  → throws new Error('Export failed: 500')
