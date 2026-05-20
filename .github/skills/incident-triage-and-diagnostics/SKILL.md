@@ -1,5 +1,5 @@
 ---
-name: reliability-incident-triage
+name: incident-triage-and-diagnostics
 description: 'Triage reliability incidents by isolating likely fault domains and defining safe mitigation and recovery checks. Use during outages, regressions, failed deployments, or recurring degradation.'
 argument-hint: 'Describe the symptoms, timeframe, impacted flows, recent changes, and the logs or telemetry already available.'
 ---

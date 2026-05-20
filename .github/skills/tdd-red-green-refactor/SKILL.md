@@ -1,5 +1,5 @@
 ---
-name: tdd-red-green-refactor-cycle
+name: tdd-red-green-refactor
 description: 'Execute a minimal-scope red-green-refactor workflow. Use for test-first features, regression-first bug fixes, and refactors that must preserve externally observable behavior.'
 argument-hint: 'Describe the requested behavior, target component, test-first constraints, and any limits on refactoring scope.'
 ---

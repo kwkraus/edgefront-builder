@@ -1,5 +1,5 @@
 ---
-name: http-status-and-payload-semantics
+name: status-code-decision-matrix
 description: 'Choose HTTP status codes and response payload behavior for ASP.NET Core minimal APIs. Use for success and error branch semantics, problem details, conflicts, and compatibility exceptions.'
 argument-hint: 'Describe the operation type, expected success result, known failure modes, and any client-compatibility constraints.'
 ---

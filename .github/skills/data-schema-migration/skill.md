@@ -1,5 +1,5 @@
 ---
-name: efcore-schema-and-migrations
+name: data-schema-migration
 description: 'Design EF Core schema changes, constraints, and migrations for the backend data model. Use for entity updates, indexes, uniqueness rules, cascade behavior, and migration planning.'
 argument-hint: 'Describe the entity or table change, columns or constraints affected, and any migration or data-compatibility concerns.'
 ---

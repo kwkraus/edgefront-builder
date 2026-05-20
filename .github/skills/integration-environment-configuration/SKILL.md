@@ -1,5 +1,5 @@
 ---
-name: cross-stack-environment-configuration
+name: integration-environment-configuration
 description: 'Validate frontend-backend environment wiring without hardcoded service endpoints. Use for local, dev, and prod config mapping, runtime key alignment, and configuration gap analysis.'
 argument-hint: 'Describe the target environments, required configuration keys, runtime wiring problem, and any suspected naming or source-of-truth gaps.'
 ---

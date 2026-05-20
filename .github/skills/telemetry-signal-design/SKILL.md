@@ -1,5 +1,5 @@
 ---
-name: observability-signal-design
+name: telemetry-signal-design
 description: 'Design logs, metrics, and traces for critical frontend and backend flows with clear operator actionability and low noise. Use when adding or revising end-to-end observability.'
 argument-hint: 'Describe the target flow, operational questions to answer, current observability gaps, and any correlation or volume concerns.'
 ---
