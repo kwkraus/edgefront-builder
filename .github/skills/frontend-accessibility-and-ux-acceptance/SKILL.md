@@ -1,5 +1,5 @@
 ---
-name: nextjs-accessibility-and-ux-acceptance
+name: frontend-accessibility-and-ux-acceptance
 description: 'Review Next.js interfaces for accessibility and UX acceptance. Use for semantic markup, keyboard flow, responsive behavior, async states, and final user-flow validation before merge.'
 argument-hint: 'Describe the user flow, UI surfaces changed, accessibility risks, and the states that need acceptance coverage.'
 ---

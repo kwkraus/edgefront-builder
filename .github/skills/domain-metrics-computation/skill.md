@@ -1,5 +1,5 @@
 ---
-name: domain-metrics-and-normalization
+name: domain-metrics-computation
 description: 'Apply email and domain normalization plus session and series metric rules, including W1/W2 warm-account logic and internal-domain exclusion. Use for domain logic changes, recompute behavior, and mandatory unit-test coverage.'
 argument-hint: 'Describe the normalization rule, metric behavior, affected entities or sessions, and whether the task is implementation or test coverage.'
 ---

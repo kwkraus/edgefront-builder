@@ -1,5 +1,5 @@
 ---
-name: release-safety-and-rollback
+name: deployment-safety-and-rollback
 description: 'Define deployment safeguards, environment protections, and rollback readiness for CI/CD releases. Use when adding or reviewing release jobs, promotion controls, or recovery plans.'
 argument-hint: 'Describe the target environment, release strategy, blast-radius concerns, and rollback expectations.'
 ---

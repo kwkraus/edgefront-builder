@@ -1,5 +1,5 @@
 ---
-name: ci-gate-discovery-and-mapping
+name: pipeline-discovery-and-gate-mapping
 description: 'Inventory existing CI/CD workflows and map required quality gates by component and environment. Use before changing GitHub Actions so pipeline gaps and blockers are explicit.'
 argument-hint: 'Describe the components, environments, and acceptance gates you need inventoried or clarified.'
 ---

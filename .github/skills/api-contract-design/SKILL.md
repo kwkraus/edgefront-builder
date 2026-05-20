@@ -1,5 +1,5 @@
 ---
-name: aspnet-api-contract-design
+name: api-contract-design
 description: 'Design ASP.NET Core minimal API request and response contracts. Use for DTO shapes, route and verb decisions, OpenAPI metadata, and compatibility planning before implementation.'
 argument-hint: 'Describe the endpoint purpose, route and verb, request fields, response variants, and compatibility constraints.'
 ---

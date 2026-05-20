@@ -1,5 +1,5 @@
 ---
-name: ci-validation-and-failure-reporting
+name: pipeline-validation-and-failure-reporting
 description: 'Run targeted CI/CD validation and report pass/fail outcomes with clear blockers and rerun scope. Use after workflow changes or when diagnosing failed pipeline runs.'
 argument-hint: 'Describe the workflow changes, gates that need confidence, and whether you are validating pre-merge, pre-release, or an active failure.'
 ---

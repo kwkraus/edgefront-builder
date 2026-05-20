@@ -1,5 +1,5 @@
 ---
-name: frontend-backend-contract-alignment
+name: integration-contract-alignment
 description: 'Align frontend consumers with backend API contracts. Use for route or DTO changes, compatibility windows, rollout sequencing, and cross-stack acceptance criteria.'
 argument-hint: 'Describe the backend contract change, affected frontend consumers, rollout constraints, and compatibility expectations.'
 ---

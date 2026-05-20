@@ -1,5 +1,5 @@
 ---
-name: github-actions-workflow-design
+name: github-actions-workflow-composition
 description: 'Design GitHub Actions workflows with clear triggers, deterministic job boundaries, safe caching, and diagnosable failure output. Use for new workflows or structural CI/CD refactors.'
 argument-hint: 'Describe the workflow goal, triggers, components involved, job boundaries, and any caching or failure-visibility requirements.'
 ---

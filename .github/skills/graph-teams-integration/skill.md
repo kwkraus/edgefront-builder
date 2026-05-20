@@ -1,5 +1,5 @@
 ---
-name: graph-teams-webinar-integration
+name: graph-teams-integration
 description: 'Design delegated Microsoft Graph and Teams webinar integration for the backend. Use for OBO token exchange, webinar CRUD, registrations and attendance reads, drift handling, and Graph error semantics.'
 argument-hint: 'Describe the Graph operation, Teams webinar context, delegated scopes or token flow, and any failure or retry concern.'
 ---
