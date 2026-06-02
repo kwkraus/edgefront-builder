@@ -10,15 +10,13 @@ This document describes the required Entra ID (Azure AD) app registration permis
 | `profile` | Delegated | SPEC-200 | User profile claims |
 | `email` | Delegated | SPEC-200 | Email claim |
 | `offline_access` | Delegated | SPEC-200 | Refresh token for silent renewal |
-| `VirtualEvent.ReadWrite` | Delegated | SPEC-200 | Create, read, update, delete Teams webinars |
-| `OnlineMeetingArtifact.Read.All` | Delegated | SPEC-200 | Read attendance reports |
 | `User.ReadBasic.All` | Delegated | SPEC-210 | Search Entra directory users for people picker |
 
 ## Exposed API Scope
 
 | Scope | Purpose |
 |---|---|
-| `api://{ClientId}/access_as_user` | Frontend requests this scope; backend validates and uses OBO to exchange for Graph token |
+| `api://{ClientId}/access_as_user` | Frontend requests this scope; backend validates user scope for API access |
 
 ## Option 1: Automated Setup (az CLI)
 
@@ -80,8 +78,6 @@ After setup, the API permissions page should show:
 |---|---|---|
 | `email` | Delegated | ✅ Granted |
 | `offline_access` | Delegated | ✅ Granted |
-| `OnlineMeetingArtifact.Read.All` | Delegated | ✅ Granted |
 | `openid` | Delegated | ✅ Granted |
 | `profile` | Delegated | ✅ Granted |
 | `User.ReadBasic.All` | Delegated | ✅ Granted |
-| `VirtualEvent.ReadWrite` | Delegated | ✅ Granted |

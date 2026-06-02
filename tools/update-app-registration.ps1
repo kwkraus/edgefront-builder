@@ -101,9 +101,7 @@ az ad app permission list --id $AppId --output table
 
 Write-Host ""
 Write-Host "Done! The following permissions should now be configured:" -ForegroundColor Green
-Write-Host "  - VirtualEvent.ReadWrite (delegated) — existing"
-Write-Host "  - OnlineMeetingArtifact.Read.All (delegated) — existing"
-Write-Host "  - User.ReadBasic.All (delegated) — NEW (SPEC-210)"
+Write-Host "  - User.ReadBasic.All (delegated) — required for people search"
 Write-Host ""
 
 <#

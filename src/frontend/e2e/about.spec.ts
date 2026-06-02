@@ -21,7 +21,6 @@ test.describe('About page', () => {
 
   test('displays all feature list items', async ({ page }) => {
     await expect(page.getByText('Series management')).toBeVisible();
-    await expect(page.getByText('Teams webinar publishing')).toBeVisible();
     await expect(page.getByText('Registration & attendance tracking')).toBeVisible();
     await expect(page.getByText('Engagement metrics & analytics')).toBeVisible();
   });

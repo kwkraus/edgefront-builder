@@ -4,22 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import {
-  ChevronLeftIcon,
-  CheckIcon,
-  TrashIcon,
-  SyncIcon,
-  LinkExternalIcon,
-  RocketIcon,
-} from '@primer/octicons-react'
-import {
-  Button,
-  IconButton,
-  Banner,
-  Spinner,
-  Token,
-  SkeletonBox,
-} from '@primer/react'
+import { ChevronLeftIcon, CheckIcon, TrashIcon } from '@primer/octicons-react'
+import { Button, IconButton, Spinner, Token, SkeletonBox } from '@primer/react'
 import { SkeletonText } from '@primer/react/experimental'
 import { ErrorBanner } from '@/components/error-banner'
 import { StatusBadge } from '@/components/status-badge'
@@ -29,26 +15,16 @@ import { InlineEditableTitle } from '@/components/inline-editable-title'
 import { PeoplePicker } from '@/components/people-picker'
 import { SessionSchedulePicker } from '@/components/session-schedule-picker'
 
-import { getSessionById } from '@/lib/api/sessions'
 import {
+  getSessionById,
   updateSession,
   updateSessionTitle,
   deleteSession,
-  publishSession,
   setSessionPresenters,
   setSessionCoordinators,
 } from '@/lib/api/sessions'
-import { useTeamsSync } from '@/hooks/use-teams-sync'
 import { getSessionMetrics } from '@/lib/api/metrics'
 import type { SessionResponse, SessionMetricsResponse, PersonInput } from '@/lib/api/types'
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 function toDate(iso: string | null | undefined): Date | null {
   if (!iso) return null
@@ -63,7 +39,6 @@ export default function SessionDetailPage() {
   const router = useRouter()
   const token = authSession?.accessToken ?? ''
 
-  // ── Data loading ─────────────────────────────────────────────────────────
   const [session, setSession] = useState<SessionResponse | null>(null)
   const [metrics, setMetrics] = useState<SessionMetricsResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -80,7 +55,6 @@ export default function SessionDetailPage() {
       ])
       setSession(s)
       setMetrics(m ?? null)
-      // Sync form state with loaded data
       setTitle(s.title)
       setStartsAtDate(toDate(s.startsAt))
       setEndsAtDate(toDate(s.endsAt))
@@ -109,19 +83,6 @@ export default function SessionDetailPage() {
     loadData()
   }, [loadData])
 
-  // ── Auto-sync published sessions from Teams ──────────────────────────────
-  const { isSyncing: syncing, syncOne, autoSyncIfStale } = useTeamsSync({
-    accessToken: token,
-    onSyncComplete: loadData,
-  })
-
-  useEffect(() => {
-    if (session) {
-      autoSyncIfStale([session])
-    }
-  }, [session, autoSyncIfStale])
-
-  // ── Form state ───────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
   const [startsAtDate, setStartsAtDate] = useState<Date | null>(null)
   const [endsAtDate, setEndsAtDate] = useState<Date | null>(null)
@@ -135,7 +96,6 @@ export default function SessionDetailPage() {
       ? 'End time must be after start time'
       : null
 
-  // ── Inline title save ────────────────────────────────────────────────────
   const [titleSaveLoading, setTitleSaveLoading] = useState(false)
   const [titleSaveError, setTitleSaveError] = useState<string | null>(null)
 
@@ -148,17 +108,15 @@ export default function SessionDetailPage() {
       setSession((currentSession) => (currentSession ? { ...currentSession, ...updatedSession } : updatedSession))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update session title'
-      setTitleSaveError(message.includes('TEAMS_UPDATE_FAILED') ? 'Teams webinar could not be updated.' : message)
+      setTitleSaveError(message)
       throw err
     } finally {
       setTitleSaveLoading(false)
     }
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────────
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [teamsUpdateFailed, setTeamsUpdateFailed] = useState(false)
 
   async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault()
@@ -168,7 +126,6 @@ export default function SessionDetailPage() {
 
     setSaveLoading(true)
     setSaveError(null)
-    setTeamsUpdateFailed(false)
     try {
       await updateSession(
         id,
@@ -184,16 +141,11 @@ export default function SessionDetailPage() {
       router.push(`/series/${session?.seriesId}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Save failed'
-      if (msg.includes('TEAMS_UPDATE_FAILED')) {
-        setTeamsUpdateFailed(true)
-      } else {
-        setSaveError(msg)
-      }
+      setSaveError(msg)
       setSaveLoading(false)
     }
   }
 
-  // ── Delete ───────────────────────────────────────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -211,53 +163,18 @@ export default function SessionDetailPage() {
     }
   }
 
-  // ── Publish individual session to Teams ──────────────────────────────────
-  const [publishOpen, setPublishOpen] = useState(false)
-  const [publishLoading, setPublishLoading] = useState(false)
-  const [publishError, setPublishError] = useState<string | null>(null)
-  const [publishLicenseError, setPublishLicenseError] = useState(false)
+  const busy = saveLoading || deleteLoading || titleSaveLoading
 
-  async function handlePublishSession() {
-    setPublishLoading(true)
-    setPublishError(null)
-    setPublishLicenseError(false)
-    try {
-      await publishSession(id, token)
-      setPublishOpen(false)
-      setPublishLoading(false)
-      loadData()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Session publish failed'
-      if (msg.includes('TEAMS_LICENSE_REQUIRED')) {
-        setPublishLicenseError(true)
-      } else {
-        setPublishError(msg)
-      }
-      setPublishLoading(false)
-      setPublishOpen(false)
-    }
-  }
-
-  // ── Derived state ────────────────────────────────────────────────────────
-  const busy = saveLoading || deleteLoading || publishLoading || titleSaveLoading
-
-  // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loadingData) {
     return (
       <div className="space-y-6" aria-label="Loading session…" aria-busy="true">
-        {/* Back link */}
         <SkeletonText size="bodySmall" maxWidth={112} />
-
-        {/* Header: title + pencil + status badge */}
         <div className="flex items-center gap-3">
           <SkeletonBox height={32} width={256} />
           <SkeletonBox height={32} width={32} />
           <SkeletonBox height={24} width={80} className="rounded-full" />
         </div>
-
-        {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
-          {/* Schedule card */}
           <div className="space-y-4 rounded-lg border p-6" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
             <SkeletonText size="bodySmall" maxWidth={96} />
             <div className="space-y-1.5">
@@ -270,7 +187,6 @@ export default function SessionDetailPage() {
             </div>
           </div>
 
-          {/* Presenters + Coordinators */}
           <div className="space-y-6">
             <div className="space-y-3 rounded-lg border p-6" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <SkeletonBox height={40} />
@@ -281,27 +197,12 @@ export default function SessionDetailPage() {
           </div>
         </div>
 
-        {/* Button row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SkeletonBox height={40} width={96} />
-            <SkeletonBox height={40} width={128} />
             <SkeletonBox height={40} width={80} />
           </div>
           <SkeletonBox height={40} width={40} />
-        </div>
-
-        {/* Metrics section */}
-        <div className="space-y-3">
-          <SkeletonText size="bodySmall" maxWidth={64} />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-lg border p-4 space-y-2" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
-                <SkeletonText size="bodySmall" maxWidth={80} />
-                <SkeletonBox height={28} width={40} />
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     )
@@ -310,32 +211,28 @@ export default function SessionDetailPage() {
   if (loadError || !session) {
     return (
       <div className="space-y-4 py-8">
-        <ErrorBanner
-          message={loadError ?? 'Session not found'}
-          onRetry={loadData}
-        />
+        <ErrorBanner message={loadError ?? 'Session not found'} onRetry={loadData} />
       </div>
     )
   }
 
-  const isPublished = session.status === 'Published'
-  const saveLabel = isPublished ? 'Save & Publish to Teams' : 'Save'
-
   return (
     <div className="space-y-6">
-      {/* ── Back link ──────────────────────────────────────────────────────── */}
       <Link
         href={`/series/${session.seriesId}`}
         className="inline-flex items-center gap-1 text-sm transition-colors"
         style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-default, var(--color-fg-default))' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-muted, var(--color-fg-muted))' }}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-default, var(--color-fg-default))'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-muted, var(--color-fg-muted))'
+        }}
       >
         <ChevronLeftIcon size={16} aria-hidden="true" />
         Back to Series
       </Link>
 
-      {/* ── Header: Title + Pencil + StatusBadge ───────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
@@ -355,122 +252,24 @@ export default function SessionDetailPage() {
               {titleError}
             </p>
           )}
-          <div className="flex items-center gap-3">
-            {session.joinWebUrl && (
-              <a
-                href={session.joinWebUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded p-1 transition-colors focus:outline-none focus-visible:ring-2"
-                style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-default, var(--color-fg-default))' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--fgColor-muted, var(--color-fg-muted))' }}
-                title="Open webinar in Teams"
-                aria-label="Open webinar in Teams"
-              >
-                <LinkExternalIcon size={16} aria-hidden="true" />
-              </a>
-            )}
-            {syncing && (
-              <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }}>
-                <span className="sync-pulse" />
-                Syncing…
-              </span>
-            )}
-            {!syncing && session.lastSyncAt && (
-              <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--fgColor-muted, var(--color-fg-muted))' }} title={formatDateTime(session.lastSyncAt)}>
-                Last synced: {formatDateTime(session.lastSyncAt)}
-                {session.status === 'Published' && session.teamsWebinarId && (
-                  <IconButton
-                    icon={SyncIcon}
-                    aria-label="Refresh from Teams"
-                    variant="invisible"
-                    size="small"
-                    onClick={() => syncOne(session.sessionId)}
-                  />
-                )}
-              </span>
-            )}
-            {!syncing && session.status === 'Published' && !session.lastSyncAt && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
-                Never synced
-                {session.teamsWebinarId && (
-                  <IconButton
-                    icon={SyncIcon}
-                    aria-label="Refresh from Teams"
-                    variant="invisible"
-                    size="small"
-                    onClick={() => syncOne(session.sessionId)}
-                  />
-                )}
-              </span>
-            )}
-          </div>
         </div>
       </div>
-
-      {/* ── Banners ──────────────────────────────────────────────────────────── */}
-      {session.driftStatus === 'DriftDetected' && (
-        <Banner variant="warning" title="Drift detected — Builder values differ from Teams">
-          <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs mt-2">
-            <dt className="font-medium">Field</dt>
-            <dt className="font-medium">Builder</dt>
-            <dt className="font-medium">Stored</dt>
-            <dd>Title</dd>
-            <dd>{session.title}</dd>
-            <dd>—</dd>
-            <dd>Starts At</dd>
-            <dd>{formatDateTime(session.startsAt)}</dd>
-            <dd>—</dd>
-            <dd>Ends At</dd>
-            <dd>{formatDateTime(session.endsAt)}</dd>
-            <dd>—</dd>
-          </dl>
-        </Banner>
-      )}
 
       {deleteError && <ErrorBanner message={deleteError} />}
       {titleSaveError && <ErrorBanner message={titleSaveError} />}
       {saveError && <ErrorBanner message={saveError} />}
-      {publishError && (
-        <ErrorBanner
-          message={publishError}
-          onRetry={() => { setPublishError(null); setPublishOpen(true) }}
-        />
-      )}
-      {publishLicenseError && (
-        <Banner variant="warning" title="Teams webinar license required.">
-          Cannot publish session — assign a Teams webinar license, then retry.
-        </Banner>
-      )}
-      {teamsUpdateFailed && (
-        <Banner
-          variant="critical"
-          title="Publish failed — Teams webinar could not be updated."
-          primaryAction={
-            <Banner.PrimaryAction onClick={handleSave}>
-              Retry
-            </Banner.PrimaryAction>
-          }
-        />
-      )}
 
-      {/* ── Save overlay ─────────────────────────────────────────────────────── */}
       {saveLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} aria-live="polite" aria-busy="true">
           <div className="flex items-center gap-3 rounded-lg px-6 py-4 shadow-lg" style={{ backgroundColor: 'var(--bgColor-default)' }}>
             <Spinner size="medium" />
-            <span className="text-sm font-medium">
-              {isPublished ? 'Publishing to Teams…' : 'Saving…'}
-            </span>
+            <span className="text-sm font-medium">Saving…</span>
           </div>
         </div>
       )}
 
-      {/* ── Form: Two-column layout ──────────────────────────────────────── */}
       <form onSubmit={handleSave} noValidate className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
-          {/* ── Left column: Schedule ──────────────────────────────────────── */}
           <section className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
             <h2 className="text-base font-semibold">Schedule</h2>
 
@@ -488,7 +287,6 @@ export default function SessionDetailPage() {
             )}
           </section>
 
-          {/* ── Right column: Presenters & Coordinators ────────────────────── */}
           <div className="space-y-6">
             <section className="rounded-lg border p-6 space-y-3" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }}>
               <h2 className="text-base font-semibold">Presenters</h2>
@@ -514,27 +312,11 @@ export default function SessionDetailPage() {
           </div>
         </div>
 
-        {/* ── Action buttons ───────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
-              type="submit"
-              variant="primary"
-              leadingVisual={CheckIcon}
-              disabled={saveLoading}
-            >
-              {saveLabel}
+            <Button type="submit" variant="primary" leadingVisual={CheckIcon} disabled={saveLoading}>
+              Save
             </Button>
-            {!isPublished && (
-              <Button
-                leadingVisual={RocketIcon}
-                onClick={() => { setPublishError(null); setPublishLicenseError(false); setPublishOpen(true) }}
-                disabled={publishLoading}
-                className="!border-amber-300 !bg-amber-50 !text-amber-800 hover:!bg-amber-100"
-              >
-                Publish to Teams
-              </Button>
-            )}
             <Button as={Link} href={`/series/${session.seriesId}`} variant="default">
               Cancel
             </Button>
@@ -543,12 +325,14 @@ export default function SessionDetailPage() {
             icon={TrashIcon}
             aria-label="Delete session"
             variant="danger"
-            onClick={() => { setDeleteError(null); setDeleteOpen(true) }}
+            onClick={() => {
+              setDeleteError(null)
+              setDeleteOpen(true)
+            }}
           />
         </div>
       </form>
 
-      {/* ── Metrics card ───────────────────────────────────────────────────── */}
       {metrics && (
         <section className="rounded-lg border p-6 space-y-4" style={{ backgroundColor: 'var(--bgColor-default, var(--color-canvas-default))' }} aria-label="Session metrics">
           <h2 className="text-base font-semibold">Metrics</h2>
@@ -575,27 +359,15 @@ export default function SessionDetailPage() {
         </section>
       )}
 
-      {/* ── Delete Confirm ────────────────────────────────────────────────── */}
       <ConfirmDialog
         open={deleteOpen}
         title="Delete Session"
-        description="This will permanently delete the session and its Teams webinar. Continue?"
+        description="This will permanently delete the session. Continue?"
         confirmLabel="Delete Session"
         dangerous
         loading={deleteLoading}
         onConfirm={handleDelete}
         onCancel={() => setDeleteOpen(false)}
-      />
-
-      {/* ── Publish Session Confirm ──────────────────────────────────────── */}
-      <ConfirmDialog
-        open={publishOpen}
-        title="Publish Session to Teams"
-        description="This will create a Teams webinar for this session. Continue?"
-        confirmLabel="Publish"
-        loading={publishLoading}
-        onConfirm={handlePublishSession}
-        onCancel={() => setPublishOpen(false)}
       />
     </div>
   )

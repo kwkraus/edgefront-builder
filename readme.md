@@ -1,6 +1,6 @@
 # EdgeFront Builder
 
-EdgeFront Builder is a **webinar management platform** that integrates with Microsoft Teams. It helps organizations plan, publish, and track webinar series and individual sessions — streamlining the workflow from draft to published webinar with real-time sync from Teams.
+EdgeFront Builder is a **webinar management platform** for local event planning, participation tracking, and engagement analytics. It helps organizations manage webinar series and individual sessions while preparing normalized event data for ingestion-first reporting workflows.
 
 ![About EdgeFront Builder](https://github.com/user-attachments/assets/674c414a-8e81-47f5-90e1-6695f224319a)
 
@@ -9,12 +9,10 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 ## Key Capabilities
 
 - **Series & session management** — Create webinar series containing multiple sessions; manage titles, schedules, presenters, and coordinators.
-- **Teams webinar publishing** — Publish a series to automatically create Teams webinars for every session via the Microsoft Graph API.
-- **People roles** — Assign presenters and co-organizers per session using a live Entra ID people picker; changes sync to Teams automatically.
-- **Registration & attendance tracking** — Sync registrations and attendance from Teams on page load; data is persisted locally for fast reads.
-- **Drift detection** — Detect when Teams-side metadata (title, start, end) diverges from Builder and surface a warning badge so you can reconcile.
+- **People roles** — Assign presenters and co-organizers per session using a live Entra ID people picker.
+- **Registration & attendance tracking** — Capture normalized registration and attendance records in the local data model.
 - **Metrics & analytics** — Aggregated engagement metrics per session and across a series: total registrations, attendees, unique account domains, and warm-account influence tracking.
-- **Entra ID authentication** — Single-tenant login via Entra ID; all Graph operations use delegated OBO tokens — no application permissions required.
+- **Entra ID authentication** — Single-tenant login via Entra ID.
 
 ---
 
@@ -36,10 +34,6 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ![Series Detail](docs/screenshots/series-detail.png)
 
-### Publish Series to Teams
-
-![Publish Series](docs/screenshots/series-publish.png)
-
 ### Create a Session
 
 ![Create Session](docs/screenshots/session-create.png)
@@ -48,9 +42,9 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 
 ![Session Detail (Draft)](docs/screenshots/session-detail-draft.png)
 
-### Session Detail — Published with Sync & Metrics
+### Session Detail
 
-![Session Detail (Published)](docs/screenshots/session-detail-published.png)
+![Session Detail](docs/screenshots/session-detail-published.png)
 
 ### About
 
@@ -66,7 +60,7 @@ EdgeFront Builder is a **webinar management platform** that integrates with Micr
 | Backend | ASP.NET Core Minimal API, .NET 10, EF Core |
 | Database | Azure SQL |
 | Auth | Microsoft Entra ID (next-auth, single-tenant) |
-| Graph integration | Microsoft Graph v1 — delegated `VirtualEvent.ReadWrite` via OBO flow |
+| Graph integration | Microsoft Graph v1 — delegated user profile search |
 | Hosting | Azure App Service |
 
 ---
@@ -88,9 +82,9 @@ tools/          # PowerShell scripts (e.g., Entra app registration)
 ## Architecture Overview
 
 - **Monolith with modular boundaries** — vertical-slice feature organization in the backend, App Router feature directories in the frontend.
-- **User-initiated data sync** — registrations and attendance are pulled from Teams when a user opens a session or series page; no background jobs or webhooks.
+- **Ingestion-ready data model** — normalized registration and attendance records are persisted locally and remain the foundation for follow-on ingestion work.
 - **Metrics persisted on sync** — all metric aggregations are computed and stored on write; no compute-on-read.
-- **Delegated-only Graph permissions** — all Microsoft Graph calls use an OBO token exchange; the authenticated user must be present for every operation (see the permissions table below).
+- **Delegated-only Graph permissions** — authenticated user context is required for supported directory lookups.
 
 ---
 
@@ -107,8 +101,8 @@ Required delegated permissions:
 | Permission | Purpose |
 |---|---|
 | `openid`, `profile`, `email`, `offline_access` | Standard OIDC sign-in |
-| `VirtualEvent.ReadWrite` | Create / read / update / delete Teams webinars |
-| `OnlineMeetingArtifact.Read.All` | Read attendance reports |
 | `User.ReadBasic.All` | People search for presenter/coordinator picker |
 
 Exposed API scope: `api://{ClientId}/access_as_user` (frontend → backend token exchange).
+
+This phase removes Teams webinar publish/sync API dependencies so installs do not require Teams webinar app registration consent paths.

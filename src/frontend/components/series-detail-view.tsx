@@ -4,18 +4,15 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import clsx from 'clsx'
-import { TrashIcon, RocketIcon, PlusIcon, SyncIcon, LinkExternalIcon, PeopleIcon, OrganizationIcon, XIcon, DownloadIcon } from '@primer/octicons-react'
-import { Button, IconButton, Banner, Token, Tooltip } from '@primer/react'
+import { TrashIcon, PlusIcon, PeopleIcon, OrganizationIcon, DownloadIcon } from '@primer/octicons-react'
+import { Button, IconButton, Tooltip, Token } from '@primer/react'
 import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { InlineEditableTitle } from '@/components/inline-editable-title'
 import { MetricsPanel } from '@/components/metrics-panel'
-import { SyncStatusCell } from '@/components/sync-status-cell'
-import { updateSeries, deleteSeries, publishSeries, exportSeriesMarkdown } from '@/lib/api/series'
-import { useTeamsSync } from '@/hooks/use-teams-sync'
-import { deleteSession, publishSession } from '@/lib/api/sessions'
+import { updateSeries, deleteSeries, exportSeriesMarkdown } from '@/lib/api/series'
+import { deleteSession } from '@/lib/api/sessions'
 import type { SeriesResponse, SessionListItem, SeriesMetricsResponse } from '@/lib/api/types'
 
 function buildPeopleTooltip(s: SessionListItem): string {
@@ -26,13 +23,13 @@ function buildPeopleTooltip(s: SessionListItem): string {
   }
 
   if (s.presenters && s.presenters.length > 0) {
-    lines.push(`Presenters: ${s.presenters.map(p => p.displayName).join(', ')}`)
+    lines.push(`Presenters: ${s.presenters.map((p) => p.displayName).join(', ')}`)
   } else {
     lines.push('Presenters: None')
   }
 
   if (s.coordinators && s.coordinators.length > 0) {
-    lines.push(`Co-organizers: ${s.coordinators.map(c => c.displayName).join(', ')}`)
+    lines.push(`Co-organizers: ${s.coordinators.map((c) => c.displayName).join(', ')}`)
   } else {
     lines.push('Co-organizers: None')
   }
@@ -59,9 +56,13 @@ function formatDelivery(startsAt: string | null | undefined, endsAt: string | nu
     hour12: true,
   })
 
-  const tzShort = start.toLocaleTimeString(undefined, { timeZoneName: 'short' })
-    .split(' ').pop() ?? ''
-  const tzLong = start.toLocaleTimeString(undefined, { timeZoneName: 'long' })
+  const tzShort =
+    start
+      .toLocaleTimeString(undefined, { timeZoneName: 'short' })
+      .split(' ')
+      .pop() ?? ''
+  const tzLong = start
+    .toLocaleTimeString(undefined, { timeZoneName: 'long' })
     .replace(/^[\d:]+\s*(AM|PM)?\s*/i, '')
   const offMins = -start.getTimezoneOffset()
   const sign = offMins >= 0 ? '+' : '-'
@@ -102,24 +103,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     [sessions],
   )
 
-  // ── Auto-sync published sessions via shared hook ─────────────────────────
-  const { isSyncing, getSyncState, syncOne, syncAll, autoSyncIfStale, cancelAll } = useTeamsSync({
-    accessToken: token,
-    onSyncComplete: () => router.refresh(),
-  })
-
-  useEffect(() => {
-    if (sessionStatus !== 'authenticated' || !token) return
-    autoSyncIfStale(sessions)
-  }, [sessions, autoSyncIfStale, sessionStatus, token])
-
-  // ── Individual session sync ────────────────────────────────────────────
-  async function handleSyncSession(sessionId: string) {
-    await syncOne(sessionId)
-    router.refresh()
-  }
-
-  // ── Edit Series ──────────────────────────────────────────────────────────
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
   const busy = sessionStatus === 'loading' || editLoading
@@ -143,7 +126,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
-  // ── Delete Series ─────────────────────────────────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -161,33 +143,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
-  // ── Publish Series ────────────────────────────────────────────────────────
-  const [publishOpen, setPublishOpen] = useState(false)
-  const [publishLoading, setPublishLoading] = useState(false)
-  const [publishError, setPublishError] = useState<string | null>(null)
-  const [publishLicenseError, setPublishLicenseError] = useState(false)
-
-  async function handlePublishSeries() {
-    setPublishLoading(true)
-    setPublishError(null)
-    setPublishLicenseError(false)
-    try {
-      await publishSeries(series.seriesId, token)
-      setPublishOpen(false)
-      router.refresh()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Publish failed'
-      if (msg.includes('TEAMS_LICENSE_REQUIRED')) {
-        setPublishLicenseError(true)
-      } else {
-        setPublishError(msg)
-      }
-      setPublishLoading(false)
-      setPublishOpen(false)
-    }
-  }
-
-  // ── Delete Session ────────────────────────────────────────────────────────
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null)
   const [deleteSessionLoading, setDeleteSessionLoading] = useState(false)
   const [deleteSessionError, setDeleteSessionError] = useState<string | null>(null)
@@ -207,34 +162,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
-  // ── Publish Session (individual) ──────────────────────────────────────────
-  const [publishSessionId, setPublishSessionId] = useState<string | null>(null)
-  const [publishSessionLoading, setPublishSessionLoading] = useState(false)
-  const [publishSessionError, setPublishSessionError] = useState<string | null>(null)
-  const [publishSessionLicenseError, setPublishSessionLicenseError] = useState(false)
-
-  async function handlePublishSession() {
-    if (!publishSessionId) return
-    setPublishSessionLoading(true)
-    setPublishSessionError(null)
-    setPublishSessionLicenseError(false)
-    try {
-      await publishSession(publishSessionId, token)
-      setPublishSessionId(null)
-      router.refresh()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Session publish failed'
-      if (msg.includes('TEAMS_LICENSE_REQUIRED')) {
-        setPublishSessionLicenseError(true)
-      } else {
-        setPublishSessionError(msg)
-      }
-      setPublishSessionLoading(false)
-      setPublishSessionId(null)
-    }
-  }
-
-  // ── Export Markdown ───────────────────────────────────────────────────────
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
@@ -257,7 +184,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
@@ -278,16 +204,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {series.status === 'Draft' && (
-            <Button
-              variant="primary"
-              leadingVisual={RocketIcon}
-              onClick={() => { setPublishError(null); setPublishLicenseError(false); setPublishOpen(true) }}
-              disabled={busy}
-            >
-              Publish Series
-            </Button>
-          )}
           <IconButton
             icon={DownloadIcon}
             aria-label="Download Series Data"
@@ -299,56 +215,20 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
             icon={TrashIcon}
             aria-label="Delete series"
             variant="danger"
-            onClick={() => { setDeleteError(null); setDeleteOpen(true) }}
+            onClick={() => {
+              setDeleteError(null)
+              setDeleteOpen(true)
+            }}
             disabled={busy}
           />
         </div>
       </div>
 
-      {/* ── Error banners ────────────────────────────────────────────────── */}
-      {deleteError && (
-        <ErrorBanner message={deleteError} onRetry={() => setDeleteOpen(true)} />
-      )}
-      {editError && (
-        <ErrorBanner message={editError} />
-      )}
-      {deleteSessionError && (
-        <ErrorBanner message={deleteSessionError} />
-      )}
-      {publishError && (
-        <ErrorBanner
-          message={publishError}
-          onRetry={() => { setPublishError(null); setPublishOpen(true) }}
-        />
-      )}
-      {publishLicenseError && (
-        <Banner
-          variant="warning"
-          title="Teams webinar license required."
-          description="Assign a Teams webinar license to the service account, then retry publishing."
-        />
-      )}
-      {publishSessionError && (
-        <ErrorBanner
-          message={publishSessionError}
-          onRetry={() => { setPublishSessionError(null) }}
-        />
-      )}
-      {publishSessionLicenseError && (
-        <Banner
-          variant="warning"
-          title="Teams webinar license required."
-          description="Cannot publish session — assign a Teams webinar license, then retry."
-        />
-      )}
-      {exportError && (
-        <ErrorBanner
-          message={exportError}
-          onRetry={handleExportMarkdown}
-        />
-      )}
+      {deleteError && <ErrorBanner message={deleteError} onRetry={() => setDeleteOpen(true)} />}
+      {editError && <ErrorBanner message={editError} />}
+      {deleteSessionError && <ErrorBanner message={deleteSessionError} />}
+      {exportError && <ErrorBanner message={exportError} onRetry={handleExportMarkdown} />}
 
-      {/* ── Metrics ──────────────────────────────────────────────────────── */}
       <section aria-label="Series metrics">
         <h2
           className="mb-3 text-sm font-semibold uppercase tracking-wide"
@@ -366,10 +246,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         />
         {metrics && metrics.warmAccounts.length > 0 && (
           <div className="mt-3">
-            <p
-              className="mb-2 text-xs font-medium"
-              style={{ color: 'var(--fgColor-muted)' }}
-            >
+            <p className="mb-2 text-xs font-medium" style={{ color: 'var(--fgColor-muted)' }}>
               Warm accounts:
             </p>
             <div className="flex flex-wrap gap-2">
@@ -392,30 +269,14 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         )}
       </section>
 
-      {/* ── Sessions table ───────────────────────────────────────────────── */}
       <section aria-label="Sessions">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2
-              className="text-sm font-semibold uppercase tracking-wide"
-              style={{ color: 'var(--fgColor-muted)' }}
-            >
-              Sessions ({sortedSessions.length})
-            </h2>
-            {series.status === 'Published' && series.draftSessionCount > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                style={{
-                  color: 'var(--fgColor-attention)',
-                  backgroundColor: 'var(--bgColor-attention-muted)',
-                  border: '1px solid var(--borderColor-attention-muted)',
-                }}
-              >
-                {series.draftSessionCount} unpublished
-              </span>
-            )}
-            {/* Sync button moved to table Status column header */}
-          </div>
+          <h2
+            className="text-sm font-semibold uppercase tracking-wide"
+            style={{ color: 'var(--fgColor-muted)' }}
+          >
+            Sessions ({sortedSessions.length})
+          </h2>
           <Button
             as={Link}
             href={`/series/${series.seriesId}/sessions/new`}
@@ -456,38 +317,8 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     borderBottom: '1px solid var(--borderColor-default)',
                   }}
                 >
-                  <th className="w-8 px-2 py-3">
-                    <div className="flex items-center justify-center">
-                    {isSyncing ? (
-                      <Tooltip text="Cancel Sync" direction="e" type="description">
-                        <IconButton
-                          icon={XIcon}
-                          aria-label="Cancel Sync"
-                          variant="invisible"
-                          size="small"
-                          unsafeDisableTooltip
-                          onClick={(e) => { e.stopPropagation(); cancelAll() }}
-                        />
-                      </Tooltip>
-                    ) : (
-                      series.status === 'Published' && sessions.some(s => s.status === 'Published') ? (
-                        <Tooltip text="Sync All" direction="e" type="description">
-                          <IconButton
-                            icon={SyncIcon}
-                            aria-label="Sync All"
-                            variant="invisible"
-                            size="small"
-                            unsafeDisableTooltip
-                            onClick={(e) => { e.stopPropagation(); syncAll(sessions) }}
-                          />
-                        </Tooltip>
-                      ) : (
-                        <span className="sr-only">Status</span>
-                      )
-                    )}
-                    </div>
-                  </th>
                   <th className="px-4 py-3 text-left font-medium">Title</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
                   <th className="px-4 py-3 text-left font-medium">Delivery</th>
                   <th className="px-4 py-3 text-left font-medium">People</th>
                   <th className="px-4 py-3 text-right font-medium">Reg.</th>
@@ -496,22 +327,16 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {sortedSessions.map((s, idx) => {
-                  const rowSync = getSyncState(s.sessionId)
-                  const dataCellClass = clsx({
-                    'sync-cell-syncing': rowSync === 'syncing',
-                    'sync-cell-reveal': rowSync === 'done',
-                  })
-                  return (
+                {sortedSessions.map((s, idx) => (
                   <tr
                     key={s.sessionId}
                     onClick={() => router.push(`/sessions/${s.sessionId}`)}
-                    className={clsx('cursor-pointer transition-colors', {
-                      'sync-row-syncing': rowSync === 'syncing',
-                      'sync-row-done': rowSync === 'done',
-                    })}
+                    className="cursor-pointer transition-colors"
                     style={{
-                      borderBottom: idx < sortedSessions.length - 1 ? '1px solid var(--borderColor-default)' : undefined,
+                      borderBottom:
+                        idx < sortedSessions.length - 1
+                          ? '1px solid var(--borderColor-default)'
+                          : undefined,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = 'var(--bgColor-muted)'
@@ -520,20 +345,11 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       e.currentTarget.style.backgroundColor = ''
                     }}
                   >
-                    <td className="w-8 px-2 py-3">
-                      <div className="flex items-center justify-center">
-                      <SyncStatusCell
-                        sessionId={s.sessionId}
-                        status={s.status}
-                        syncState={getSyncState(s.sessionId)}
-                        onSync={handleSyncSession}
-                      />
-                      </div>
+                    <td className="px-4 py-3 font-medium">{s.title}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={s.status} />
                     </td>
-                    <td className={clsx('px-4 py-3 font-medium', dataCellClass)}>
-                      {s.title}
-                    </td>
-                    <td className={clsx('px-4 py-3 whitespace-nowrap', dataCellClass)} style={{ color: 'var(--fgColor-muted)' }}>
+                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
                       {(() => {
                         const d = formatDelivery(s.startsAt, s.endsAt)
                         return (
@@ -544,7 +360,16 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                                 {d.time}
                                 {d.duration && <> • {d.duration}</>}
                                 {d.tzShort && (
-                                  <> • <span title={d.tzTooltip} style={{ cursor: 'help', textDecoration: 'underline dotted' }}>{d.tzShort}</span></>
+                                  <>
+                                    {' '}
+                                    •{' '}
+                                    <span
+                                      title={d.tzTooltip}
+                                      style={{ cursor: 'help', textDecoration: 'underline dotted' }}
+                                    >
+                                      {d.tzShort}
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             )}
@@ -552,13 +377,20 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                         )
                       })()}
                     </td>
-                    <td className={clsx('px-4 py-3 whitespace-nowrap', dataCellClass)} style={{ color: 'var(--fgColor-muted)' }}>
-                      <Tooltip
-                        text={buildPeopleTooltip(s)}
-                        direction="s"
-                        type="description"
-                      >
-                        <button type="button" className="inline-flex items-center gap-3 text-xs" style={{ cursor: 'default', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit' }}>
+                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
+                      <Tooltip text={buildPeopleTooltip(s)} direction="s" type="description">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-3 text-xs"
+                          style={{
+                            cursor: 'default',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            color: 'inherit',
+                            font: 'inherit',
+                          }}
+                        >
                           <span className="inline-flex items-center gap-1">
                             <PeopleIcon size={14} />
                             {s.presenterCount}
@@ -570,47 +402,10 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                         </button>
                       </Tooltip>
                     </td>
-                    <td className={clsx('px-4 py-3 tabular-nums text-right', dataCellClass)}>{s.totalRegistrations}</td>
-                    <td className={clsx('px-4 py-3 tabular-nums text-right', dataCellClass)}>{s.totalAttendees}</td>
-                    <td
-                      className="px-4 py-3 text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td className="px-4 py-3 tabular-nums text-right">{s.totalRegistrations}</td>
+                    <td className="px-4 py-3 tabular-nums text-right">{s.totalAttendees}</td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        {series.status === 'Published' && s.status === 'Draft' && (
-                          <IconButton
-                            icon={RocketIcon}
-                            aria-label={`Publish ${s.title} to Teams`}
-                            variant="invisible"
-                            size="small"
-                            onClick={() => setPublishSessionId(s.sessionId)}
-                            disabled={publishSessionLoading}
-                            unsafeDisableTooltip={false}
-                            style={{ color: 'var(--fgColor-attention)' }}
-                          />
-                        )}
-                        {s.joinWebUrl ? (
-                          <IconButton
-                            as="a"
-                            href={s.joinWebUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            icon={LinkExternalIcon}
-                            aria-label={`Open ${s.title} in Teams`}
-                            variant="invisible"
-                            size="small"
-                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <IconButton
-                            icon={LinkExternalIcon}
-                            aria-label="No event link available"
-                            variant="invisible"
-                            size="small"
-                            disabled
-                            style={{ opacity: 0.3 }}
-                          />
-                        )}
                         <IconButton
                           icon={TrashIcon}
                           aria-label={`Delete ${s.title}`}
@@ -621,19 +416,17 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                       </div>
                     </td>
                   </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </section>
 
-      {/* ── Delete Series Confirm ─────────────────────────────────────────── */}
       <ConfirmDialog
         open={deleteOpen}
         title="Delete Series"
-        description="This will delete all sessions and their Teams webinars. Continue?"
+        description="This will delete all sessions. Continue?"
         confirmLabel="Delete Series"
         dangerous
         loading={deleteLoading}
@@ -641,38 +434,15 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
         onCancel={() => setDeleteOpen(false)}
       />
 
-      {/* ── Publish Series Confirm ────────────────────────────────────────── */}
-      <ConfirmDialog
-        open={publishOpen}
-        title="Publish Series"
-        description="This will create Teams webinars for all sessions. Continue?"
-        confirmLabel="Publish"
-        loading={publishLoading}
-        onConfirm={handlePublishSeries}
-        onCancel={() => setPublishOpen(false)}
-      />
-
-      {/* ── Delete Session Confirm ────────────────────────────────────────── */}
       <ConfirmDialog
         open={deleteSessionId !== null}
         title="Delete Session"
-        description="This will permanently delete the session and its Teams webinar. Continue?"
+        description="This will permanently delete the session. Continue?"
         confirmLabel="Delete Session"
         dangerous
         loading={deleteSessionLoading}
         onConfirm={handleDeleteSession}
         onCancel={() => setDeleteSessionId(null)}
-      />
-
-      {/* ── Publish Session Confirm ───────────────────────────────────────── */}
-      <ConfirmDialog
-        open={publishSessionId !== null}
-        title="Publish Session to Teams"
-        description="This will create a Teams webinar for this session. Continue?"
-        confirmLabel="Publish"
-        loading={publishSessionLoading}
-        onConfirm={handlePublishSession}
-        onCancel={() => setPublishSessionId(null)}
       />
     </div>
   )

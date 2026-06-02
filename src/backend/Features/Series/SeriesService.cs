@@ -2,9 +2,7 @@ using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Series.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
-using EdgeFront.Builder.Infrastructure.Graph;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EdgeFront.Builder.Features.Series;
 
@@ -116,29 +114,8 @@ public class SeriesService
         return true;
     }
 
-    /// <summary>
-    /// Backward-compatible overload used by existing tests and call-sites that have not yet
-    /// been updated to pass a graph client. When <paramref name="graphClient"/> is null the
-    /// series is simply promoted to Published without creating any Teams webinars.
-    /// </summary>
-    public Task<(SeriesResponseDto? series, string? errorCode)> PublishAsync(Guid id, string ownerUserId)
-        => PublishAsync(id, ownerUserId, oboToken: null, graphClient: null, logger: null);
-
-    /// <summary>
-    /// Publish flow: creates Teams webinars for every Draft session in the series,
-    /// then transitions the series and all sessions to Published.
-    /// All Graph calls use delegated (OBO) tokens — no application credentials.
-    /// </summary>
-    public async Task<(SeriesResponseDto? series, string? errorCode)> PublishAsync(
-        Guid id,
-        string ownerUserId,
-        string? oboToken = null,
-        ITeamsGraphClient? graphClient = null,
-        ILogger? logger = null)
+    public async Task<(SeriesResponseDto? series, string? errorCode)> PublishAsync(Guid id, string ownerUserId)
     {
-        logger ??= NullLogger.Instance;
-
-        // 1. Load series with its Draft sessions
         var series = await _db.Series
             .FirstOrDefaultAsync(s => s.SeriesId == id && s.OwnerUserId == ownerUserId);
         if (series is null) return (null, "series_not_found");
@@ -147,93 +124,17 @@ public class SeriesService
             .Where(s => s.SeriesId == id && s.Status == SessionStatus.Draft)
             .ToListAsync();
 
-        // 2. If no graph client, just flip status (stub / unconfigured-Teams path)
-        if (graphClient is null || string.IsNullOrEmpty(oboToken))
+        series.Status = SeriesStatus.Published;
+        series.UpdatedAt = DateTime.UtcNow;
+        foreach (var s in sessions)
         {
-            series.Status = SeriesStatus.Published;
-            series.UpdatedAt = DateTime.UtcNow;
-            foreach (var s in sessions)
-            {
-                s.Status = SessionStatus.Published;
-                s.ReconcileStatus = ReconcileStatus.Synced;
-                s.LastSyncAt = DateTime.UtcNow;
-            }
-            await _db.SaveChangesAsync();
-            return (ToResponseDto(series, draftSessionCount: 0), null);
+            s.Status = SessionStatus.Published;
+            s.ReconcileStatus = ReconcileStatus.Synced;
+            s.LastSyncAt = DateTime.UtcNow;
         }
 
-        // 3. Create and publish webinars in Teams; track created IDs for rollback
-        var createdWebinarIds = new List<(Session Session, string WebinarId)>();
-
-        try
-        {
-            foreach (var session in sessions)
-            {
-                var webinarResult = await graphClient.CreateWebinarAsync(
-                    session.Title,
-                    new DateTimeOffset(session.StartsAt, TimeSpan.Zero),
-                    new DateTimeOffset(session.EndsAt, TimeSpan.Zero),
-                    oboToken);
-
-                await graphClient.PublishWebinarAsync(webinarResult.WebinarId, oboToken);
-
-                createdWebinarIds.Add((session, webinarResult.WebinarId));
-                session.TeamsWebinarId = webinarResult.WebinarId;
-                session.JoinWebUrl = webinarResult.JoinWebUrl;
-            }
-
-            // 4. All Teams calls succeeded — commit the publish
-            series.Status = SeriesStatus.Published;
-            series.UpdatedAt = DateTime.UtcNow;
-
-            foreach (var session in sessions)
-            {
-                session.Status = SessionStatus.Published;
-                session.ReconcileStatus = ReconcileStatus.Synced;
-                session.LastSyncAt = DateTime.UtcNow;
-            }
-
-            await _db.SaveChangesAsync();
-            return (ToResponseDto(series, draftSessionCount: 0), null);
-        }
-        catch (TeamsLicenseException lex)
-        {
-            logger.LogWarning(lex, "Teams license required during publish. SeriesId={SeriesId}", id);
-            await RollbackWebinarsAsync(graphClient, oboToken, createdWebinarIds, logger);
-            return (null, "TEAMS_LICENSE_REQUIRED");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Publish failed. SeriesId={SeriesId}", id);
-            var rollbackOk = await RollbackWebinarsAsync(
-                graphClient, oboToken, createdWebinarIds, logger);
-            return rollbackOk
-                ? (null, "PUBLISH_FAILED")
-                : (null, "PUBLISH_PARTIAL_FAILURE");
-        }
-    }
-
-    // ─── helpers ────────────────────────────────────────────────────────────
-
-    private static async Task<bool> RollbackWebinarsAsync(
-        ITeamsGraphClient graphClient,
-        string oboToken,
-        List<(Session Session, string WebinarId)> created,
-        ILogger logger)
-    {
-        var allOk = true;
-
-        foreach (var (_, webinarId) in created)
-        {
-            try { await graphClient.DeleteWebinarAsync(webinarId, oboToken); }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Rollback: failed to delete webinar {WebinarId}", webinarId);
-                allOk = false;
-            }
-        }
-
-        return allOk;
+        await _db.SaveChangesAsync();
+        return (ToResponseDto(series, draftSessionCount: 0), null);
     }
 
     private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s, int draftSessionCount = 0) =>
