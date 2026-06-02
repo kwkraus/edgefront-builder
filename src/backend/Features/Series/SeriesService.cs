@@ -78,7 +78,7 @@ public class SeriesService
             SeriesId = Guid.NewGuid(),
             OwnerUserId = ownerUserId,
             Title = req.Title,
-            Status = SeriesStatus.Draft,
+            Status = SeriesStatus.Published,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -112,29 +112,6 @@ public class SeriesService
         _db.Series.Remove(series);
         await _db.SaveChangesAsync();
         return true;
-    }
-
-    public async Task<(SeriesResponseDto? series, string? errorCode)> PublishAsync(Guid id, string ownerUserId)
-    {
-        var series = await _db.Series
-            .FirstOrDefaultAsync(s => s.SeriesId == id && s.OwnerUserId == ownerUserId);
-        if (series is null) return (null, "series_not_found");
-
-        var sessions = await _db.Sessions
-            .Where(s => s.SeriesId == id && s.Status == SessionStatus.Draft)
-            .ToListAsync();
-
-        series.Status = SeriesStatus.Published;
-        series.UpdatedAt = DateTime.UtcNow;
-        foreach (var s in sessions)
-        {
-            s.Status = SessionStatus.Published;
-            s.ReconcileStatus = ReconcileStatus.Synced;
-            s.LastSyncAt = DateTime.UtcNow;
-        }
-
-        await _db.SaveChangesAsync();
-        return (ToResponseDto(series, draftSessionCount: 0), null);
     }
 
     private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s, int draftSessionCount = 0) =>

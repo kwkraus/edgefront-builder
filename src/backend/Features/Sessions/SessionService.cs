@@ -105,7 +105,7 @@ public class SessionService
             Title = req.Title,
             StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime(),
             EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime(),
-            Status = SessionStatus.Draft,
+            Status = SessionStatus.Published,
             DriftStatus = DriftStatus.None,
             ReconcileStatus = ReconcileStatus.Synced
         };
@@ -158,55 +158,10 @@ public class SessionService
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
         if (session is null) return false;
 
-        var seriesId = session.SeriesId;
         _db.Sessions.Remove(session);
-
-        // If the parent series is Published, check whether any published sessions remain.
-        // If none remain, revert the series to Draft so it doesn't show as "Partially Published".
-        var series = await _db.Series
-            .FirstOrDefaultAsync(s => s.SeriesId == seriesId && s.OwnerUserId == ownerUserId);
-        if (series is not null && series.Status == SeriesStatus.Published)
-        {
-            var hasPublishedSessions = await _db.Sessions
-                .AnyAsync(s => s.SeriesId == seriesId
-                            && s.SessionId != sessionId
-                            && s.Status == SessionStatus.Published);
-            if (!hasPublishedSessions)
-            {
-                series.Status = SeriesStatus.Draft;
-                series.UpdatedAt = DateTime.UtcNow;
-            }
-        }
 
         await _db.SaveChangesAsync();
         return true;
-    }
-
-    public async Task<(SessionResponseDto? session, string? errorCode, string? errorMessage)> PublishAsync(
-        Guid sessionId, string ownerUserId)
-    {
-        var session = await _db.Sessions
-            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.OwnerUserId == ownerUserId);
-        if (session is null)
-            return (null, "session_not_found", null);
-
-        if (session.Status == SessionStatus.Published)
-            return (null, "SESSION_ALREADY_PUBLISHED", null);
-
-        var series = await _db.Series
-            .FirstOrDefaultAsync(s => s.SeriesId == session.SeriesId && s.OwnerUserId == ownerUserId);
-        if (series is null)
-            return (null, "series_not_found", null);
-        if (series.Status != SeriesStatus.Published)
-            return (null, "SERIES_NOT_PUBLISHED", null);
-
-        session.Status = SessionStatus.Published;
-        session.ReconcileStatus = ReconcileStatus.Synced;
-        session.LastSyncAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        var (p, c) = await GetRolesAsync(sessionId);
-        return (ToResponseDto(session, p, c), null, null);
     }
 
     // --- Presenter / Coordinator role management (SPEC-210) ---
