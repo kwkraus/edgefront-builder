@@ -1,4 +1,3 @@
-using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Sessions;
@@ -144,7 +143,6 @@ public class SessionRoleManagementTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "Test Series",
-            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -157,10 +155,7 @@ public class SessionRoleManagementTests : IDisposable
             OwnerUserId = OwnerUserId,
             Title = "Test Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
-            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = SessionStatus.Draft,
-            DriftStatus = DriftStatus.None,
-            ReconcileStatus = ReconcileStatus.Synced
+            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1)
         };
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();

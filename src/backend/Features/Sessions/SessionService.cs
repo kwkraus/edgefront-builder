@@ -1,4 +1,3 @@
-using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.People;
 using EdgeFront.Builder.Features.Sessions.Dtos;
@@ -60,14 +59,8 @@ public class SessionService
                 s.Title,
                 s.StartsAt,
                 s.EndsAt,
-                s.Status.ToString(),
-                s.TeamsWebinarId,
-                s.JoinWebUrl,
-                s.ReconcileStatus.ToString(),
-                s.DriftStatus.ToString(),
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
-                s.LastSyncAt,
                 presenters.Count,
                 coordinators.Count,
                 ownerDisplayName,
@@ -104,10 +97,7 @@ public class SessionService
             OwnerUserId = ownerUserId,
             Title = req.Title,
             StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime(),
-            EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime(),
-            Status = SessionStatus.Draft,
-            DriftStatus = DriftStatus.None,
-            ReconcileStatus = ReconcileStatus.Synced
+            EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime()
         };
 
         _db.Sessions.Add(session);
@@ -282,9 +272,6 @@ public class SessionService
         List<SessionPresenterDto>? presenters = null,
         List<SessionCoordinatorDto>? coordinators = null) =>
         new(s.SessionId, s.SeriesId, s.Title, s.StartsAt, s.EndsAt,
-            s.Status.ToString(), s.TeamsWebinarId, s.JoinWebUrl,
-            s.ReconcileStatus.ToString(), s.DriftStatus.ToString(),
-            s.LastSyncAt, s.LastError,
             presenters ?? new List<SessionPresenterDto>(),
             coordinators ?? new List<SessionCoordinatorDto>());
 }

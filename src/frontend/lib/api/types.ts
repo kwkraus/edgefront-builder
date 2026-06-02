@@ -1,12 +1,10 @@
 export interface SeriesListItem {
   seriesId: string
   title: string
-  status: 'Draft'
   sessionCount: number
   totalRegistrations: number
   totalAttendees: number
   uniqueAccountsInfluenced: number
-  hasReconcileIssues: boolean
   createdAt: string
   updatedAt: string
 }
@@ -14,7 +12,6 @@ export interface SeriesListItem {
 export interface SeriesResponse {
   seriesId: string
   title: string
-  status: 'Draft'
   createdAt: string
   updatedAt: string
 }
@@ -24,14 +21,8 @@ export interface SessionListItem {
   title: string
   startsAt: string
   endsAt: string
-  status: 'Draft'
-  teamsWebinarId: string | null
-  joinWebUrl: string | null
-  reconcileStatus: 'Synced' | 'Reconciling'
-  driftStatus: 'None' | 'DriftDetected'
   totalRegistrations: number
   totalAttendees: number
-  lastSyncAt: string | null
   presenterCount: number
   coordinatorCount: number
   ownerDisplayName: string
@@ -50,13 +41,6 @@ export interface SessionResponse {
   title: string
   startsAt: string
   endsAt: string
-  status: 'Draft'
-  teamsWebinarId: string | null
-  joinWebUrl: string | null
-  reconcileStatus: 'Synced' | 'Reconciling'
-  driftStatus: 'None' | 'DriftDetected'
-  lastSyncAt: string | null
-  lastError: string | null
   presenters: SessionPresenterDto[]
   coordinators: SessionCoordinatorDto[]
 }

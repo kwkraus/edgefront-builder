@@ -3,8 +3,6 @@ import Link from 'next/link'
 import { getServerSession } from '@/lib/auth'
 import { getSeries } from '@/lib/api/series'
 import { ApiError } from '@/lib/api/client'
-import { StatusBadge } from '@/components/status-badge'
-import { AlertIcon } from '@primer/octicons-react'
 import type { SeriesListItem } from '@/lib/api/types'
 
 /* ------------------------------------------------------------------ */
@@ -44,31 +42,11 @@ const cellRightStyle: React.CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
 }
 
-const cellCenterStyle: React.CSSProperties = {
-  ...cellStyle,
-  textAlign: 'center',
-}
-
 const titleLinkStyle: React.CSSProperties = {
   color: 'var(--fgColor-default, var(--color-fg-default))',
   fontWeight: 'var(--base-text-weight-medium, 500)',
   textDecoration: 'none',
   borderRadius: 'var(--borderRadius-small, 3px)',
-}
-
-const reconcileTagStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 'var(--base-size-4, 4px)',
-  borderWidth: 'var(--borderWidth-thin, 1px)',
-  borderStyle: 'solid',
-  borderColor: 'var(--borderColor-attention-emphasis, var(--color-attention-emphasis))',
-  backgroundColor: 'var(--bgColor-attention-muted, var(--color-attention-subtle))',
-  color: 'var(--fgColor-attention, var(--color-attention-fg))',
-  borderRadius: 'var(--borderRadius-full, 9999px)',
-  padding: '2px var(--base-size-8, 8px)',
-  fontSize: 'var(--text-caption-size, 0.75rem)',
-  fontWeight: 'var(--base-text-weight-medium, 500)',
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -97,24 +75,10 @@ function SeriesTableRow({ item }: { item: SeriesListItem }) {
           {item.title}
         </Link>
       </td>
-      <td style={cellStyle}>
-        <StatusBadge status={item.status} />
-      </td>
       <td style={cellRightStyle}>{item.sessionCount}</td>
       <td style={cellRightStyle}>{item.totalRegistrations}</td>
       <td style={cellRightStyle}>{item.totalAttendees}</td>
       <td style={cellRightStyle}>{item.uniqueAccountsInfluenced}</td>
-      <td style={cellCenterStyle}>
-        {item.hasReconcileIssues && (
-          <span
-            style={reconcileTagStyle}
-            title="One or more sessions have reconcile issues"
-          >
-            <AlertIcon size={12} aria-hidden="true" />
-            Issues
-          </span>
-        )}
-      </td>
     </tr>
   )
 }
@@ -152,12 +116,10 @@ export default async function SeriesListContent() {
         <thead>
           <tr style={headerRowStyle}>
             <th style={{ ...cellStyle, textAlign: 'left', fontWeight: 'var(--base-text-weight-medium, 500)' }}>Title</th>
-            <th style={{ ...cellStyle, textAlign: 'left', fontWeight: 'var(--base-text-weight-medium, 500)' }}>Status</th>
             <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Sessions</th>
             <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Registrations</th>
             <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Attendees</th>
             <th style={{ ...cellRightStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Accts Influenced</th>
-            <th style={{ ...cellCenterStyle, fontWeight: 'var(--base-text-weight-medium, 500)' }}>Reconcile</th>
           </tr>
         </thead>
         <tbody>

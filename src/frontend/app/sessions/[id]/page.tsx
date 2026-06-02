@@ -8,7 +8,6 @@ import { ChevronLeftIcon, CheckIcon, TrashIcon } from '@primer/octicons-react'
 import { Button, IconButton, Spinner, Token, SkeletonBox } from '@primer/react'
 import { SkeletonText } from '@primer/react/experimental'
 import { ErrorBanner } from '@/components/error-banner'
-import { StatusBadge } from '@/components/status-badge'
 import { MetricsPanel } from '@/components/metrics-panel'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { InlineEditableTitle } from '@/components/inline-editable-title'
@@ -245,7 +244,6 @@ export default function SessionDetailPage() {
               inputAriaLabel="Session title"
               titleClassName="text-2xl font-bold tracking-tight"
             />
-            <StatusBadge status={session.status} />
           </div>
           {titleError && (
             <p role="alert" className="text-xs" style={{ color: 'var(--fgColor-danger, var(--color-danger-fg))' }}>

@@ -163,7 +163,6 @@ public class MetricsServiceTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "MetricsQuery Test Series",
-            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -182,8 +181,7 @@ public class MetricsServiceTests : IDisposable
             OwnerUserId = OwnerUserId,
             Title = "MetricsQuery Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
-            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = SessionStatus.Draft
+            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1)
         };
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();

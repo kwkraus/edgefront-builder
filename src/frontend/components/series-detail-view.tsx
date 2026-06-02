@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TrashIcon, PlusIcon, PeopleIcon, OrganizationIcon, DownloadIcon } from '@primer/octicons-react'
 import { Button, IconButton, Tooltip, Token } from '@primer/react'
-import { StatusBadge } from '@/components/status-badge'
 import { ErrorBanner } from '@/components/error-banner'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { InlineEditableTitle } from '@/components/inline-editable-title'
@@ -191,7 +190,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
               inputAriaLabel="Series title"
               titleClassName="text-2xl font-bold tracking-tight"
             />
-            <StatusBadge status={series.status} />
           </div>
           <p className="text-xs" style={{ color: 'var(--fgColor-muted)' }}>
             Created {formatDateTime(series.createdAt)} · Updated {formatDateTime(series.updatedAt)}
@@ -313,7 +311,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                   }}
                 >
                   <th className="px-4 py-3 text-left font-medium">Title</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
                   <th className="px-4 py-3 text-left font-medium">Delivery</th>
                   <th className="px-4 py-3 text-left font-medium">People</th>
                   <th className="px-4 py-3 text-right font-medium">Reg.</th>
@@ -341,9 +338,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
                     }}
                   >
                     <td className="px-4 py-3 font-medium">{s.title}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={s.status} />
-                    </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--fgColor-muted)' }}>
                       {(() => {
                         const d = formatDelivery(s.startsAt, s.endsAt)

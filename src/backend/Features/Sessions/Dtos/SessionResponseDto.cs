@@ -6,12 +6,5 @@ public record SessionResponseDto(
     string Title,
     DateTime StartsAt,
     DateTime EndsAt,
-    string Status,
-    string? TeamsWebinarId,
-    string? JoinWebUrl,
-    string ReconcileStatus,
-    string DriftStatus,
-    DateTime? LastSyncAt,
-    string? LastError,
     List<SessionPresenterDto> Presenters,
     List<SessionCoordinatorDto> Coordinators);
