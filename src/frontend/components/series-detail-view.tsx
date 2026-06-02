@@ -177,11 +177,6 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
     }
   }
 
-  const seriesDisplayStatus =
-    series.status === 'Published' && series.draftSessionCount > 0
-      ? 'Partially Published'
-      : series.status
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -196,7 +191,7 @@ export default function SeriesDetailView({ series, sessions, metrics }: Props) {
               inputAriaLabel="Series title"
               titleClassName="text-2xl font-bold tracking-tight"
             />
-            <StatusBadge status={seriesDisplayStatus} />
+            <StatusBadge status={series.status} />
           </div>
           <p className="text-xs" style={{ color: 'var(--fgColor-muted)' }}>
             Created {formatDateTime(series.createdAt)} · Updated {formatDateTime(series.updatedAt)}

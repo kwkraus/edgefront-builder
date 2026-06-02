@@ -7,8 +7,6 @@ interface StatusBadgeProps {
 
 const statusVariants: Record<string, React.ComponentProps<typeof Label>['variant']> = {
   Draft: 'secondary',
-  Published: 'success',
-  'Partially Published': 'attention',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

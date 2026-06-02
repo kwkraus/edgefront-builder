@@ -45,7 +45,7 @@ public class SeriesServiceTests : IDisposable
         // Assert
         result.Should().HaveCount(2);
         result.Select(s => s.Title).Should().BeEquivalentTo("Alpha", "Beta");
-        result.Should().AllSatisfy(s => s.Status.Should().Be("Published"));
+        result.Should().AllSatisfy(s => s.Status.Should().Be("Draft"));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class SeriesServiceTests : IDisposable
     // ---------- CreateAsync ----------
 
     [Fact]
-    public async Task CreateAsync_CreatesSeries_WithPublishedStatus()
+    public async Task CreateAsync_CreatesSeries_WithDraftStatus()
     {
         // Act
         var result = await _sut.CreateAsync(new CreateSeriesRequest("My Series"), OwnerUserId);
@@ -104,13 +104,13 @@ public class SeriesServiceTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.Title.Should().Be("My Series");
-        result.Status.Should().Be("Published");
+        result.Status.Should().Be("Draft");
         result.SeriesId.Should().NotBeEmpty();
 
         var saved = await _db.Series.FindAsync(result.SeriesId);
         saved.Should().NotBeNull();
         saved!.OwnerUserId.Should().Be(OwnerUserId);
-        saved.Status.Should().Be(SeriesStatus.Published);
+        saved.Status.Should().Be(SeriesStatus.Draft);
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class SeriesServiceTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = owner,
             Title = title,
-            Status = SeriesStatus.Published,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -296,7 +296,7 @@ public class SeriesServiceTests : IDisposable
             Title = "Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
             EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = SessionStatus.Published,
+            Status = SessionStatus.Draft,
             DriftStatus = DriftStatus.None,
             ReconcileStatus = ReconcileStatus.Synced
         };

@@ -44,8 +44,8 @@ public class SyncService
         if (session is null)
             return new SyncResult(false, "session_not_found");
 
-        if (session.Status != SessionStatus.Published || session.TeamsWebinarId is null)
-            return new SyncResult(false, "session_not_published");
+        if (session.TeamsWebinarId is null)
+            return new SyncResult(false, "session_missing_webinar_id");
 
         _logger.LogInformation(
             "User-initiated sync starting. SessionId={SessionId} TeamsWebinarId={TeamsWebinarId}",
@@ -56,7 +56,7 @@ public class SyncService
 
         try
         {
-            // Backfill JoinWebUrl for sessions published before this field was captured
+            // Backfill JoinWebUrl for sessions missing this field
             if (session.JoinWebUrl is null)
             {
                 var metadata = await _graphClient.GetWebinarMetadataAsync(session.TeamsWebinarId!, oboToken, ct);
@@ -108,7 +108,7 @@ public class SyncService
     }
 
     /// <summary>
-    /// Syncs all published sessions in a series. Called automatically when the
+    /// Syncs all sessions with webinar IDs in a series. Called automatically when the
     /// user navigates to the series detail page.
     /// </summary>
     public async Task<SyncSeriesResult> SyncSeriesAsync(
@@ -122,7 +122,6 @@ public class SyncService
 
         var sessions = await _db.Sessions
             .Where(s => s.SeriesId == seriesId
-                && s.Status == SessionStatus.Published
                 && s.TeamsWebinarId != null)
             .ToListAsync(ct);
 

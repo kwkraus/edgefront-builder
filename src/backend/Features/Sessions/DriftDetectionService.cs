@@ -46,8 +46,7 @@ public class DriftDetectionService
         if (session is null)
             return DriftStatus.None;
 
-        // Only Published sessions with a known webinar ID can drift
-        if (session.Status != SessionStatus.Published || session.TeamsWebinarId is null)
+        if (session.TeamsWebinarId is null)
             return DriftStatus.None;
 
         // Without an OBO token we cannot call Graph — return current status

@@ -38,10 +38,6 @@ public class SeriesService
             .GroupBy(x => x.SeriesId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
 
-        var draftSessionCounts = sessionCountsByStatus
-            .Where(x => x.Status == SessionStatus.Draft)
-            .ToDictionary(x => x.SeriesId, x => x.Count);
-            
         return series.Select(s =>
         {
             var m = metrics.TryGetValue(s.SeriesId, out var sm) ? sm : null;
@@ -50,7 +46,6 @@ public class SeriesService
                 s.Title,
                 s.Status.ToString(),
                 sessionCounts.TryGetValue(s.SeriesId, out var count) ? count : 0,
-                draftSessionCounts.TryGetValue(s.SeriesId, out var draftCount) ? draftCount : 0,
                 m?.TotalRegistrations ?? 0,
                 m?.TotalAttendees ?? 0,
                 m?.UniqueAccountsInfluenced ?? 0,
@@ -66,9 +61,7 @@ public class SeriesService
             .FirstOrDefaultAsync(s => s.SeriesId == id && s.OwnerUserId == ownerUserId);
         if (series is null) return null;
 
-        var draftCount = await _db.Sessions
-            .CountAsync(s => s.SeriesId == id && s.Status == SessionStatus.Draft);
-        return ToResponseDto(series, draftCount);
+        return ToResponseDto(series);
     }
 
     public async Task<SeriesResponseDto> CreateAsync(CreateSeriesRequest req, string ownerUserId)
@@ -78,14 +71,14 @@ public class SeriesService
             SeriesId = Guid.NewGuid(),
             OwnerUserId = ownerUserId,
             Title = req.Title,
-            Status = SeriesStatus.Published,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         _db.Series.Add(series);
         await _db.SaveChangesAsync();
-        return ToResponseDto(series, draftSessionCount: 0);
+        return ToResponseDto(series);
     }
 
     public async Task<SeriesResponseDto?> UpdateAsync(Guid id, UpdateSeriesRequest req, string ownerUserId)
@@ -98,9 +91,7 @@ public class SeriesService
         series.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var draftCount = await _db.Sessions
-            .CountAsync(s => s.SeriesId == id && s.Status == SessionStatus.Draft);
-        return ToResponseDto(series, draftCount);
+        return ToResponseDto(series);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string ownerUserId)
@@ -114,6 +105,6 @@ public class SeriesService
         return true;
     }
 
-    private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s, int draftSessionCount = 0) =>
-        new(s.SeriesId, s.Title, s.Status.ToString(), draftSessionCount, s.CreatedAt, s.UpdatedAt);
+    private static SeriesResponseDto ToResponseDto(Domain.Entities.Series s) =>
+        new(s.SeriesId, s.Title, s.Status.ToString(), s.CreatedAt, s.UpdatedAt);
 }

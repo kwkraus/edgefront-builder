@@ -54,18 +54,18 @@ public class SyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SyncSessionAsync_ReturnsNotPublished_WhenDraft()
+    public async Task SyncSessionAsync_ReturnsError_WhenSessionHasNoWebinarId()
     {
-        var (_, session) = await SeedPublishedSessionAsync(published: false);
+        var (_, session) = await SeedSessionAsync(hasWebinarId: false);
         var result = await _sut.SyncSessionAsync(session.SessionId, OwnerUserId, OboToken);
         result.Success.Should().BeFalse();
-        result.ErrorCode.Should().Be("session_not_published");
+        result.ErrorCode.Should().Be("session_missing_webinar_id");
     }
 
     [Fact]
     public async Task SyncSessionAsync_InsertsRegistrations_AndAttendance()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
             .ReturnsAsync(new[]
@@ -101,7 +101,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_RemovesStaleRegistrations()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         // Existing registration that is NOT in the Graph response
         _db.NormalizedRegistrations.Add(new NormalizedRegistration
@@ -134,7 +134,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_IsIdempotent_UpsertsDuplicateEmails()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         var registrations = new[]
         {
@@ -157,7 +157,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_PassesOboToken_ToGraphClient()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
             .ReturnsAsync(Array.Empty<RegistrationRecord>());
@@ -173,7 +173,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_RemovesStaleAttendance()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         // Existing attendance that is NOT in the Graph response
         _db.NormalizedAttendances.Add(new NormalizedAttendance
@@ -206,7 +206,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_GraphFailure_ReturnsSyncFailed()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
             .ThrowsAsync(new InvalidOperationException("Graph is down"));
@@ -225,7 +225,7 @@ public class SyncServiceTests : IDisposable
     [Fact]
     public async Task SyncSessionAsync_NormalizesEmailCasing()
     {
-        var (_, session) = await SeedPublishedSessionAsync();
+        var (_, session) = await SeedSessionAsync();
 
         _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
             .ReturnsAsync(new[]
@@ -255,9 +255,9 @@ public class SyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SyncSeriesAsync_ReturnsSuccess_WithZeroCounts_WhenNoPublishedSessions()
+    public async Task SyncSeriesAsync_ReturnsSuccess_WithZeroCounts_WhenNoSessionsHaveWebinarIds()
     {
-        var (series, _) = await SeedPublishedSessionAsync(published: false);
+        var (series, _) = await SeedSessionAsync(hasWebinarId: false);
 
         var result = await _sut.SyncSeriesAsync(series.SeriesId, OwnerUserId, OboToken);
 
@@ -267,9 +267,9 @@ public class SyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SyncSeriesAsync_SyncsAllPublishedSessions()
+    public async Task SyncSeriesAsync_SyncsAllSessionsWithWebinarIds()
     {
-        var (series, session) = await SeedPublishedSessionAsync();
+        var (series, session) = await SeedSessionAsync();
 
         _graphMock.Setup(g => g.GetRegistrationsAsync(session.TeamsWebinarId!, OboToken, default))
             .ReturnsAsync(new[]
@@ -288,14 +288,14 @@ public class SyncServiceTests : IDisposable
 
     // ─── helpers ────────────────────────────────────────────────────────────
 
-    private async Task<(EdgeFront.Builder.Domain.Entities.Series, Session)> SeedPublishedSessionAsync(bool published = true)
+    private async Task<(EdgeFront.Builder.Domain.Entities.Series, Session)> SeedSessionAsync(bool hasWebinarId = true)
     {
         var series = new EdgeFront.Builder.Domain.Entities.Series
         {
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "Sync Test Series",
-            Status = published ? SeriesStatus.Published : SeriesStatus.Draft,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -309,8 +309,8 @@ public class SyncServiceTests : IDisposable
             Title = "Sync Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
             EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = published ? SessionStatus.Published : SessionStatus.Draft,
-            TeamsWebinarId = published ? "webinar-sync-test" : null,
+            Status = SessionStatus.Draft,
+            TeamsWebinarId = hasWebinarId ? "webinar-sync-test" : null,
             ReconcileStatus = ReconcileStatus.Synced
         };
         _db.Sessions.Add(session);

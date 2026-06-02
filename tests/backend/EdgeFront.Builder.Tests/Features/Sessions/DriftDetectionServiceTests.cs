@@ -48,9 +48,9 @@ public class DriftDetectionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CheckDrift_ReturnsNone_WhenSessionIsDraft()
+    public async Task CheckDrift_ReturnsNone_WhenSessionHasNoWebinarId()
     {
-        var session = await SeedSessionAsync(published: false);
+        var session = await SeedSessionAsync(hasWebinarId: false);
 
         var result = await _sut.CheckDriftAsync(session.SessionId, OwnerUserId, OboToken);
 
@@ -200,14 +200,14 @@ public class DriftDetectionServiceTests : IDisposable
     // ─── helpers ────────────────────────────────────────────────────────────
 
     private async Task<Session> SeedSessionAsync(
-        bool published = true, DriftStatus driftStatus = DriftStatus.None)
+        bool hasWebinarId = true, DriftStatus driftStatus = DriftStatus.None)
     {
         var series = new EdgeFront.Builder.Domain.Entities.Series
         {
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "Drift Test Series",
-            Status = published ? SeriesStatus.Published : SeriesStatus.Draft,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -221,8 +221,8 @@ public class DriftDetectionServiceTests : IDisposable
             Title = "Drift Test Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
             EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = published ? SessionStatus.Published : SessionStatus.Draft,
-            TeamsWebinarId = published ? "webinar-drift-test" : null,
+            Status = SessionStatus.Draft,
+            TeamsWebinarId = hasWebinarId ? "webinar-drift-test" : null,
             DriftStatus = driftStatus,
             ReconcileStatus = ReconcileStatus.Synced
         };

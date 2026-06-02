@@ -144,7 +144,7 @@ public class SessionRoleManagementTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "Test Series",
-            Status = SeriesStatus.Published,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

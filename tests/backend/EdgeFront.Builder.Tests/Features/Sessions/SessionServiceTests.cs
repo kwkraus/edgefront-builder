@@ -107,7 +107,7 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateAsync_CreatesSession_WithPublishedStatus()
+    public async Task CreateAsync_CreatesSession_WithDraftStatus()
     {
         // Arrange
         var series = BuildSeries();
@@ -124,7 +124,7 @@ public class SessionServiceTests : IDisposable
         // Assert
         errorCode.Should().BeNull();
         session.Should().NotBeNull();
-        session!.Status.Should().Be("Published");
+        session!.Status.Should().Be("Draft");
         session.SeriesId.Should().Be(series.SeriesId);
         session.Title.Should().Be("Valid Session");
     }
@@ -159,7 +159,7 @@ public class SessionServiceTests : IDisposable
 
         // Assert
         result.Should().HaveCount(2);
-        result.Should().AllSatisfy(s => s.Status.Should().Be("Published"));
+        result.Should().AllSatisfy(s => s.Status.Should().Be("Draft"));
     }
 
     [Fact]
@@ -319,15 +319,15 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteAsync_LeavesSeriesPublished_WhenLastSessionDeleted()
+    public async Task DeleteAsync_LeavesSeriesDraft_WhenLastSessionDeleted()
     {
-        // Arrange: Published series with one Published session
+        // Arrange: Draft series with one Draft session
         var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
+        series.Status = SeriesStatus.Draft;
         _db.Series.Add(series);
 
         var session = BuildSession(series.SeriesId);
-        session.Status = SessionStatus.Published;
+        session.Status = SessionStatus.Draft;
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
@@ -337,57 +337,57 @@ public class SessionServiceTests : IDisposable
         // Assert
         result.Should().BeTrue();
         var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Published,
+        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
             "series status should not be transitioned during session deletion");
     }
 
     [Fact]
-    public async Task DeleteAsync_KeepsSeriesPublished_WhenOtherPublishedSessionsRemain()
+    public async Task DeleteAsync_KeepsSeriesDraft_WhenOtherDraftSessionsRemain()
     {
-        // Arrange: Published series with two Published sessions
+        // Arrange: Draft series with two Draft sessions
         var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
+        series.Status = SeriesStatus.Draft;
         _db.Series.Add(series);
 
         var session1 = BuildSession(series.SeriesId);
-        session1.Status = SessionStatus.Published;
+        session1.Status = SessionStatus.Draft;
         var session2 = BuildSession(series.SeriesId);
-        session2.Status = SessionStatus.Published;
+        session2.Status = SessionStatus.Draft;
         _db.Sessions.AddRange(session1, session2);
         await _db.SaveChangesAsync();
 
-        // Act: delete one of the two published sessions
+        // Act: delete one of the two sessions with status Draft
         var result = await _sut.DeleteAsync(session1.SessionId, OwnerUserId);
 
         // Assert
         result.Should().BeTrue();
         var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Published,
-            "series should stay Published while other published sessions exist");
+        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
+            "series should stay Draft while other sessions with status Draft exist");
     }
 
     [Fact]
-    public async Task DeleteAsync_LeavesSeriesPublished_WhenOnlyOtherDraftSessionsRemain()
+    public async Task DeleteAsync_LeavesSeriesDraft_WhenOnlyOtherDraftSessionsRemain()
     {
-        // Arrange: Published series with one Published and one Draft session
+        // Arrange: Draft series with two draft sessions
         var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
+        series.Status = SeriesStatus.Draft;
         _db.Series.Add(series);
 
-        var publishedSession = BuildSession(series.SeriesId);
-        publishedSession.Status = SessionStatus.Published;
+        var firstSession = BuildSession(series.SeriesId);
+        firstSession.Status = SessionStatus.Draft;
         var draftSession = BuildSession(series.SeriesId);
         draftSession.Status = SessionStatus.Draft;
-        _db.Sessions.AddRange(publishedSession, draftSession);
+        _db.Sessions.AddRange(firstSession, draftSession);
         await _db.SaveChangesAsync();
 
-        // Act: delete the only published session
-        var result = await _sut.DeleteAsync(publishedSession.SessionId, OwnerUserId);
+        // Act: delete the only draft session
+        var result = await _sut.DeleteAsync(firstSession.SessionId, OwnerUserId);
 
         // Assert
         result.Should().BeTrue();
         var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Published,
+        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
             "series status should not be transitioned during session deletion");
     }
 
@@ -495,16 +495,16 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdateTitleAsync_UpdatesTitle_ForPublishedSession()
+    public async Task UpdateTitleAsync_UpdatesTitle_ForDraftSession()
     {
         var series = BuildSeries();
         _db.Series.Add(series);
         var session = BuildSession(series.SeriesId);
-        session.Status = SessionStatus.Published;
+        session.Status = SessionStatus.Draft;
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
-        var req = new UpdateSessionTitleRequest("Published Rename");
+        var req = new UpdateSessionTitleRequest("Draft Rename");
 
         var (result, errorCode) = await _sut.UpdateTitleAsync(
             session.SessionId,
@@ -513,7 +513,7 @@ public class SessionServiceTests : IDisposable
 
         errorCode.Should().BeNull();
         result.Should().NotBeNull();
-        result!.Title.Should().Be("Published Rename");
+        result!.Title.Should().Be("Draft Rename");
     }
 
     [Fact]
@@ -567,7 +567,7 @@ public class SessionServiceTests : IDisposable
         result!.SessionId.Should().Be(session.SessionId);
         result.SeriesId.Should().Be(series.SeriesId);
         result.Title.Should().Be("Test Session");
-        result.Status.Should().Be("Published");
+        result.Status.Should().Be("Draft");
         result.DriftStatus.Should().Be("None");
         result.ReconcileStatus.Should().Be("Synced");
     }
@@ -580,7 +580,7 @@ public class SessionServiceTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = ownerOverride ?? OwnerUserId,
             Title = "Test Series " + Guid.NewGuid(),
-            Status = SeriesStatus.Published,
+            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -594,7 +594,7 @@ public class SessionServiceTests : IDisposable
             Title = "Test Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
             EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = SessionStatus.Published,
+            Status = SessionStatus.Draft,
             DriftStatus = DriftStatus.None,
             ReconcileStatus = ReconcileStatus.Synced
         };

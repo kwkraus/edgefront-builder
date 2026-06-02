@@ -50,7 +50,6 @@ const MOCK_SERIES = {
   seriesId: SERIES_ID,
   title: 'E2E Test Webinar Series',
   status: 'Draft',
-  draftSessionCount: 0,
   publishedSessionCount: 0,
   createdAt: '2024-01-01T10:00:00.000Z',
   updatedAt: '2024-01-02T10:00:00.000Z',

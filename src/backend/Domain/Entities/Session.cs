@@ -8,7 +8,7 @@ public class Session
     public string Title { get; set; } = string.Empty;
     public DateTime StartsAt { get; set; }
     public DateTime EndsAt { get; set; }
-    public SessionStatus Status { get; set; } = SessionStatus.Published;
+    public SessionStatus Status { get; set; } = SessionStatus.Draft;
     public string? TeamsWebinarId { get; set; }
     public string? JoinWebUrl { get; set; }
     public DriftStatus DriftStatus { get; set; } = DriftStatus.None;

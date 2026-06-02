@@ -105,7 +105,7 @@ public class SessionService
             Title = req.Title,
             StartsAt = req.StartsAt.Kind == DateTimeKind.Utc ? req.StartsAt : req.StartsAt.ToUniversalTime(),
             EndsAt = req.EndsAt.Kind == DateTimeKind.Utc ? req.EndsAt : req.EndsAt.ToUniversalTime(),
-            Status = SessionStatus.Published,
+            Status = SessionStatus.Draft,
             DriftStatus = DriftStatus.None,
             ReconcileStatus = ReconcileStatus.Synced
         };

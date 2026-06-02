@@ -98,7 +98,7 @@ function SeriesTableRow({ item }: { item: SeriesListItem }) {
         </Link>
       </td>
       <td style={cellStyle}>
-        <StatusBadge status={item.status === 'Published' && item.draftSessionCount > 0 ? 'Partially Published' : item.status} />
+        <StatusBadge status={item.status} />
       </td>
       <td style={cellRightStyle}>{item.sessionCount}</td>
       <td style={cellRightStyle}>{item.totalRegistrations}</td>

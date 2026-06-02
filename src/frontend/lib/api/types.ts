@@ -1,9 +1,8 @@
 export interface SeriesListItem {
   seriesId: string
   title: string
-  status: 'Draft' | 'Published'
+  status: 'Draft'
   sessionCount: number
-  draftSessionCount: number
   totalRegistrations: number
   totalAttendees: number
   uniqueAccountsInfluenced: number
@@ -15,8 +14,7 @@ export interface SeriesListItem {
 export interface SeriesResponse {
   seriesId: string
   title: string
-  status: 'Draft' | 'Published'
-  draftSessionCount: number
+  status: 'Draft'
   createdAt: string
   updatedAt: string
 }
@@ -26,7 +24,7 @@ export interface SessionListItem {
   title: string
   startsAt: string
   endsAt: string
-  status: 'Draft' | 'Published'
+  status: 'Draft'
   teamsWebinarId: string | null
   joinWebUrl: string | null
   reconcileStatus: 'Synced' | 'Reconciling'
@@ -52,7 +50,7 @@ export interface SessionResponse {
   title: string
   startsAt: string
   endsAt: string
-  status: 'Draft' | 'Published'
+  status: 'Draft'
   teamsWebinarId: string | null
   joinWebUrl: string | null
   reconcileStatus: 'Synced' | 'Reconciling'
