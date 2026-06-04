@@ -25,7 +25,7 @@ Observability + reliability expert.
 | Actionable logs/metrics/traces design | `telemetry-signal-design` |
 | Incident fault isolation + mitigation | `incident-triage-and-diagnostics` |
 | Backend logging behavior | `structured-logging-policy` |
-| Graph token/subscription diagnostics | `graph-teams-integration` |
+| Graph token/OBO diagnostics | `aspnet-api-expert` |
 
 Instrumentation + incident response: run telemetry design first, then triage with updated signal model.
 

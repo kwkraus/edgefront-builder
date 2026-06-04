@@ -27,7 +27,7 @@ Integration specialist across `src/frontend` and `src/backend`.
 | Env key mapping, runtime wiring | `integration-environment-configuration` |
 | Backend DTO/route redesign | `api-contract-design` |
 | Response semantics | `status-code-decision-matrix` |
-| Graph token flow / sync connectivity | `graph-teams-integration` |
+| Graph token flow (delegated OBO user lookup) | `aspnet-api-expert` |
 
 For requests spanning contract and env concerns, invoke both integration skills and synthesize one plan.
 

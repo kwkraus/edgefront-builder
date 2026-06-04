@@ -23,11 +23,11 @@ Canonical schema reference for the backend data model.
 ## Schema
 
 ### Series
-- `seriesId` (UUID, PK), `ownerUserId` (string), `title` (string), `status` (Draft|Published), `createdAt` (datetime2 UTC), `updatedAt` (datetime2 UTC)
+- `seriesId` (UUID, PK), `ownerUserId` (string), `title` (string), `createdAt` (datetime2 UTC), `updatedAt` (datetime2 UTC)
 - Unique: `(ownerUserId, title)`
 
 ### Session
-- `sessionId` (UUID, PK), `seriesId` (FK→Series), `ownerUserId`, `title`, `startsAt`, `endsAt`, `status` (Draft|Published), `teamsWebinarId` (nullable), `driftStatus` (None|DriftDetected), `reconcileStatus` (Synced|Reconciling|Retrying|Disabled), `lastSyncAt` (nullable), `lastError` (nullable)
+- `sessionId` (UUID, PK), `seriesId` (FK→Series), `ownerUserId`, `title`, `startsAt`, `endsAt`
 
 ### NormalizedRegistration
 - `registrationId` (UUID, PK), `sessionId` (FK→Session), `ownerUserId`, `email`, `emailDomain`, `registeredAt`

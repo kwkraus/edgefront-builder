@@ -10,7 +10,7 @@ public static class PeopleEndpoints
     {
         var group = app.MapGroup("/api/v1/people").RequireAuthorization();
 
-        group.MapGet("/search", async (string? q, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx) =>
+        group.MapGet("/search", async (string? q, IGraphUserClient graphClient, IOboTokenService oboService, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)

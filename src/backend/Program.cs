@@ -60,7 +60,7 @@ builder.Services.AddScoped<MetricsService>();
 builder.Services.AddScoped<MarkdownExportService>();
 
 // Graph services (delegated-only — no app-credential GraphServiceClient)
-builder.Services.AddScoped<ITeamsGraphClient, TeamsGraphClient>();
+builder.Services.AddScoped<IGraphUserClient, GraphUserClient>();
 builder.Services.AddScoped<IOboTokenService, OboTokenService>();
 builder.Services.AddScoped<WarmRuleEvaluator>();
 builder.Services.AddScoped<MetricsRecomputeService>();
