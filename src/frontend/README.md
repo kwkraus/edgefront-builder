@@ -16,6 +16,11 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+For local development, point the frontend at the backend running on http://localhost:5187. If you need to override the default, set:
+
+- `BACKEND_API_BASE_URL=http://localhost:5187`
+- `NEXT_PUBLIC_BACKEND_API_BASE_URL=http://localhost:5187`
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

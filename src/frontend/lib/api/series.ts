@@ -47,7 +47,7 @@ export async function deleteSeries(id: string, accessToken: string): Promise<voi
  * Uses raw fetch (not apiFetch) because the response is a binary blob, not JSON.
  */
 export async function exportSeriesMarkdown(seriesId: string, token: string): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5000'
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5187'
   const response = await fetch(`${baseUrl}/api/v1/series/${seriesId}/export/markdown`, {
     headers: {
       Authorization: `Bearer ${token}`,

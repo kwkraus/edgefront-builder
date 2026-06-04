@@ -19,11 +19,11 @@ function getBaseUrl(): string {
     return (
       process.env.BACKEND_API_BASE_URL ??
       process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ??
-      'http://localhost:5000'
+      'http://localhost:5187'
     )
   }
   // Client-side: must use NEXT_PUBLIC_ prefixed var
-  return process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5000'
+  return process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5187'
 }
 
 export async function apiFetch<T>(
