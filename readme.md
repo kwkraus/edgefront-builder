@@ -83,7 +83,7 @@ tools/          # PowerShell scripts (e.g., Entra app registration)
 
 - **Monolith with modular boundaries** — vertical-slice feature organization in the backend, App Router feature directories in the frontend.
 - **Ingestion-ready data model** — normalized registration and attendance records are persisted locally and remain the foundation for follow-on ingestion work.
-- **Metrics persisted on sync** — all metric aggregations are computed and stored on write; no compute-on-read.
+- **Metrics persisted on write** — all metric aggregations are computed and stored on write; no compute-on-read.
 - **Delegated-only Graph permissions** — authenticated user context is required for supported directory lookups.
 
 ---
