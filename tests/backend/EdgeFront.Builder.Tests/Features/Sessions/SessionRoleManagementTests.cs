@@ -57,6 +57,18 @@ public class SessionRoleManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task SetPresentersAsync_WrongOwner_ReturnsError()
+    {
+        var (_, session) = await SeedSessionAsync();
+        var req = new SetPresentersRequest(new List<PersonInput>());
+
+        var (result, errorCode) = await _sut.SetPresentersAsync(session.SessionId, OtherUserId, req);
+
+        result.Should().BeNull();
+        errorCode.Should().Be("session_not_found");
+    }
+
+    [Fact]
     public async Task SetPresentersAsync_SavesAndReplacesRows()
     {
         var (_, session) = await SeedSessionAsync();
