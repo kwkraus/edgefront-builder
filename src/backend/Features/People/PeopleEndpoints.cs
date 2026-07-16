@@ -6,6 +6,8 @@ namespace EdgeFront.Builder.Features.People;
 
 public static class PeopleEndpoints
 {
+    private static readonly string[] PeopleSearchScopes = ["https://graph.microsoft.com/User.ReadBasic.All"];
+
     public static WebApplication MapPeopleEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/people").RequireAuthorization();
@@ -52,7 +54,7 @@ public static class PeopleEndpoints
 
         try
         {
-            return await oboService.GetOboTokenAsync(rawToken);
+            return await oboService.GetOboTokenAsync(rawToken, PeopleSearchScopes);
         }
         catch
         {

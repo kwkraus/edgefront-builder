@@ -4,7 +4,7 @@ namespace EdgeFront.Builder.Infrastructure.Graph;
 
 public interface IOboTokenService
 {
-    Task<string> GetOboTokenAsync(string userAccessToken, CancellationToken ct = default);
+    Task<string> GetOboTokenAsync(string userAccessToken, IReadOnlyCollection<string> scopes, CancellationToken ct = default);
 }
 
 public class OboTokenService : IOboTokenService
@@ -14,16 +14,9 @@ public class OboTokenService : IOboTokenService
     public OboTokenService(ITokenAcquisition tokenAcquisition)
         => _tokenAcquisition = tokenAcquisition;
 
-    public async Task<string> GetOboTokenAsync(string userAccessToken, CancellationToken ct = default)
+    public async Task<string> GetOboTokenAsync(string userAccessToken, IReadOnlyCollection<string> scopes, CancellationToken ct = default)
     {
-        // User.ReadBasic.All: people search
-        // User.Read: profile photo access
-        var token = await _tokenAcquisition.GetAccessTokenForUserAsync(
-            new[]
-            {
-                "https://graph.microsoft.com/User.ReadBasic.All",
-                "https://graph.microsoft.com/User.Read"
-            });
+        var token = await _tokenAcquisition.GetAccessTokenForUserAsync(scopes);
         return token;
     }
 }
