@@ -1,7 +1,7 @@
 {
   "integration": "copilot",
   "version": "0.12.17",
-  "installed_at": "2026-07-16T15:55:00.508453+00:00",
+  "installed_at": "2026-07-16T16:32:34.724858+00:00",
   "files": {
     ".github/agents/speckit.analyze.agent.md": "b96c62808ed5034a9ef6e869d5d3e344dcd6dec45723840b885cdc68c13bd5ee",
     ".github/agents/speckit.clarify.agent.md": "ba8c47ee25b2f547c3146725905b482d23f4ad902216fbfc9406acf59e169702",
@@ -22,7 +22,6 @@
     ".github/prompts/speckit.checklist.prompt.md": "c3aea7526c5cbfd8665acc9508ad5a9a3f71e91a63c36be7bed13a834c3a683c",
     ".github/prompts/speckit.specify.prompt.md": "7b2cc4dc6462da1c96df46bac4f60e53baba3097f4b24ac3f9b684194458aa98",
     ".github/prompts/speckit.tasks.prompt.md": "88fc57c289f99d5e9d35c255f3e2683f73ecb0a5155dcb4d886f82f52b11841f",
-    ".github/prompts/speckit.taskstoissues.prompt.md": "2f9636d4f312a1470f000747cb62677fec0655d8b4e2357fa4fbf238965fa66d",
-    ".vscode/settings.json": "3db3a1d8417d38a56b405f60b600dce666b4fc47be7fe332a0b051c4bd1fd4b7"
+    ".github/prompts/speckit.taskstoissues.prompt.md": "2f9636d4f312a1470f000747cb62677fec0655d8b4e2357fa4fbf238965fa66d"
   }
 }
