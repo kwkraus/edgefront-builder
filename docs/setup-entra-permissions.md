@@ -10,6 +10,7 @@ This document describes the required Entra ID (Azure AD) app registration permis
 | `profile` | Delegated | SPEC-200 | User profile claims |
 | `email` | Delegated | SPEC-200 | Email claim |
 | `offline_access` | Delegated | SPEC-200 | Refresh token for silent renewal |
+| `User.Read` | Delegated | SPEC-210 | Fetch signed-in user's profile photo via OBO (`/api/v1/me/photo`) |
 | `User.ReadBasic.All` | Delegated | SPEC-210 | Search Entra directory users for people picker |
 
 ## Exposed API Scope
