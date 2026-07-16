@@ -12,7 +12,7 @@
 | `src/frontend/` | Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Primer React v38, next-auth (Entra ID) |
 | `src/backend/` | ASP.NET Core minimal API, .NET 10, EF Core, Azure SQL, Microsoft.Identity.Web, Microsoft.Graph SDK |
 | Auth | Frontend: Entra ID via next-auth. Backend: validates JWT on all user/business endpoints. |
-| Graph | Delegated-only (OBO flow); no application permissions; no webhooks/background services. User-initiated sync on page load. |
+| Graph | Delegated-only (OBO flow) for directory user lookup (people picker); no application permissions; no webhooks/background services. |
 
 Treat frontend and backend as separate components. Project docs go in `docs/` (kebab-case). Implementation under `src/`, tests under `tests/`.
 
@@ -26,7 +26,6 @@ Treat frontend and backend as separate components. Project docs go in `docs/` (k
 | General board CRUD, sprint/task/bug | `devops-workitem-manager` |
 | Backend API | `aspnet-api-expert` |
 | Frontend UI/UX | `ui-ux-nextjs` |
-| Graph/Teams | `graph-teams-integration` |
 | Logging/observability | `observability-sre` |
 | Cross-stack integration | `fullstack-integration` |
 | CI/CD | `cicd-devops` |

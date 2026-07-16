@@ -347,7 +347,6 @@ public class MetricsRecomputeTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = OwnerUserId,
             Title = "Metrics Test Series",
-            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

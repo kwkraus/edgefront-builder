@@ -1,12 +1,9 @@
-using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Sessions;
 using EdgeFront.Builder.Features.Sessions.Dtos;
 using EdgeFront.Builder.Infrastructure.Data;
-using EdgeFront.Builder.Infrastructure.Graph;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 
 namespace EdgeFront.Builder.Tests.Features.Sessions;
 
@@ -109,7 +106,7 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateAsync_CreatesSession_WithDraftStatus()
+    public async Task CreateAsync_CreatesSession()
     {
         // Arrange
         var series = BuildSeries();
@@ -126,8 +123,7 @@ public class SessionServiceTests : IDisposable
         // Assert
         errorCode.Should().BeNull();
         session.Should().NotBeNull();
-        session!.Status.Should().Be("Draft");
-        session.SeriesId.Should().Be(series.SeriesId);
+        session!.SeriesId.Should().Be(series.SeriesId);
         session.Title.Should().Be("Valid Session");
     }
 
@@ -161,7 +157,6 @@ public class SessionServiceTests : IDisposable
 
         // Assert
         result.Should().HaveCount(2);
-        result.Should().AllSatisfy(s => s.Status.Should().Be("Draft"));
     }
 
     [Fact]
@@ -321,15 +316,13 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteAsync_RevertsSeriesStatusToDraft_WhenLastPublishedSessionDeleted()
+    public async Task DeleteAsync_DeletesSession_WhenLastInSeries()
     {
-        // Arrange: Published series with one Published session
+        // Arrange
         var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
         _db.Series.Add(series);
 
         var session = BuildSession(series.SeriesId);
-        session.Status = SessionStatus.Published;
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
@@ -338,59 +331,28 @@ public class SessionServiceTests : IDisposable
 
         // Assert
         result.Should().BeTrue();
-        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
-            "series should revert to Draft when no published sessions remain");
+        (await _db.Sessions.FindAsync(session.SessionId)).Should().BeNull();
     }
 
     [Fact]
-    public async Task DeleteAsync_KeepsSeriesPublished_WhenOtherPublishedSessionsRemain()
+    public async Task DeleteAsync_DeletesSession_WhenOtherSessionsRemain()
     {
-        // Arrange: Published series with two Published sessions
+        // Arrange
         var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
         _db.Series.Add(series);
 
         var session1 = BuildSession(series.SeriesId);
-        session1.Status = SessionStatus.Published;
         var session2 = BuildSession(series.SeriesId);
-        session2.Status = SessionStatus.Published;
         _db.Sessions.AddRange(session1, session2);
         await _db.SaveChangesAsync();
 
-        // Act: delete one of the two published sessions
+        // Act
         var result = await _sut.DeleteAsync(session1.SessionId, OwnerUserId);
 
         // Assert
         result.Should().BeTrue();
-        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Published,
-            "series should stay Published while other published sessions exist");
-    }
-
-    [Fact]
-    public async Task DeleteAsync_RevertsSeriesStatusToDraft_WhenOnlyDraftSessionsRemain()
-    {
-        // Arrange: Published series with one Published and one Draft session
-        var series = BuildSeries();
-        series.Status = SeriesStatus.Published;
-        _db.Series.Add(series);
-
-        var publishedSession = BuildSession(series.SeriesId);
-        publishedSession.Status = SessionStatus.Published;
-        var draftSession = BuildSession(series.SeriesId);
-        draftSession.Status = SessionStatus.Draft;
-        _db.Sessions.AddRange(publishedSession, draftSession);
-        await _db.SaveChangesAsync();
-
-        // Act: delete the only published session
-        var result = await _sut.DeleteAsync(publishedSession.SessionId, OwnerUserId);
-
-        // Assert
-        result.Should().BeTrue();
-        var updatedSeries = await _db.Series.FindAsync(series.SeriesId);
-        updatedSeries!.Status.Should().Be(SeriesStatus.Draft,
-            "series should revert to Draft when remaining sessions are all Draft");
+        (await _db.Sessions.FindAsync(session1.SessionId)).Should().BeNull();
+        (await _db.Sessions.FindAsync(session2.SessionId)).Should().NotBeNull("remaining session should not be deleted");
     }
 
     // ---------- UpdateAsync ----------
@@ -497,77 +459,24 @@ public class SessionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdateTitleAsync_UpdatesPublishedTeamsWebinar()
+    public async Task UpdateTitleAsync_UpdatesTitle()
     {
-        // Arrange
         var series = BuildSeries();
         _db.Series.Add(series);
         var session = BuildSession(series.SeriesId);
-        session.Status = SessionStatus.Published;
-        session.TeamsWebinarId = "webinar-123";
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
 
-        var graphMock = new Mock<ITeamsGraphClient>();
-        var req = new UpdateSessionTitleRequest("Published Rename");
+        var req = new UpdateSessionTitleRequest("Renamed");
 
-        // Act
         var (result, errorCode) = await _sut.UpdateTitleAsync(
             session.SessionId,
             req,
-            OwnerUserId,
-            "obo-token",
-            graphMock.Object);
+            OwnerUserId);
 
-        // Assert
         errorCode.Should().BeNull();
         result.Should().NotBeNull();
-        result!.Title.Should().Be("Published Rename");
-        graphMock.Verify(g => g.UpdateWebinarAsync(
-            "webinar-123",
-            "Published Rename",
-            It.IsAny<DateTimeOffset>(),
-            It.IsAny<DateTimeOffset>(),
-            "obo-token",
-            default), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateTitleAsync_ReturnsError_WhenTeamsUpdateFails()
-    {
-        // Arrange
-        var series = BuildSeries();
-        _db.Series.Add(series);
-        var session = BuildSession(series.SeriesId);
-        session.Status = SessionStatus.Published;
-        session.TeamsWebinarId = "webinar-123";
-        _db.Sessions.Add(session);
-        await _db.SaveChangesAsync();
-
-        var graphMock = new Mock<ITeamsGraphClient>();
-        graphMock
-            .Setup(g => g.UpdateWebinarAsync(
-                "webinar-123",
-                "Broken Rename",
-                It.IsAny<DateTimeOffset>(),
-                It.IsAny<DateTimeOffset>(),
-                "obo-token",
-                default))
-            .ThrowsAsync(new InvalidOperationException("Graph failed"));
-
-        var req = new UpdateSessionTitleRequest("Broken Rename");
-
-        // Act
-        var (result, errorCode) = await _sut.UpdateTitleAsync(
-            session.SessionId,
-            req,
-            OwnerUserId,
-            "obo-token",
-            graphMock.Object);
-
-        // Assert
-        result.Should().BeNull();
-        errorCode.Should().Be("TEAMS_UPDATE_FAILED");
+        result!.Title.Should().Be("Renamed");
     }
 
     [Fact]
@@ -621,9 +530,6 @@ public class SessionServiceTests : IDisposable
         result!.SessionId.Should().Be(session.SessionId);
         result.SeriesId.Should().Be(series.SeriesId);
         result.Title.Should().Be("Test Session");
-        result.Status.Should().Be("Draft");
-        result.DriftStatus.Should().Be("None");
-        result.ReconcileStatus.Should().Be("Synced");
     }
 
     // ---------- Helpers ----------
@@ -634,7 +540,6 @@ public class SessionServiceTests : IDisposable
             SeriesId = Guid.NewGuid(),
             OwnerUserId = ownerOverride ?? OwnerUserId,
             Title = "Test Series " + Guid.NewGuid(),
-            Status = SeriesStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -647,9 +552,6 @@ public class SessionServiceTests : IDisposable
             OwnerUserId = OwnerUserId,
             Title = "Test Session",
             StartsAt = DateTime.UtcNow.AddDays(1),
-            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1),
-            Status = SessionStatus.Draft,
-            DriftStatus = DriftStatus.None,
-            ReconcileStatus = ReconcileStatus.Synced
+            EndsAt = DateTime.UtcNow.AddDays(1).AddHours(1)
         };
 }

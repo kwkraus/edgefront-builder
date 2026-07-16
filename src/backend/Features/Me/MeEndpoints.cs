@@ -5,6 +5,8 @@ namespace EdgeFront.Builder.Features.Me;
 
 public static class MeEndpoints
 {
+    private static readonly string[] MePhotoScopes = ["https://graph.microsoft.com/User.Read"];
+
     public static WebApplication MapMeEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/me").RequireAuthorization();
@@ -56,7 +58,7 @@ public static class MeEndpoints
 
         try
         {
-            return await oboService.GetOboTokenAsync(rawToken);
+            return await oboService.GetOboTokenAsync(rawToken, MePhotoScopes);
         }
         catch
         {

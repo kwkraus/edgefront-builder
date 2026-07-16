@@ -67,29 +67,6 @@ export async function deleteSession(id: string, accessToken: string): Promise<vo
   return apiFetch<void>(`/sessions/${id}`, { method: 'DELETE' }, accessToken)
 }
 
-export async function syncSession(
-  id: string,
-  accessToken: string,
-  signal?: AbortSignal,
-): Promise<{ synced: boolean }> {
-  return apiFetch<{ synced: boolean }>(
-    `/sessions/${id}/sync`,
-    { method: 'POST', signal },
-    accessToken,
-  )
-}
-
-export async function publishSession(
-  id: string,
-  accessToken: string,
-): Promise<SessionResponse> {
-  return apiFetch<SessionResponse>(
-    `/sessions/${id}/publish`,
-    { method: 'POST' },
-    accessToken,
-  )
-}
-
 // --- People search ---
 
 export async function searchPeople(

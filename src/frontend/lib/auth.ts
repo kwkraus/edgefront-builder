@@ -10,6 +10,12 @@ export const authOptions: AuthOptions = {
       authorization: {
         params: {
           scope: `openid profile email offline_access api://${process.env.AZURE_AD_CLIENT_ID}/access_as_user`,
+          prompt: 'select_account',
+          // Optional: route home-realm discovery to a specific tenant domain so
+          // cached SSO accounts don't auto-resolve to their home tenant.
+          ...(process.env.AZURE_AD_DOMAIN_HINT
+            ? { domain_hint: process.env.AZURE_AD_DOMAIN_HINT }
+            : {}),
         },
       },
       token: {

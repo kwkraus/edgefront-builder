@@ -6,11 +6,13 @@ namespace EdgeFront.Builder.Features.People;
 
 public static class PeopleEndpoints
 {
+    private static readonly string[] PeopleSearchScopes = ["https://graph.microsoft.com/User.ReadBasic.All"];
+
     public static WebApplication MapPeopleEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/people").RequireAuthorization();
 
-        group.MapGet("/search", async (string? q, ITeamsGraphClient graphClient, IOboTokenService oboService, HttpContext ctx) =>
+        group.MapGet("/search", async (string? q, IGraphUserClient graphClient, IOboTokenService oboService, HttpContext ctx) =>
         {
             var userId = ctx.GetUserOid();
             if (userId is null)
@@ -52,7 +54,7 @@ public static class PeopleEndpoints
 
         try
         {
-            return await oboService.GetOboTokenAsync(rawToken);
+            return await oboService.GetOboTokenAsync(rawToken, PeopleSearchScopes);
         }
         catch
         {

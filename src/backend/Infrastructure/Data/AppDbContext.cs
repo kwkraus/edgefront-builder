@@ -36,7 +36,6 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.SeriesId);
             e.Property(x => x.SeriesId).ValueGeneratedNever();
-            e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.CreatedAt).HasColumnType("datetime2").HasConversion(utcConverter);
             e.Property(x => x.UpdatedAt).HasColumnType("datetime2").HasConversion(utcConverter);
             e.HasIndex(x => new { x.OwnerUserId, x.Title }).IsUnique();
@@ -48,12 +47,8 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.SessionId);
             e.Property(x => x.SessionId).ValueGeneratedNever();
-            e.Property(x => x.Status).HasConversion<string>();
-            e.Property(x => x.DriftStatus).HasConversion<string>().HasDefaultValue(DriftStatus.None);
-            e.Property(x => x.ReconcileStatus).HasConversion<string>().HasDefaultValue(ReconcileStatus.Synced);
             e.Property(x => x.StartsAt).HasColumnType("datetime2").HasConversion(utcConverter);
             e.Property(x => x.EndsAt).HasColumnType("datetime2").HasConversion(utcConverter);
-            e.Property(x => x.LastSyncAt).HasColumnType("datetime2").HasConversion(nullableUtcConverter);
             e.HasOne<Series>().WithMany().HasForeignKey(x => x.SeriesId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.SeriesId, x.StartsAt });
         });

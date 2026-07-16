@@ -10,7 +10,7 @@ Applies to `src/backend`. Shared rules (architecture, build/test, congruency che
 ## Agent Routing
 - Testing → `edgefront-tdd-engineer`
 - Logging/observability → `observability-sre`
-- Graph/Teams → `graph-teams-integration`
+- Graph (delegated OBO user lookup) → `aspnet-api-expert`
 - Schema/migrations → `data-schema-migration` skill via `aspnet-api-expert`
 - API contracts → `api-contract-design` skill via `aspnet-api-expert`
 - Ask when requirements are unclear.
@@ -24,7 +24,7 @@ Applies to `src/backend`. Shared rules (architecture, build/test, congruency che
 - `Program.cs` — startup, DI
 - `Features/<Name>/` — endpoints, DTOs, handlers, validators
 - `Domain/` — entities, value objects, rules (identity, normalization, warm/influence)
-- `Infrastructure/` — data access, external integrations; `Infrastructure/Graph/` for TeamsGraphClient + OBO token service
+- `Infrastructure/` — data access, external integrations; `Infrastructure/Graph/` for GraphUserClient + OBO token service
 - `Metrics/` — recompute orchestrator
 - `Common/` — shared primitives, errors, result types
 - Tests: `tests/backend/` mirroring feature folders
@@ -47,7 +47,7 @@ Applies to `src/backend`. Shared rules (architecture, build/test, congruency che
 - Schema details, constraints, indexes → `data-schema-migration` skill.
 
 ## Graph
-- Delegated-only (OBO). Details → `graph-teams-integration` agent.
+- Delegated-only (OBO) for directory user lookup (people picker) via `GraphUserClient` + `OboTokenService`. No webinar or data-sync integration.
 
 ## Security & Config
 - Secrets in user-secrets or env vars; do not commit `appsettings.*.json` overrides.

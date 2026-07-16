@@ -11,13 +11,12 @@ namespace EdgeFront.Builder.Features.Export;
 /// <para><strong>Allow-list policy</strong> — only the following fields are ever written
 /// into the markdown output:</para>
 /// <list type="bullet">
-///   <item>Series: <c>Title</c>, <c>Status</c>, <c>CreatedAt</c></item>
-///   <item>Session: <c>Title</c>, <c>StartsAt</c>, <c>EndsAt</c>, <c>Status</c></item>
+///   <item>Series: <c>Title</c>, <c>CreatedAt</c></item>
+///   <item>Session: <c>Title</c>, <c>StartsAt</c>, <c>EndsAt</c></item>
 ///   <item>Presenters / Coordinators: <c>DisplayName</c> only</item>
 /// </list>
 /// <para>Fields that are deliberately <em>excluded</em>:
-/// <c>TeamsWebinarId</c>, <c>JoinWebUrl</c>, <c>DriftStatus</c>, <c>ReconcileStatus</c>,
-/// <c>LastSyncAt</c>, <c>LastError</c>, <c>Email</c>, <c>EntraUserId</c>,
+/// <c>Email</c>, <c>EntraUserId</c>,
 /// registration counts, attendance counts, and all metrics.</para>
 /// </remarks>
 public sealed class MarkdownExportService
@@ -56,7 +55,6 @@ public sealed class MarkdownExportService
             .Select(s => new
             {
                 s.Title,
-                s.Status,
                 s.CreatedAt
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -65,8 +63,6 @@ public sealed class MarkdownExportService
             return null;
 
         // ── 2. Fetch sessions ordered chronologically ────────────────────────────
-        // Project only allow-listed fields; sensitive sync/Teams fields are never
-        // selected, so they never appear in the markdown regardless of serialisation.
         var sessions = await _db.Sessions
             .Where(s => s.SeriesId == seriesId)
             .OrderBy(s => s.StartsAt)
@@ -75,10 +71,7 @@ public sealed class MarkdownExportService
                 s.SessionId,
                 s.Title,
                 s.StartsAt,
-                s.EndsAt,
-                s.Status
-                // Deliberately omitted: TeamsWebinarId, JoinWebUrl, DriftStatus,
-                // ReconcileStatus, LastSyncAt, LastError, OwnerUserId, SeriesId
+                s.EndsAt
             })
             .ToListAsync(cancellationToken);
 
@@ -113,7 +106,6 @@ public sealed class MarkdownExportService
         // Document header
         sb.AppendLine($"# {series.Title}");
         sb.AppendLine();
-        sb.AppendLine($"**Status:** {series.Status}");
         sb.AppendLine($"**Created:** {series.CreatedAt:MMMM d, yyyy}");
         sb.AppendLine();
         sb.AppendLine("---");
@@ -147,8 +139,6 @@ public sealed class MarkdownExportService
                 {
                     sb.AppendLine("- **Schedule:** Not yet set");
                 }
-
-                sb.AppendLine($"- **Status:** {session.Status}");
 
                 // Presenters — omit entire line when none are assigned.
                 if (presentersBySession.TryGetValue(session.SessionId, out var presenters)

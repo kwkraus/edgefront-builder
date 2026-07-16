@@ -42,27 +42,12 @@ export async function deleteSeries(id: string, accessToken: string): Promise<voi
   return apiFetch<void>(`/series/${id}`, { method: 'DELETE' }, accessToken)
 }
 
-export async function publishSeries(id: string, accessToken: string): Promise<SeriesResponse> {
-  return apiFetch<SeriesResponse>(`/series/${id}/publish`, { method: 'POST' }, accessToken)
-}
-
-export async function syncSeries(
-  id: string,
-  accessToken: string,
-): Promise<{ synced: number; failed: number }> {
-  return apiFetch<{ synced: number; failed: number }>(
-    `/series/${id}/sync`,
-    { method: 'POST' },
-    accessToken,
-  )
-}
-
 /**
  * Exports a series as a Markdown file and triggers a browser download.
  * Uses raw fetch (not apiFetch) because the response is a binary blob, not JSON.
  */
 export async function exportSeriesMarkdown(seriesId: string, token: string): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5000'
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5187'
   const response = await fetch(`${baseUrl}/api/v1/series/${seriesId}/export/markdown`, {
     headers: {
       Authorization: `Bearer ${token}`,

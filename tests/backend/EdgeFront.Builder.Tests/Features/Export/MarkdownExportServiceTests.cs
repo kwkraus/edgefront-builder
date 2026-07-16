@@ -1,4 +1,3 @@
-using EdgeFront.Builder.Domain;
 using EdgeFront.Builder.Domain.Entities;
 using EdgeFront.Builder.Features.Export;
 using EdgeFront.Builder.Infrastructure.Data;
@@ -215,19 +214,13 @@ public class MarkdownExportServiceTests : IDisposable
     [Fact]
     public async Task ExportSeriesAsync_ExcludesSensitiveFields()
     {
-        // Arrange — session populated with every sensitive field
-        const string sensitiveWebinarId = "SENSITIVE-WEBINAR-ID-99";
-        const string sensitiveJoinUrl    = "https://teams.microsoft.com/l/secret-url";
-        const string sensitiveEmail      = "secret.user@internal-corp.com";
-        const string sensitiveLastError  = "Token refresh failed: secret_context_xyz";
+        // Arrange — session populated with sensitive presenter fields
+        const string sensitiveEmail = "secret.user@internal-corp.com";
 
         var series = BuildSeries("Sensitive Data Series");
         _db.Series.Add(series);
 
         var session = BuildSession(series.SeriesId, "Sensitive Session");
-        session.TeamsWebinarId = sensitiveWebinarId;
-        session.JoinWebUrl     = sensitiveJoinUrl;
-        session.LastError      = sensitiveLastError;
         _db.Sessions.Add(session);
 
         // Add a presenter with a sensitive email — only DisplayName should appear.
@@ -247,14 +240,8 @@ public class MarkdownExportServiceTests : IDisposable
 
         // Assert — none of the sensitive values must appear anywhere in the markdown
         result.Should().NotBeNull();
-        result!.Content.Should().NotContain(sensitiveWebinarId,
-            because: "TeamsWebinarId must never appear in the exported markdown");
-        result.Content.Should().NotContain(sensitiveJoinUrl,
-            because: "JoinWebUrl must never appear in the exported markdown");
-        result.Content.Should().NotContain(sensitiveEmail,
+        result!.Content.Should().NotContain(sensitiveEmail,
             because: "presenter Email must never appear in the exported markdown");
-        result.Content.Should().NotContain(sensitiveLastError,
-            because: "LastError must never appear in the exported markdown");
 
         // Sanity-check: the non-sensitive DisplayName IS present.
         result.Content.Should().Contain("Visible Name Only");
@@ -282,10 +269,7 @@ public class MarkdownExportServiceTests : IDisposable
             OwnerUserId  = OwnerUserId,
             Title        = "Unscheduled Session",
             StartsAt     = unset,
-            EndsAt       = unset,
-            Status       = SessionStatus.Draft,
-            DriftStatus  = DriftStatus.None,
-            ReconcileStatus = ReconcileStatus.Synced
+            EndsAt       = unset
         };
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
@@ -312,7 +296,6 @@ public class MarkdownExportServiceTests : IDisposable
             SeriesId    = Guid.NewGuid(),
             OwnerUserId = ownerOverride ?? OwnerUserId,
             Title       = title,
-            Status      = SeriesStatus.Draft,
             CreatedAt   = new DateTime(2024, 1, 15, 0, 0, 0, DateTimeKind.Utc),
             UpdatedAt   = new DateTime(2024, 1, 15, 0, 0, 0, DateTimeKind.Utc)
         };
@@ -330,10 +313,7 @@ public class MarkdownExportServiceTests : IDisposable
             OwnerUserId     = OwnerUserId,
             Title           = title,
             StartsAt        = start,
-            EndsAt          = start.AddHours(1),
-            Status          = SessionStatus.Draft,
-            DriftStatus     = DriftStatus.None,
-            ReconcileStatus = ReconcileStatus.Synced
+            EndsAt          = start.AddHours(1)
         };
     }
 }

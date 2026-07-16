@@ -28,7 +28,6 @@ Backend API expert for `src/backend`. Implement/review ASP.NET Core minimal APIs
 | Backend tests | `api-test-strategy` |
 | EF entities/migrations/constraints | `data-schema-migration` |
 | Normalization, influence, warm logic | `domain-metrics-computation` |
-| Microsoft Graph calls | `graph-teams-integration` |
 
 ## Method
 1. Discovery: read `readme.md` + backend project files first.

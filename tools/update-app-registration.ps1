@@ -3,8 +3,8 @@
     Updates the EdgeFront Builder Entra ID app registration with required delegated permissions for SPEC-210.
 
 .DESCRIPTION
-    Adds User.ReadBasic.All delegated permission to the app registration and grants admin consent.
-    This permission enables the people search feature (searching Entra directory users by displayName/email).
+    Adds User.ReadBasic.All and User.Read delegated permissions to the app registration and grants admin consent.
+    These permissions enable people search and signed-in user profile photo retrieval.
 
     Requires:
     - Azure CLI installed (az)
@@ -34,6 +34,7 @@ $GraphApiId = "00000003-0000-0000-c000-000000000000"
 # Permission IDs (well-known GUIDs from Microsoft Graph)
 $Permissions = @{
     "User.ReadBasic.All" = "a154be20-db9c-4678-8ab7-66f6cc099a59"
+    "User.Read"          = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
 }
 
 Write-Host ""
@@ -64,9 +65,9 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "WARNING: Could not list current permissions. Continuing..." -ForegroundColor DarkYellow
 }
 
-# Step 3: Add User.ReadBasic.All delegated permission
+# Step 3: Add required delegated permissions
 Write-Host ""
-Write-Host "[3/4] Adding User.ReadBasic.All delegated permission..." -ForegroundColor Yellow
+Write-Host "[3/4] Adding required delegated permissions..." -ForegroundColor Yellow
 foreach ($perm in $Permissions.GetEnumerator()) {
     Write-Host "       Adding $($perm.Key) (Scope/Delegated)..."
     az ad app permission add `
@@ -101,9 +102,8 @@ az ad app permission list --id $AppId --output table
 
 Write-Host ""
 Write-Host "Done! The following permissions should now be configured:" -ForegroundColor Green
-Write-Host "  - VirtualEvent.ReadWrite (delegated) — existing"
-Write-Host "  - OnlineMeetingArtifact.Read.All (delegated) — existing"
-Write-Host "  - User.ReadBasic.All (delegated) — NEW (SPEC-210)"
+Write-Host "  - User.ReadBasic.All (delegated) — required for people search"
+Write-Host "  - User.Read (delegated) — required for signed-in user profile photo"
 Write-Host ""
 
 <#

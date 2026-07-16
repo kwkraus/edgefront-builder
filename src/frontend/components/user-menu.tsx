@@ -21,7 +21,7 @@ export default function UserMenu() {
     if (!session?.user || !session?.accessToken) return
     let revoked = false
 
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5000'
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ?? 'http://localhost:5187'
     fetch(`${baseUrl}/api/v1/me/photo`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
