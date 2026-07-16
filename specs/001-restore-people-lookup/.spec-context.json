@@ -1,0 +1,9 @@
+{
+  "workflow": "speckit",
+  "specName": "001-restore-people-lookup",
+  "branch": "001-restore-people-lookup",
+  "selectedAt": "2026-07-16T16:41:18.832Z",
+  "currentStep": "specify",
+  "status": "draft",
+  "history": []
+}
