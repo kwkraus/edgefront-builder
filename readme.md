@@ -10,7 +10,7 @@ EdgeFront Builder is a **webinar management platform** for local event planning,
 
 - **Series & session management** — Create webinar series containing multiple sessions; manage titles, schedules, presenters, and coordinators.
 - **People roles** — Assign presenters and co-organizers per session using a live Entra ID people picker.
-- **Registration & attendance tracking** — Capture normalized registration and attendance records in the local data model.
+- **Registration & attendance tracking** — Stores normalized registration and attendance records received from external ingestion sources into the local data model.
 - **Metrics & analytics** — Aggregated engagement metrics per session and across a series: total registrations, attendees, unique account domains, and warm-account influence tracking.
 - **Entra ID authentication** — Single-tenant login via Entra ID.
 
