@@ -38,10 +38,6 @@ EdgeFront Builder is a **webinar management platform** for local event planning,
 
 ![Create Session](docs/screenshots/session-create.png)
 
-### Session Detail — Draft
-
-![Session Detail (Draft)](docs/screenshots/session-detail-draft.png)
-
 ### Session Detail
 
 ![Session Detail](docs/screenshots/session-detail-published.png)
@@ -101,8 +97,7 @@ Required delegated permissions:
 | Permission | Purpose |
 |---|---|
 | `openid`, `profile`, `email`, `offline_access` | Standard OIDC sign-in |
+| `User.Read` | Signed-in user's profile photo (OBO) |
 | `User.ReadBasic.All` | People search for presenter/coordinator picker |
 
 Exposed API scope: `api://{ClientId}/access_as_user` (frontend → backend token exchange).
-
-This phase removes Teams webinar publish/sync API dependencies so installs do not require Teams webinar app registration consent paths.
