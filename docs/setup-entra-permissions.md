@@ -81,4 +81,5 @@ After setup, the API permissions page should show:
 | `offline_access` | Delegated | ✅ Granted |
 | `openid` | Delegated | ✅ Granted |
 | `profile` | Delegated | ✅ Granted |
+| `User.Read` | Delegated | ✅ Granted |
 | `User.ReadBasic.All` | Delegated | ✅ Granted |
